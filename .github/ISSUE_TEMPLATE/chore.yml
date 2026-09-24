@@ -1,0 +1,37 @@
+name: Chore / tech
+description: Tooling, CI, refactor, docs, or tests - no user-facing change
+title: 'chore: '
+labels: ['type:chore']
+assignees: [moudlajs]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checklist. Include the test expectation (unit / httptest fixture).
+      value: |
+        - [ ] 
+        - [ ] Tests:
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Links, Sleeper endpoints and fields, design references.

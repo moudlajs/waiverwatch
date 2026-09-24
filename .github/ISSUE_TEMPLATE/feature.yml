@@ -1,0 +1,39 @@
+name: Feature
+description: New user-facing capability
+title: 'feat: '
+labels: ['type:feat']
+assignees: [moudlajs]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What should exist that does not today?
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why it matters (waiver day, game day, which leagues).
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checklist. Include the test expectation (unit / httptest fixture).
+      value: |
+        - [ ] 
+        - [ ] Tests:
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Links, Sleeper endpoints and fields, design references.
