@@ -82,6 +82,17 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 		return nil, r, err
 	})
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "injury_report",
+		Description: "Every injured player on my rosters across all leagues (Out, IR, Doubtful, Questionable...), most " +
+			"serious and most-started first, with the leagues where he is in my lineup. Where he is starting, it " +
+			"suggests the best available replacement at his position in that league.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, func(ctx context.Context, _ *sdk.CallToolRequest, _ struct{}) (*sdk.CallToolResult, league.InjuryReport, error) {
+		r, err := svc.Injuries(ctx)
+		return nil, r, err
+	})
+
 	return s
 }
 
