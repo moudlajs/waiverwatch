@@ -25,6 +25,8 @@ type League struct {
 type LeagueSettings struct {
 	Type             int `json:"type"` // see Kind
 	PlayoffWeekStart int `json:"playoff_week_start"`
+	WaiverType       int `json:"waiver_type"`   // 0 rolling priority, 1 reverse standings, 2 FAAB
+	WaiverBudget     int `json:"waiver_budget"` // FAAB budget per team
 }
 
 // Kind names the league format from settings.type.
@@ -66,6 +68,8 @@ type RosterSettings struct {
 	FptsDecimal        int `json:"fpts_decimal"`
 	FptsAgainst        int `json:"fpts_against"`
 	FptsAgainstDecimal int `json:"fpts_against_decimal"`
+	WaiverPosition     int `json:"waiver_position"`
+	WaiverBudgetUsed   int `json:"waiver_budget_used"`
 }
 
 // PointsFor is the season's points scored.
@@ -124,6 +128,7 @@ type Player struct {
 	Active         bool   `json:"active"`
 	InjuryStatus   string `json:"injury_status"` // Questionable, Doubtful, Out, IR, PUP, Sus, NA...
 	InjuryBodyPart string `json:"injury_body_part"`
+	SearchRank     int    `json:"search_rank"` // Sleeper's overall rank, 1 is best; 0 when unranked
 }
 
 // Name is the display name, e.g. "Patrick Mahomes" or "Seattle Seahawks".

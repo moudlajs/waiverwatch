@@ -56,7 +56,41 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 		return nil, r, err
 	})
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "waiver_targets",
+		Description: "The best available free agents in each of my leagues (on no roster, on an NFL team, at a position " +
+			"the league can start), ranked by this week's trending adds and then Sleeper's overall rank. Includes my " +
+			"waiver priority or FAAB budget left in each league. Use it for \"who should I pick up?\"",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, func(ctx context.Context, _ *sdk.CallToolRequest, in WaiverInput) (*sdk.CallToolResult, league.WaiverReport, error) {
+		limit := in.Limit
+		if limit <= 0 {
+			limit = 5
+		}
+		r, err := svc.WaiverTargets(ctx, normalisePosition(in.Position), in.League, min(limit, 25))
+		return nil, r, err
+	})
+
 	return s
+}
+
+// WaiverInput is waiver_targets' arguments.
+type WaiverInput struct {
+	Position string `json:"position,omitempty" jsonschema:"only this position: QB, RB, WR, TE, K or DEF; omit for all"`
+	League   string `json:"league,omitempty" jsonschema:"only leagues whose name contains this (case-insensitive), or a league ID; omit for all"`
+	Limit    int    `json:"limit,omitempty" jsonschema:"targets per league, 1-25; default 5"`
+}
+
+// normalisePosition accepts common spellings: "rb", "DST", "D/ST", "PK".
+func normalisePosition(p string) string {
+	p = strings.ToUpper(strings.TrimSpace(p))
+	switch p {
+	case "DST", "D/ST", "D":
+		return "DEF"
+	case "PK":
+		return "K"
+	}
+	return p
 }
 
 // TrendingInput is trending_players' arguments.

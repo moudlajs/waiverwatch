@@ -13,7 +13,7 @@ on Sunday gives you minutes to hit the waiver wire, wherever you are.
 
 ## Status
 
-Early: runs locally over stdio. Tools so far: `list_leagues`, `get_matchups`, `trending_players`. See the
+Early: runs locally over stdio. Tools so far: `list_leagues`, `get_matchups`, `trending_players`, `waiver_targets`. See the
 [milestones](https://github.com/moudlajs/waiverwatch/milestones) for the plan.
 
 ## Principles
@@ -69,6 +69,7 @@ Restart Claude and ask *"How are my fantasy leagues looking?"*
 | `list_leagues` | every league this season: type, size, your team, record, points, standing |
 | `get_matchups` | this week (or any week) in every league: live score, your and your opponent's starters with injuries; guillotine rank and margin over last place |
 | `trending_players` | the most-added players on Sleeper, with the leagues where you can still claim each one |
+| `waiver_targets` | per league: the best free agents you can actually start there, your waiver priority or FAAB left |
 
 ## Contributing
 

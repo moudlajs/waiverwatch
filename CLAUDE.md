@@ -78,6 +78,9 @@ GET /players/nfl/trending/add              -> most-added players
 - An empty lineup slot is the starter ID `"0"`.
 - `/players/nfl/trending/add` returns at most 100 players whatever `limit`
   says. A roster's `players` already includes its taxi and IR players.
+- `settings.waiver_type`: 0 rolling priority, 1 reverse standings, 2 FAAB
+  (`waiver_budget`, minus the roster's `waiver_budget_used`). Players carry
+  `search_rank` (1 is best; missing for ~2% of players).
 - Matchups carry actual points only (`points`, `starters_points`,
   `players_points`), no projections (checked 2026-09-25, see #17). There is
   no per-game status either, so "yet to play" can't be told from 0 points.

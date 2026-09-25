@@ -96,6 +96,7 @@ func (s *Service) Trending(ctx context.Context, lookbackHours, limit int, positi
 type pool struct {
 	league   sleeper.League
 	rostered map[string]bool // on any team, including mine
+	me       sleeper.Roster
 	mine     map[string]bool
 	err      error
 }
@@ -112,6 +113,7 @@ func (s *Service) pools(ctx context.Context, leagues []sleeper.League, userID st
 		}
 		out[i].rostered = Rostered(rosters)
 		if mine, ok := MyRoster(rosters, userID); ok {
+			out[i].me = mine
 			out[i].mine = Rostered([]sleeper.Roster{mine})
 		} else {
 			out[i].err = fmt.Errorf("no roster owned by user %s in league %s", userID, l.LeagueID)
