@@ -21,6 +21,7 @@ var fixtures = map[string]string{
 	"/league/L1/users":           "users.json",
 	"/league/L1/matchups/3":      "matchups.json",
 	"/state/nfl":                 "state.json",
+	"/players/nfl":               "players.json",
 	"/players/nfl/trending/add":  "trending.json",
 	"/user/ghost":                "", // Sleeper's answer for unknown users: 200 + null
 	"/league/missing/rosters":    "", // same for unknown leagues
@@ -158,6 +159,29 @@ func TestClientDecodes(t *testing.T) {
 		}
 		if len(ts) != 3 || ts[0].PlayerID != "11435" || ts[0].Count != 398115 {
 			t.Errorf("unexpected trending %+v", ts)
+		}
+	})
+
+	t.Run("players", func(t *testing.T) {
+		ps, err := c.Players(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ps) != 3 {
+			t.Fatalf("got %d players, want 3", len(ps))
+		}
+		qb := ps["4046"]
+		if qb.Name() != "Patrick Mahomes" || qb.Position != "QB" || qb.Team != "KC" || !qb.Active {
+			t.Errorf("unexpected player %+v", qb)
+		}
+		if qb.InjuryStatus != "Questionable" || qb.InjuryBodyPart != "Ankle" {
+			t.Errorf("injury = %q %q", qb.InjuryStatus, qb.InjuryBodyPart)
+		}
+		if def := ps["SEA"]; def.Name() != "Seattle Seahawks" || def.Position != "DEF" {
+			t.Errorf("defense = %q %q, want Seattle Seahawks DEF", def.Name(), def.Position)
+		}
+		if ps["11435"].InjuryStatus != "" {
+			t.Error("null injury_status should decode to empty")
 		}
 	})
 
