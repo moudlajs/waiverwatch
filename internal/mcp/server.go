@@ -1,5 +1,6 @@
-// Package mcp exposes waiverwatch as MCP tools. It knows MCP, not football,
-// and never does HTTP itself: every tool delegates to league.Service.
+// Package mcp exposes waiverwatch as MCP tools and serves them as a
+// transport. It knows MCP, not football, and never calls Sleeper itself:
+// every tool delegates to league.Service.
 package mcp
 
 import (
