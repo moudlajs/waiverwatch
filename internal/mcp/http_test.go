@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/time/rate"
 
+	"github.com/moudlajs/waiverwatch/internal/auth"
 	"github.com/moudlajs/waiverwatch/internal/league"
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 	"github.com/moudlajs/waiverwatch/internal/sleeper/sleepertest"
@@ -24,7 +26,7 @@ func httpServer(t *testing.T, limit rate.Limit, burst int) *httptest.Server {
 		"/user/100/leagues/nfl/2026": []sleeper.League{},
 	}))
 	svc := league.NewService(api, league.NewDirectory(store.NewMemory(), api.Players), "me")
-	srv := httptest.NewServer(HTTPHandler(NewServer(svc, "test"), limit, burst))
+	srv := httptest.NewServer(HTTPHandler(NewServer(svc, "test"), "test", nil, limit, burst))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -94,5 +96,42 @@ func TestServeShutsDownOnCancel(t *testing.T) {
 func TestServeReportsListenErrors(t *testing.T) {
 	if err := Serve(context.Background(), "not-an-address", http.NotFoundHandler()); err == nil {
 		t.Error("want a listen error")
+	}
+}
+
+func TestHTTPRequiresSignIn(t *testing.T) {
+	signIn, err := auth.New(auth.Config{
+		BaseURL: "https://waiverwatch.example", Passphrase: "correct horse battery",
+		SigningKey: []byte("0123456789abcdef0123456789abcdef"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := league.NewService(sleeper.New("http://unused.invalid"), nil, "me")
+	srv := httptest.NewServer(HTTPHandler(NewServer(svc, "test"), "v9.9.9", signIn, rate.Inf, 1))
+	t.Cleanup(srv.Close)
+
+	resp, err := http.Post(srv.URL+"/mcp", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized || !strings.Contains(resp.Header.Get("WWW-Authenticate"), "resource_metadata") {
+		t.Errorf("unauthenticated /mcp: %d %q", resp.StatusCode, resp.Header.Get("WWW-Authenticate"))
+	}
+
+	for path, want := range map[string]string{
+		"/health": "ok v9.9.9",
+		"/.well-known/oauth-protected-resource/mcp": `"resource":"https://waiverwatch.example/mcp"`,
+	} {
+		resp, err := http.Get(srv.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), want) {
+			t.Errorf("%s: %d %q, want %q", path, resp.StatusCode, body, want)
+		}
 	}
 }

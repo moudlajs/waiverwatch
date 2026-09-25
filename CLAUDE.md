@@ -32,6 +32,7 @@ internal/sleeper/    API client: HTTP + JSON, nothing else
 internal/league/     domain logic: knows football, not HTTP or MCP
 internal/store/      Store interface + in-memory impl
 internal/mcp/        tools + transport: knows MCP, never calls Sleeper
+internal/auth/       OAuth sign-in for the hosted server: knows OAuth only
 ```
 
 `sleeper` never imports `mcp`; `mcp` never calls Sleeper (serving HTTP is
@@ -47,9 +48,17 @@ fine, it's the transport).
 - **Transports:** stdio for local Claude Code / Desktop; stateless
   Streamable HTTP at `/mcp` when `PORT` is set (Cloud Run), plus `/health`
   (never `/healthz`: Cloud Run reserves paths ending in `z`).
-  Same tools behind both. Hosted has **no login yet** (owner's call, #10):
-  a global rate limit caps abuse and OAuth follows in #34. claude.ai's
-  simple header auth is beta for limited orgs only.
+  Same tools behind both.
+- **Hosted sign-in (`internal/auth`):** waiverwatch is its own tiny OAuth 2.1
+  authorization server. Claude identifies itself with a Client ID Metadata
+  Document; only Claude's two client IDs are accepted (claude.ai and Claude
+  Code). The owner signs in with a passphrase; codes and tokens are
+  HMAC-signed and stateless (1h access, 90d refresh), so restarts don't
+  sign anyone out. A refresh issues a new refresh token but can't revoke the
+  old one (nothing is stored); rotating the signing key revokes everything. HTTP mode refuses to start without
+  `WAIVERWATCH_BASE_URL`, `WAIVERWATCH_PASSPHRASE` (Secret Manager) and
+  `WAIVERWATCH_SIGNING_KEY` (Secret Manager); `WAIVERWATCH_NO_AUTH=1` is for
+  local testing only. Rotating the signing key signs every client out.
 - **Tools are coarse.** One call returning a useful chunk beats several
   chatty ones. Work across all of the user's leagues by default.
 - Fan out per-league requests concurrently (`errgroup`), with a
