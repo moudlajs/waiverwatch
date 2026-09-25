@@ -67,7 +67,7 @@ func TestListLeagues(t *testing.T) {
 		names = append(names, tl.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"get_matchups", "get_roster", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
+	if want := []string{"get_matchups", "get_roster", "injury_report", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
 		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
@@ -192,6 +192,24 @@ func TestGetRoster(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(r.Rosters) != 1 || r.Rosters[0].League != "Dynasty" || len(r.Rosters[0].Bench) != 1 {
+		t.Errorf("unexpected report %+v", r)
+	}
+}
+
+func TestInjuryReport(t *testing.T) {
+	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{Name: "injury_report", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	raw, _ := json.Marshal(res.StructuredContent)
+	var r league.InjuryReport
+	if err := json.Unmarshal(raw, &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.Players == nil || len(r.Players) != 0 { // nobody on the test roster is hurt
 		t.Errorf("unexpected report %+v", r)
 	}
 }
