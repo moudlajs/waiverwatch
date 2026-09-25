@@ -10,7 +10,6 @@ coverage.*
 
 # local cache (player dictionary is ~15 MB, never commit)
 /cache/
-players*.json
 
 # env / secrets
 .env
