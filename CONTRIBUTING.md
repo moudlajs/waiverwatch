@@ -65,10 +65,17 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
   owner with the command the script prints). Safe to re-run.
 - **Runtime settings** (repository variables, not secrets):
   `WAIVERWATCH_USER` is the Sleeper username the server answers for, and
-  `WAIVERWATCH_BASE_URL` is the service URL the connector is added with. On
-  a first deploy there is no URL yet: deploy once without it and the workflow
-  falls back to the service's URL from then on, or set it by hand
-  (`gh variable set WAIVERWATCH_BASE_URL --body https://…run.app`).
+  `WAIVERWATCH_BASE_URL` is the service URL the connector is added with.
+  When `WAIVERWATCH_BASE_URL` is unset, deploys use the existing service's
+  URL. From scratch there is no service yet, so create a placeholder once to
+  get its URL, then set the variable before the first release:
+
+  ```sh
+  gcloud run deploy waiverwatch --region europe-west1 --no-allow-unauthenticated \
+    --image us-docker.pkg.dev/cloudrun/container/hello
+  gh variable set WAIVERWATCH_BASE_URL --body "$(gcloud run services describe \
+    waiverwatch --region europe-west1 --format 'value(status.url)')"
+  ```
 - **Every release:** merging the release-please PR tags the release, and
   `release.yml` calls `deploy.yml`: build, push, `gcloud run deploy`, then a
   smoke test that the new version is serving.
