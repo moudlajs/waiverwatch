@@ -67,7 +67,7 @@ func TestListLeagues(t *testing.T) {
 		names = append(names, tl.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"get_matchups", "get_roster", "injury_report", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
+	if want := []string{"compare_rosters", "get_matchups", "get_roster", "injury_report", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
 		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
@@ -211,5 +211,24 @@ func TestInjuryReport(t *testing.T) {
 	}
 	if r.Players == nil || len(r.Players) != 0 { // nobody on the test roster is hurt
 		t.Errorf("unexpected report %+v", r)
+	}
+}
+
+func TestCompareRosters(t *testing.T) {
+	// The only league has a single team, so there is no opponent this week.
+	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{Name: "compare_rosters", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	raw, _ := json.Marshal(res.StructuredContent)
+	var c league.Comparisons
+	if err := json.Unmarshal(raw, &c); err != nil {
+		t.Fatal(err)
+	}
+	if c.Week != 3 || len(c.Leagues) != 1 || !strings.Contains(c.Leagues[0].Note, "no opponent") {
+		t.Errorf("unexpected comparisons %+v", c)
 	}
 }

@@ -93,13 +93,24 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 		return nil, r, err
 	})
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "compare_rosters",
+		Description: "My roster next to another team's, position by position (starters with lineup slot first, then " +
+			"bench, then IR), with both records. By default the other team is this week's opponent in every league; " +
+			"name an owner (team or display name) to compare against anyone, e.g. before a trade.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, func(ctx context.Context, _ *sdk.CallToolRequest, in RosterInput) (*sdk.CallToolResult, league.Comparisons, error) {
+		c, err := svc.Compare(ctx, in.League, in.Owner)
+		return nil, c, err
+	})
+
 	return s
 }
 
-// RosterInput is get_roster's arguments.
+// RosterInput is get_roster's and compare_rosters' arguments.
 type RosterInput struct {
 	League string `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
-	Owner  string `json:"owner,omitempty" jsonschema:"team name or owner display name; omit for my own team"`
+	Owner  string `json:"owner,omitempty" jsonschema:"team name or owner display name; get_roster: omit for my own team, compare_rosters: omit for this week's opponent"`
 }
 
 // WaiverInput is waiver_targets' arguments.
