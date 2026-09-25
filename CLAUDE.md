@@ -76,6 +76,8 @@ GET /players/nfl/trending/add              -> most-added players
 - Guillotine leagues (`settings.type` 3) have no head-to-head: each team has
   its own `matchup_id`, and eliminated teams keep a roster with no players.
 - An empty lineup slot is the starter ID `"0"`.
+- `/players/nfl/trending/add` returns at most 100 players whatever `limit`
+  says. A roster's `players` already includes its taxi and IR players.
 - Matchups carry actual points only (`points`, `starters_points`,
   `players_points`), no projections (checked 2026-09-25, see #17). There is
   no per-game status either, so "yet to play" can't be told from 0 points.
