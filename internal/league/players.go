@@ -68,7 +68,7 @@ func (d *Directory) Players(ctx context.Context) (map[string]sleeper.Player, err
 				"age", d.now().Sub(cur.FetchedAt).Round(time.Minute), "err", err)
 			return cur.ByID, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("refreshing player dictionary: %w", err)
 	}
 	if err := d.store.SavePlayers(ctx, store.Players{ByID: byID, FetchedAt: d.now()}); err != nil {
 		return nil, fmt.Errorf("saving player dictionary: %w", err)
