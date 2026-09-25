@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/moudlajs/waiverwatch/compare/v0.4.0...v0.4.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **mcp:** serve the health check at /health, not /healthz ([#39](https://github.com/moudlajs/waiverwatch/issues/39)) ([3937090](https://github.com/moudlajs/waiverwatch/commit/39370903d73720d3501f82d57e07d11d95a3c5bf))
+
 ## [0.4.0](https://github.com/moudlajs/waiverwatch/compare/v0.3.0...v0.4.0) (2026-09-25)
 
 
