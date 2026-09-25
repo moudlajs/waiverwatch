@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/moudlajs/waiverwatch/compare/v0.2.0...v0.3.0) (2026-09-25)
+
+
+### Features
+
+* **mcp:** get_roster tool with names and injury status ([#29](https://github.com/moudlajs/waiverwatch/issues/29)) ([d2bd967](https://github.com/moudlajs/waiverwatch/commit/d2bd967fbdd38412bfa3f00316680037800aa7b6))
+
 ## [0.2.0](https://github.com/moudlajs/waiverwatch/compare/v0.1.0...v0.2.0) (2026-09-25)
 
 
