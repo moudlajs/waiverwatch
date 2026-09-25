@@ -101,7 +101,8 @@ retry gc iam service-accounts add-iam-policy-binding "$DEPLOY_EMAIL" \
   --member "principalSet://iam.googleapis.com/$POOL_ID/attribute.repository/$REPO" >/dev/null
 
 say "Budget alert: $BUDGET_CZK CZK/month on $PROJECT"
-if ! gcloud billing budgets list --billing-account "$BILLING" --format='value(displayName)' | grep -qx waiverwatch; then
+budgets=$(gcloud billing budgets list --billing-account "$BILLING" --format='value(displayName)')
+if ! grep -qx waiverwatch <<<"$budgets"; then
   gcloud billing budgets create --billing-account "$BILLING" --display-name waiverwatch \
     --budget-amount "${BUDGET_CZK}CZK" --filter-projects "projects/$PROJECT" \
     --threshold-rule percent=0.5 --threshold-rule percent=1.0
