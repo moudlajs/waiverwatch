@@ -51,3 +51,15 @@ The job then fails on purpose, so such a PR can't slip through unreviewed.
 To merge one, the owner explicitly approves lifting `claude-review` from the
 `main` ruleset's required checks, merges, and restores it straight away. The
 next PR's review runs the new workflow.
+
+## Deploying
+
+Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
+
+- **One-time setup:** `deploy/setup.sh <project-id> <billing-account-id>`
+  creates the Artifact Registry repository, a runtime service account with no
+  roles, a deploy service account that GitHub Actions reaches through
+  Workload Identity Federation (only from `main` of this repository, no keys),
+  a budget alert, and the `GCP_*` repository variables. Safe to re-run.
+- **Every release:** merging the release-please PR builds the image, pushes it
+  and deploys it (see `release.yml`).
