@@ -67,7 +67,7 @@ func TestListLeagues(t *testing.T) {
 		names = append(names, tl.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"get_matchups", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
+	if want := []string{"get_matchups", "get_roster", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
 		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
@@ -175,5 +175,23 @@ func TestNormalisePosition(t *testing.T) {
 		if got := normalisePosition(in); got != want {
 			t.Errorf("normalisePosition(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestGetRoster(t *testing.T) {
+	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{Name: "get_roster", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	raw, _ := json.Marshal(res.StructuredContent)
+	var r league.RosterReport
+	if err := json.Unmarshal(raw, &r); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Rosters) != 1 || r.Rosters[0].League != "Dynasty" || len(r.Rosters[0].Bench) != 1 {
+		t.Errorf("unexpected report %+v", r)
 	}
 }

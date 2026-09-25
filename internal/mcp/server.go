@@ -71,7 +71,24 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 		return nil, r, err
 	})
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "get_roster",
+		Description: "A team's full roster: starters with their lineup slot, bench, IR and taxi, each player with position, " +
+			"NFL team and injury. Mine by default, or any owner by team or display name. Without a league it covers " +
+			"every league (for an owner: every league they are in).",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, func(ctx context.Context, _ *sdk.CallToolRequest, in RosterInput) (*sdk.CallToolResult, league.RosterReport, error) {
+		r, err := svc.Rosters(ctx, in.League, in.Owner)
+		return nil, r, err
+	})
+
 	return s
+}
+
+// RosterInput is get_roster's arguments.
+type RosterInput struct {
+	League string `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
+	Owner  string `json:"owner,omitempty" jsonschema:"team name or owner display name; omit for my own team"`
 }
 
 // WaiverInput is waiver_targets' arguments.
