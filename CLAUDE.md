@@ -65,11 +65,20 @@ GET /players/nfl                           -> player dictionary (~15 MB)
 GET /players/nfl/trending/add              -> most-added players
 ```
 
+- Starters fill `league.roster_positions` in order; `BN` slots follow.
 - Roster to owner: `rosters[].owner_id` -> `users[].user_id` -> `display_name`.
 - Never hardcode league size (10 to 32) or season; take the season and week
   from `/state/nfl`.
-- **Tests never hit the real API.** Use `httptest.NewServer` and fixtures in
-  `testdata/`.
+- **Tests never hit the real API.** `internal/sleeper` tests decode real
+  captured responses in `testdata/` (the wire-format contract). Logic tests
+  above it serve typed values through `sleeper/sleepertest`, so each case
+  shows only what matters.
+- Guillotine leagues (`settings.type` 3) have no head-to-head: each team has
+  its own `matchup_id`, and eliminated teams keep a roster with no players.
+- An empty lineup slot is the starter ID `"0"`.
+- Matchups carry actual points only (`points`, `starters_points`,
+  `players_points`), no projections (checked 2026-09-25, see #17). There is
+  no per-game status either, so "yet to play" can't be told from 0 points.
 
 ## Go conventions
 

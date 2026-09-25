@@ -18,12 +18,13 @@ const fanOut = 8
 // live data from Sleeper; only the player dictionary is cached.
 type Service struct {
 	api      *sleeper.Client
+	players  *Directory
 	username string
 }
 
 // NewService returns a Service for the Sleeper user username.
-func NewService(api *sleeper.Client, username string) *Service {
-	return &Service{api: api, username: username}
+func NewService(api *sleeper.Client, players *Directory, username string) *Service {
+	return &Service{api: api, players: players, username: username}
 }
 
 // Overview is the user's leagues for the current season and week.
@@ -54,34 +55,48 @@ type Summary struct {
 // and standing. A league that fails to load carries an Error instead of
 // failing the whole answer.
 func (s *Service) Overview(ctx context.Context) (Overview, error) {
-	state, err := s.api.State(ctx)
+	state, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
 		return Overview{}, err
+	}
+	out := Overview{Season: state.Season, Week: state.Week, Leagues: make([]Summary, len(leagues))}
+	eachLeague(leagues, func(i int, l sleeper.League) {
+		sum, err := s.summarise(ctx, l, user.UserID)
+		if err != nil {
+			sum.Error = err.Error()
+		}
+		out.Leagues[i] = sum
+	})
+	return out, nil
+}
+
+// myLeagues loads the current NFL state, the user, and their leagues for the
+// current season.
+func (s *Service) myLeagues(ctx context.Context) (sleeper.State, sleeper.User, []sleeper.League, error) {
+	state, err := s.api.State(ctx)
+	if err != nil {
+		return sleeper.State{}, sleeper.User{}, nil, err
 	}
 	user, err := s.api.User(ctx, s.username)
 	if err != nil {
-		return Overview{}, err
+		return sleeper.State{}, sleeper.User{}, nil, err
 	}
 	leagues, err := s.api.Leagues(ctx, user.UserID, state.Season)
 	if err != nil {
-		return Overview{}, err
+		return sleeper.State{}, sleeper.User{}, nil, err
 	}
+	return state, user, leagues, nil
+}
 
-	out := Overview{Season: state.Season, Week: state.Week, Leagues: make([]Summary, len(leagues))}
+// eachLeague runs fn for every league concurrently, at most fanOut at once.
+// fn reports its own errors; each call must only write to its own index.
+func eachLeague(leagues []sleeper.League, fn func(i int, l sleeper.League)) {
 	var g errgroup.Group
 	g.SetLimit(fanOut)
 	for i, l := range leagues {
-		g.Go(func() error {
-			sum, err := s.summarise(ctx, l, user.UserID)
-			if err != nil {
-				sum.Error = err.Error()
-			}
-			out.Leagues[i] = sum // each goroutine owns its own index
-			return nil
-		})
+		g.Go(func() error { fn(i, l); return nil })
 	}
-	_ = g.Wait() // per-league errors are reported in Summary.Error
-	return out, nil
+	_ = g.Wait() // fn never returns an error; see above
 }
 
 func (s *Service) summarise(ctx context.Context, l sleeper.League, userID string) (Summary, error) {

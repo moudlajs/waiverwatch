@@ -106,7 +106,7 @@ func fakeSleeper(t *testing.T) *sleeper.Client {
 }
 
 func TestOverview(t *testing.T) {
-	svc := NewService(fakeSleeper(t), "me")
+	svc := NewService(fakeSleeper(t), nil, "me")
 	ov, err := svc.Overview(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +130,7 @@ func TestOverview(t *testing.T) {
 }
 
 func TestOverviewUnknownUser(t *testing.T) {
-	_, err := NewService(fakeSleeper(t), "ghost").Overview(context.Background())
+	_, err := NewService(fakeSleeper(t), nil, "ghost").Overview(context.Background())
 	if !errors.Is(err, sleeper.ErrNotFound) {
 		t.Errorf("err = %v, want ErrNotFound", err)
 	}

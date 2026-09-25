@@ -17,6 +17,7 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/league"
 	"github.com/moudlajs/waiverwatch/internal/mcp"
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
+	"github.com/moudlajs/waiverwatch/internal/store"
 )
 
 func main() {
@@ -37,7 +38,9 @@ func run(ctx context.Context, username string) error {
 	if username == "" {
 		return errors.New("no Sleeper user: pass -user or set WAIVERWATCH_USER")
 	}
-	svc := league.NewService(sleeper.New(sleeper.DefaultBaseURL), username)
+	api := sleeper.New(sleeper.DefaultBaseURL)
+	players := league.NewDirectory(store.NewMemory(), api.Players)
+	svc := league.NewService(api, players, username)
 	return mcp.NewServer(svc, version()).Run(ctx, &sdk.StdioTransport{})
 }
 
