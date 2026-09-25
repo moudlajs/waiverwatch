@@ -27,7 +27,23 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 		return nil, ov, err
 	})
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "get_matchups",
+		Description: "This week's game in every league, with live points: my lineup and my opponent's, starter by starter " +
+			"(slot, name, position, NFL team, injury, points). Guillotine leagues have no opponent; they report my rank " +
+			"among surviving teams and my margin over the lowest one.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, func(ctx context.Context, _ *sdk.CallToolRequest, in MatchupsInput) (*sdk.CallToolResult, league.Week, error) {
+		w, err := svc.Matchups(ctx, in.Week)
+		return nil, w, err
+	})
+
 	return s
+}
+
+// MatchupsInput is get_matchups' arguments.
+type MatchupsInput struct {
+	Week int `json:"week,omitempty" jsonschema:"NFL week (1-18); omit for the current week"`
 }
 
 func ptr[T any](v T) *T { return &v }
