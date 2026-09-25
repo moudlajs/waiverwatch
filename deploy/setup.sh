@@ -17,7 +17,7 @@ BILLING=${2:?usage: deploy/setup.sh <project-id> <billing-account-id>}
 REPO=moudlajs/waiverwatch
 REGION=europe-west1          # Belgium: closest Cloud Run region with free tier pricing to Prague
 AR_REPO=waiverwatch          # Artifact Registry repository
-RUNTIME_SA=waiverwatch-run   # identity the service runs as: no roles, it only calls public APIs
+RUNTIME_SA=waiverwatch-run   # identity the service runs as: no project roles, reads only its two secrets
 DEPLOY_SA=github-deploy      # identity GitHub Actions deploys as
 POOL=github
 PROVIDER=github-oidc
@@ -69,7 +69,7 @@ JSON
 gc artifacts repositories set-cleanup-policies "$AR_REPO" --location "$REGION" --policy "$policy" --no-dry-run >/dev/null
 
 say "Service accounts"
-for sa in "$RUNTIME_SA:waiverwatch runtime (no roles)" "$DEPLOY_SA:GitHub Actions deploys"; do
+for sa in "$RUNTIME_SA:waiverwatch runtime" "$DEPLOY_SA:GitHub Actions deploys"; do
   name=${sa%%:*}
   if ! gc iam service-accounts describe "$name@$PROJECT.iam.gserviceaccount.com" >/dev/null 2>&1; then
     gc iam service-accounts create "$name" --display-name "${sa#*:}"
