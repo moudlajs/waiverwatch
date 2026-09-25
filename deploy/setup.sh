@@ -25,6 +25,18 @@ BUDGET_CZK=25                # about $1: any spend at all means something is wro
 gc() { gcloud --project "$PROJECT" --quiet "$@"; }
 say() { printf '\n== %s\n' "$*"; }
 
+# retry runs a command up to 6 times, 10s apart. New service accounts and
+# freshly enabled APIs take a while to be usable in IAM policies.
+retry() {
+  local n
+  for n in 1 2 3 4 5 6; do
+    "$@" && return 0
+    echo "  (not ready yet, retrying in 10s: attempt $n/6)" >&2
+    sleep 10
+  done
+  "$@"
+}
+
 NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
 RUNTIME_EMAIL="$RUNTIME_SA@$PROJECT.iam.gserviceaccount.com"
 DEPLOY_EMAIL="$DEPLOY_SA@$PROJECT.iam.gserviceaccount.com"
@@ -41,7 +53,7 @@ gc services enable \
 
 say "Artifact Registry: $AR_REPO in $REGION (keeps the 5 newest images)"
 if ! gc artifacts repositories describe "$AR_REPO" --location "$REGION" >/dev/null 2>&1; then
-  gc artifacts repositories create "$AR_REPO" --location "$REGION" --repository-format docker \
+  retry gc artifacts repositories create "$AR_REPO" --location "$REGION" --repository-format docker \
     --description "waiverwatch images"
 fi
 policy=$(mktemp)
@@ -64,12 +76,12 @@ done
 
 say "Deployer permissions"
 # run.admin (not run.developer) because making the service public needs setIamPolicy.
-gc projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$DEPLOY_EMAIL" \
+retry gc projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$DEPLOY_EMAIL" \
   --role roles/run.admin --condition None >/dev/null
-gc artifacts repositories add-iam-policy-binding "$AR_REPO" --location "$REGION" \
+retry gc artifacts repositories add-iam-policy-binding "$AR_REPO" --location "$REGION" \
   --member "serviceAccount:$DEPLOY_EMAIL" --role roles/artifactregistry.writer >/dev/null
 # Deploying a service that runs as RUNTIME_SA requires acting as it.
-gc iam service-accounts add-iam-policy-binding "$RUNTIME_EMAIL" \
+retry gc iam service-accounts add-iam-policy-binding "$RUNTIME_EMAIL" \
   --member "serviceAccount:$DEPLOY_EMAIL" --role roles/iam.serviceAccountUser >/dev/null
 
 say "Workload Identity Federation for $REPO (main branch only)"
@@ -84,7 +96,7 @@ if ! gc iam workload-identity-pools providers describe "$PROVIDER" --location gl
     --attribute-mapping "google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
     --attribute-condition "assertion.repository == '$REPO' && assertion.ref == 'refs/heads/main'"
 fi
-gc iam service-accounts add-iam-policy-binding "$DEPLOY_EMAIL" \
+retry gc iam service-accounts add-iam-policy-binding "$DEPLOY_EMAIL" \
   --role roles/iam.workloadIdentityUser \
   --member "principalSet://iam.googleapis.com/$POOL_ID/attribute.repository/$REPO" >/dev/null
 
