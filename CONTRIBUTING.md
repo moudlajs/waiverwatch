@@ -37,9 +37,10 @@ golangci-lint run           # lint + gofmt/goimports (config: .golangci.yml)
 go test -race ./...         # tests never hit the real Sleeper API
 go build ./...
 govulncheck ./...           # go install golang.org/x/vuln/cmd/govulncheck@latest
+docker build -t waiverwatch . # the Cloud Run image; CI also checks /healthz
 ```
 
-All four run in CI and are required on `main`, along with the PR title check
+All five run in CI and are required on `main`, along with the PR title check
 and the Claude review.
 
 ## Changing the review workflow
@@ -50,3 +51,19 @@ The job then fails on purpose, so such a PR can't slip through unreviewed.
 To merge one, the owner explicitly approves lifting `claude-review` from the
 `main` ruleset's required checks, merges, and restores it straight away. The
 next PR's review runs the new workflow.
+
+## Deploying
+
+Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
+
+- **One-time setup:** `deploy/setup.sh <project-id> <billing-account-id>`
+  creates the Artifact Registry repository, a runtime service account with no
+  roles, a deploy service account that GitHub Actions reaches through
+  Workload Identity Federation (only from `main` of this repository, no keys),
+  a budget alert, and the `GCP_*` repository variables. Safe to re-run.
+- **Every release:** merging the release-please PR tags the release, and
+  `release.yml` calls `deploy.yml`: build, push, `gcloud run deploy`, then a
+  smoke test that the new version is serving.
+- **By hand / rollback:** Actions → Deploy → Run workflow on `main` with a
+  tag (`gh workflow run deploy.yml -f tag=v0.4.0`). Deploys only work from
+  `main`; the identity provider rejects other refs.

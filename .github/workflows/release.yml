@@ -26,4 +26,14 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Cloud Run deploy is added as a job here once hosting exists (M2).
+  # Called directly rather than on `release: published`, because events
+  # created by GITHUB_TOKEN do not trigger other workflows.
+  deploy:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}

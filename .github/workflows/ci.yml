@@ -29,6 +29,8 @@ jobs:
           version: v2.13
       - name: go.mod is tidy
         run: go mod tidy -diff
+      - name: shellcheck
+        run: shellcheck deploy/*.sh
 
   test:
     name: test
@@ -61,3 +63,19 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  image:
+    name: image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --build-arg VERSION=ci -t waiverwatch:ci .
+      - name: container serves /healthz
+        run: |
+          docker run -d --name ww -p 8080:8080 -e WAIVERWATCH_USER=ci waiverwatch:ci
+          for _ in $(seq 1 20); do
+            curl -fsS localhost:8080/healthz && exit 0
+            sleep 0.5
+          done
+          docker logs ww
+          exit 1
