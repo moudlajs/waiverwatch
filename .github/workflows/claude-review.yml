@@ -41,7 +41,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: anthropics/claude-code-action@v1
+      - id: claude
+        uses: anthropics/claude-code-action@v1
         with:
           # Minted with `claude setup-token`: uses the Claude subscription,
           # not a metered API key.
@@ -96,6 +97,14 @@ jobs:
             Be specific: file:line, a concrete failing scenario, and a
             suggested fix. If you find nothing significant, say so in one
             line instead of padding. Do not approve or merge.
+
+      # The action hides Claude's output, so a failed review (bad token,
+      # usage limit, API error) shows no reason. Print just the result entry.
+      - name: Show why the review failed
+        if: failure() && steps.claude.outputs.execution_file != ''
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: jq '.[] | select(.type == "result") | {subtype, is_error, result, errors}' "$EXECUTION_FILE"
 
   # `@claude` in a PR or issue comment, from the repo owner only.
   claude-mention:
