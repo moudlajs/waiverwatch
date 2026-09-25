@@ -31,10 +31,11 @@ main.go              wiring only
 internal/sleeper/    API client: HTTP + JSON, nothing else
 internal/league/     domain logic: knows football, not HTTP or MCP
 internal/store/      Store interface + in-memory impl
-internal/mcp/        tool definitions: knows MCP, never does HTTP
+internal/mcp/        tools + transport: knows MCP, never calls Sleeper
 ```
 
-`sleeper` never imports `mcp`; `mcp` never does HTTP.
+`sleeper` never imports `mcp`; `mcp` never calls Sleeper (serving HTTP is
+fine, it's the transport).
 
 - **Refresh on demand.** Live data (rosters, matchups, trending, state) is
   fetched on every tool call. No TTL caches for live data: stale is wrong.
@@ -43,8 +44,11 @@ internal/mcp/        tool definitions: knows MCP, never does HTTP
   endpoint returns player IDs only.
 - **Storage** sits behind a `Store` interface; in-memory now. Cloud Run's
   disk is ephemeral, so nothing may depend on local files surviving.
-- **Transports:** stdio for local Claude Code / Desktop; Streamable HTTP with
-  a bearer token when hosted. Same tools behind both.
+- **Transports:** stdio for local Claude Code / Desktop; stateless
+  Streamable HTTP at `/mcp` when `PORT` is set (Cloud Run), plus `/healthz`.
+  Same tools behind both. Hosted has **no login yet** (owner's call, #10):
+  a global rate limit caps abuse and OAuth follows in #34. claude.ai's
+  simple header auth is beta for limited orgs only.
 - **Tools are coarse.** One call returning a useful chunk beats several
   chatty ones. Work across all of the user's leagues by default.
 - Fan out per-league requests concurrently (`errgroup`), with a
