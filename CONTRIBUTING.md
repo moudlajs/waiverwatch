@@ -61,5 +61,5 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
   roles, a deploy service account that GitHub Actions reaches through
   Workload Identity Federation (only from `main` of this repository, no keys),
   a budget alert, and the `GCP_*` repository variables. Safe to re-run.
-- **Every release:** merging the release-please PR builds the image, pushes it
-  and deploys it (see `release.yml`).
+- **Every release** (once #12 lands): merging the release-please PR builds
+  the image, pushes it and deploys it from `release.yml`.
