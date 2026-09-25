@@ -125,7 +125,10 @@ func (s *Service) compare(ctx context.Context, l sleeper.League, userID, owner s
 			out.Note = "guillotine leagues have no opponent; name an owner to compare"
 			return out, nil
 		}
-		me, _ := find(matchups, mine.RosterID)
+		me, ok := find(matchups, mine.RosterID)
+		if !ok {
+			return out, fmt.Errorf("no week %d matchup for my roster in league %s", week, l.LeagueID)
+		}
 		opp, ok := Opponent(matchups, me)
 		if !ok {
 			out.Note = fmt.Sprintf("no opponent in week %d (bye)", week)

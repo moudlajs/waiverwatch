@@ -50,6 +50,7 @@ func TestCompare(t *testing.T) {
 			{LeagueID: "H", Name: "Head", RosterPositions: []string{"QB"}},
 			{LeagueID: "B", Name: "Bye"},
 			{LeagueID: "G", Name: "Guillotine", Settings: sleeper.LeagueSettings{Type: 3}},
+			{LeagueID: "M", Name: "Missing"},
 		},
 		"/league/H/rosters": []sleeper.Roster{
 			{RosterID: 1, OwnerID: "100", Players: []string{"qb1"}, Starters: []string{"qb1"}, Settings: sleeper.RosterSettings{Wins: 2, Fpts: 250}},
@@ -64,6 +65,9 @@ func TestCompare(t *testing.T) {
 		"/league/G/rosters":    []sleeper.Roster{{RosterID: 1, OwnerID: "100"}, {RosterID: 2, OwnerID: "200"}},
 		"/league/G/users":      []sleeper.LeagueUser{me, rival},
 		"/league/G/matchups/3": []sleeper.Matchup{{RosterID: 1, MatchupID: 1}, {RosterID: 2, MatchupID: 2}},
+		"/league/M/rosters":    []sleeper.Roster{{RosterID: 1, OwnerID: "100"}},
+		"/league/M/users":      []sleeper.LeagueUser{me},
+		"/league/M/matchups/3": []sleeper.Matchup{}, // my roster has no entry at all
 		"/players/nfl": map[string]sleeper.Player{
 			"qb1": {FullName: "Qb Mine", Position: "QB"}, "qb2": {FullName: "Qb Theirs", Position: "QB"},
 		},
@@ -88,6 +92,9 @@ func TestCompare(t *testing.T) {
 		}
 		if !strings.Contains(g.Note, "guillotine") || g.Them != nil {
 			t.Errorf("guillotine = %+v", g)
+		}
+		if m := c.Leagues[3]; !strings.Contains(m.Error, "no week 3 matchup") || m.Note != "" {
+			t.Errorf("missing matchup = %+v, want an error, not a bye note", m)
 		}
 	})
 
