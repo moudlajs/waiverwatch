@@ -13,7 +13,8 @@ on Sunday gives you minutes to hit the waiver wire, wherever you are.
 
 ## Status
 
-Early: runs locally over stdio. Tools so far: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`, `injury_report`, `trending_players`, `waiver_targets`. See the
+Runs locally over stdio, and hosted on Cloud Run for claude.ai and the
+Claude mobile app. Tools so far: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`, `injury_report`, `trending_players`, `waiver_targets`. See the
 [milestones](https://github.com/moudlajs/waiverwatch/milestones) for the plan.
 
 ## Principles
@@ -63,6 +64,21 @@ your shell's `PATH`):
 ```
 
 Restart Claude and ask *"How are my fantasy leagues looking?"*
+
+## Use it on claude.ai and your phone
+
+The hosted server is for its owner only: it asks for a passphrase once per
+Claude app you connect.
+
+1. On **claude.ai in a browser** (connectors can't be added from the phone
+   app): **Customize → Connectors → Add custom connector**.
+2. URL: `https://<your Cloud Run URL>/mcp`. Leave the OAuth fields empty;
+   Claude uses its published client identity.
+3. Claude opens the waiverwatch sign-in page: enter the passphrase.
+4. The connector syncs to the Claude mobile app. Enable it per chat with
+   **+ → Connectors**.
+
+To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 
 | Tool | Returns |
 |---|---|

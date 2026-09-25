@@ -54,14 +54,17 @@ jobs:
           docker build --build-arg VERSION="$TAG" -t "$IMAGE" .
           docker push "$IMAGE"
 
-      # Public with no login for now (#10, OAuth is #34). Cost is capped by
-      # one instance at most, scale to zero, the app's rate limit and the
-      # budget alert.
+      # Reachable by anyone (Claude calls it from Anthropic's servers), but
+      # every MCP request needs an OAuth token that only the owner's
+      # passphrase can mint. The secrets come from Secret Manager at run
+      # time; this workflow never sees them. Cost is capped by one instance,
+      # scale to zero, the app's rate limits and the budget alert.
       - name: Deploy
         id: deploy
         env:
           RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
           SLEEPER_USER: ${{ vars.WAIVERWATCH_USER }}
+          BASE_URL: ${{ vars.WAIVERWATCH_BASE_URL }}
         run: |
           gcloud run deploy waiverwatch \
             --image "$IMAGE" \
@@ -74,7 +77,8 @@ jobs:
             --memory 256Mi \
             --concurrency 20 \
             --timeout 60 \
-            --set-env-vars "WAIVERWATCH_USER=$SLEEPER_USER" \
+            --set-env-vars "WAIVERWATCH_USER=$SLEEPER_USER,WAIVERWATCH_BASE_URL=$BASE_URL" \
+            --set-secrets "WAIVERWATCH_PASSPHRASE=waiverwatch-passphrase:latest,WAIVERWATCH_SIGNING_KEY=waiverwatch-signing-key:latest" \
             --quiet
           url=$(gcloud run services describe waiverwatch --region "$REGION" --format 'value(status.url)')
           echo "url=$url" >> "$GITHUB_OUTPUT"
@@ -83,12 +87,14 @@ jobs:
       - name: Smoke test
         env:
           URL: ${{ steps.deploy.outputs.url }}
+          BASE_URL: ${{ vars.WAIVERWATCH_BASE_URL }}
         run: |
-          curl -fsS --retry 5 --retry-all-errors "$URL/health"
-          version=$(curl -fsS "$URL/mcp" \
-            -H 'Content-Type: application/json' \
-            -H 'Accept: application/json, text/event-stream' \
-            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}' \
-            | jq -r .result.serverInfo.version)
-          echo "serving $version"
-          test "$version" = "$TAG"
+          health=$(curl -fsS --retry 5 --retry-all-errors "$URL/health")
+          echo "$health"
+          test "$health" = "ok $TAG"
+          # Signed out, /mcp must refuse with the challenge that starts sign-in.
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/mcp" -H 'Content-Type: application/json' -d '{}')
+          test "$status" = 401
+          # Discovery must name the URL the owner added in Claude.
+          resource=$(curl -fsS "$URL/.well-known/oauth-protected-resource/mcp" | jq -r .resource)
+          test "$resource" = "$BASE_URL/mcp"
