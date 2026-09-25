@@ -52,9 +52,9 @@ func TestHTTPToolCall(t *testing.T) {
 	}
 }
 
-func TestHealthz(t *testing.T) {
+func TestHealth(t *testing.T) {
 	srv := httpServer(t, 0, 0) // a closed limiter must not affect health checks
-	resp, err := http.Get(srv.URL + "/healthz")
+	resp, err := http.Get(srv.URL + "/health")
 	if err != nil {
 		t.Fatal(err)
 	}

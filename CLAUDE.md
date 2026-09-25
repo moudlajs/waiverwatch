@@ -45,7 +45,8 @@ fine, it's the transport).
 - **Storage** sits behind a `Store` interface; in-memory now. Cloud Run's
   disk is ephemeral, so nothing may depend on local files surviving.
 - **Transports:** stdio for local Claude Code / Desktop; stateless
-  Streamable HTTP at `/mcp` when `PORT` is set (Cloud Run), plus `/healthz`.
+  Streamable HTTP at `/mcp` when `PORT` is set (Cloud Run), plus `/health`
+  (never `/healthz`: Cloud Run reserves paths ending in `z`).
   Same tools behind both. Hosted has **no login yet** (owner's call, #10):
   a global rate limit caps abuse and OAuth follows in #34. claude.ai's
   simple header auth is beta for limited orgs only.

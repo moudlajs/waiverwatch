@@ -84,7 +84,7 @@ jobs:
         env:
           URL: ${{ steps.deploy.outputs.url }}
         run: |
-          curl -fsS --retry 5 --retry-all-errors "$URL/healthz"
+          curl -fsS --retry 5 --retry-all-errors "$URL/health"
           version=$(curl -fsS "$URL/mcp" \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json, text/event-stream' \
