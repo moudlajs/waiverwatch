@@ -1,0 +1,150 @@
+[
+  {
+    "co_owners": [
+      "101"
+    ],
+    "keepers": null,
+    "league_id": "L1",
+    "metadata": {
+      "record": "WL",
+      "streak": "1L"
+    },
+    "owner_id": "100",
+    "player_map": null,
+    "players": [
+      "11435",
+      "11618",
+      "11625",
+      "11783",
+      "11786",
+      "13278",
+      "2449",
+      "4892",
+      "5012",
+      "5892",
+      "6770",
+      "7569",
+      "8134",
+      "8144",
+      "8154",
+      "8167",
+      "8259",
+      "9221",
+      "9480",
+      "9484",
+      "GB",
+      "SEA"
+    ],
+    "reserve": [
+      "4892"
+    ],
+    "roster_id": 1,
+    "settings": {
+      "division": 1,
+      "fpts": 310,
+      "fpts_against": 242,
+      "fpts_against_decimal": 96,
+      "fpts_decimal": 4,
+      "losses": 1,
+      "ppts": 355,
+      "ppts_decimal": 84,
+      "ties": 0,
+      "total_moves": 0,
+      "waiver_budget_used": 0,
+      "waiver_position": 5,
+      "wins": 1
+    },
+    "starters": [
+      "6770",
+      "9221",
+      "5892",
+      "8167",
+      "8144",
+      "9484",
+      "2449",
+      "5012",
+      "8259",
+      "SEA"
+    ],
+    "taxi": [
+      "9999"
+    ]
+  },
+  {
+    "co_owners": null,
+    "keepers": null,
+    "league_id": "L1",
+    "metadata": {
+      "record": "WL",
+      "streak": "1L"
+    },
+    "owner_id": "200",
+    "player_map": null,
+    "players": [
+      "11564",
+      "11624",
+      "11628",
+      "11647",
+      "11834",
+      "12457",
+      "12507",
+      "12509",
+      "12527",
+      "13275",
+      "13298",
+      "3286",
+      "3294",
+      "4137",
+      "4195",
+      "4217",
+      "5846",
+      "6783",
+      "6819",
+      "7021",
+      "7090",
+      "7528",
+      "8110",
+      "8205",
+      "9486",
+      "CHI",
+      "DET"
+    ],
+    "reserve": [
+      "4137",
+      "8205"
+    ],
+    "roster_id": 2,
+    "settings": {
+      "division": 2,
+      "fpts": 216,
+      "fpts_against": 255,
+      "fpts_against_decimal": 42,
+      "fpts_decimal": 96,
+      "losses": 1,
+      "ppts": 276,
+      "ppts_decimal": 76,
+      "ties": 0,
+      "total_moves": 0,
+      "waiver_budget_used": 0,
+      "waiver_position": 9,
+      "wins": 1
+    },
+    "starters": [
+      "3294",
+      "12527",
+      "12507",
+      "9486",
+      "11834",
+      "8110",
+      "11624",
+      "4217",
+      "4195",
+      "DET"
+    ],
+    "taxi": [
+      "12509",
+      "13275",
+      "13298"
+    ]
+  }
+]

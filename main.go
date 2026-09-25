@@ -1,63 +1,50 @@
-// Command waiverwatch lists a Sleeper user's NFL leagues.
+// Command waiverwatch lists a Sleeper user's NFL leagues for the current season.
 package main
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
-	"net/http"
-	"time"
+	"os"
+	"os/signal"
+
+	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-const base = "https://api.sleeper.app/v1"
-
-type User struct {
-	UserID      string `json:"user_id"`
-	DisplayName string `json:"display_name"`
-}
-
-type League struct {
-	LeagueID string `json:"league_id"`
-	Name     string `json:"name"`
-	Season   string `json:"season"`
-	Status   string `json:"status"`
-	Sport    string `json:"sport"`
-}
-
-var client = &http.Client{Timeout: 10 * time.Second}
-
-// get fetches a URL and decodes JSON into dst. Generics keep this to one function.
-func get[T any](ctx context.Context, url string, dst *T) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: %s", url, resp.Status)
-	}
-	return json.NewDecoder(resp.Body).Decode(dst)
-}
-
 func main() {
-	ctx := context.Background()
+	user := flag.String("user", os.Getenv("WAIVERWATCH_USER"), "Sleeper username (default $WAIVERWATCH_USER)")
+	flag.Parse()
 
-	var u User
-	if err := get(ctx, base+"/user/Moudlajs", &u); err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s (%s)\n\n", u.DisplayName, u.UserID)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
-	var leagues []League
-	if err := get(ctx, fmt.Sprintf("%s/user/%s/leagues/nfl/2026", base, u.UserID),
-		&leagues); err != nil {
-		panic(err)
+	if err := run(ctx, sleeper.New(sleeper.DefaultBaseURL), *user); err != nil {
+		fmt.Fprintln(os.Stderr, "waiverwatch:", err)
+		os.Exit(1)
 	}
+}
+
+func run(ctx context.Context, c *sleeper.Client, username string) error {
+	if username == "" {
+		return errors.New("no Sleeper user: pass -user or set WAIVERWATCH_USER")
+	}
+	state, err := c.State(ctx)
+	if err != nil {
+		return err
+	}
+	u, err := c.User(ctx, username)
+	if err != nil {
+		return err
+	}
+	leagues, err := c.Leagues(ctx, u.UserID, state.Season)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s - %s season, week %d\n\n", u.DisplayName, state.Season, state.Week)
 	for _, l := range leagues {
-		fmt.Printf("  %-30s %s (%s)\n", l.Name, l.Season, l.Status)
+		fmt.Printf("  %-40s %-10s %2d teams  %s\n", l.Name, l.Kind(), l.TotalRosters, l.Status)
 	}
+	return nil
 }

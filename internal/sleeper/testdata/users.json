@@ -1,0 +1,27 @@
+[
+  {
+    "avatar": null,
+    "display_name": "TestUser",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "L1",
+    "metadata": {
+      "team_name": "Waiver Wizards",
+      "allow_pn": "on"
+    },
+    "settings": null,
+    "user_id": "100"
+  },
+  {
+    "avatar": null,
+    "display_name": "Rival",
+    "is_bot": false,
+    "is_owner": false,
+    "league_id": "L1",
+    "metadata": {
+      "allow_pn": "off"
+    },
+    "settings": null,
+    "user_id": "200"
+  }
+]
