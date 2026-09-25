@@ -73,7 +73,8 @@ func TestSurvival(t *testing.T) {
 		{RosterID: 1, Players: full},
 		{RosterID: 2, Players: full},
 		{RosterID: 3, Players: full},
-		{RosterID: 4}, // eliminated earlier: ignored even though it scores 0
+		{RosterID: 4},                // eliminated earlier: ignored even though it scores 0
+		{RosterID: 6, Players: full}, // survivor with no matchup entry: ignored, not 0
 	}
 	ms := []sleeper.Matchup{
 		{RosterID: 1, Points: 80.1},
@@ -86,10 +87,10 @@ func TestSurvival(t *testing.T) {
 		me   int
 		want Survival
 	}{
-		{"safe in the middle", 1, Survival{Alive: 3, Rank: 2, Margin: 19.85}},
-		{"currently last", 2, Survival{Alive: 3, Rank: 3, Margin: -19.85}},
-		{"top", 3, Survival{Alive: 3, Rank: 1, Margin: 29.75}},
-		{"eliminated", 4, Survival{Eliminated: true, Alive: 3}},
+		{"safe in the middle", 1, Survival{Alive: 4, Rank: 2, Margin: 19.85}},
+		{"currently last", 2, Survival{Alive: 4, Rank: 3, Margin: -19.85}},
+		{"top", 3, Survival{Alive: 4, Rank: 1, Margin: 29.75}},
+		{"eliminated", 4, Survival{Eliminated: true, Alive: 4}},
 		{"last team standing", 5, Survival{Alive: 1, Rank: 1}},
 	}
 	for _, tt := range tests {

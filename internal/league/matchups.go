@@ -180,14 +180,17 @@ func survival(ms []sleeper.Matchup, rosters []sleeper.Roster, mine sleeper.Roste
 		if len(r.Players) == 0 {
 			continue
 		}
-		m, _ := find(ms, r.RosterID)
+		m, ok := find(ms, r.RosterID)
+		if !ok {
+			continue // no entry this week: counting it as 0 would fake a lower last place
+		}
 		if r.RosterID == mine.RosterID {
 			myPts = m.Points
 		} else {
 			others = append(others, m.Points)
 		}
 	}
-	out := &Survival{Alive: len(others) + 1, Rank: 1}
+	out := &Survival{Alive: alive(rosters), Rank: 1}
 	if len(others) == 0 {
 		return out // last team standing
 	}
