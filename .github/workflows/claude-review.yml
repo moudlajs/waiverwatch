@@ -98,6 +98,15 @@ jobs:
             suggested fix. If you find nothing significant, say so in one
             line instead of padding. Do not approve or merge.
 
+      # The action silently skips, and so passes, when a PR changes this
+      # workflow: it only trusts the version on main. A review that never
+      # ran must not count as a passing one. See CONTRIBUTING.md.
+      - name: Fail if the review did not run
+        if: success() && steps.claude.outputs.execution_file == ''
+        run: |
+          echo "::error::Claude did not review this PR because it changes the review workflow. See CONTRIBUTING.md, 'Changing the review workflow'."
+          exit 1
+
       # The action hides Claude's output, so a failed review (bad token,
       # usage limit, API error) shows no reason. Print just the result entry.
       - name: Show why the review failed

@@ -41,3 +41,12 @@ govulncheck ./...           # go install golang.org/x/vuln/cmd/govulncheck@lates
 
 All four run in CI and are required on `main`, along with the PR title check
 and the Claude review.
+
+## Changing the review workflow
+
+`claude-code-action` refuses to run from a PR that edits
+`.github/workflows/claude-review.yml`; it only trusts the version on `main`.
+The job then fails on purpose, so such a PR can't slip through unreviewed.
+To merge one, the owner explicitly approves lifting `claude-review` from the
+`main` ruleset's required checks, merges, and restores it straight away. The
+next PR's review runs the new workflow.
