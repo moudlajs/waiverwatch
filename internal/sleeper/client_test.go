@@ -20,6 +20,9 @@ var fixtures = map[string]string{
 	"/league/L1/rosters":         "rosters.json",
 	"/league/L1/users":           "users.json",
 	"/league/L1/matchups/3":      "matchups.json",
+	"/league/L1":                 "league.json",
+	"/league/L1/drafts":          "drafts.json",
+	"/draft/D1/picks":            "picks.json",
 	"/state/nfl":                 "state.json",
 	"/players/nfl":               "players.json",
 	"/players/nfl/trending/add":  "trending.json",
@@ -182,6 +185,37 @@ func TestClientDecodes(t *testing.T) {
 		}
 		if ps["11435"].InjuryStatus != "" {
 			t.Error("null injury_status should decode to empty")
+		}
+	})
+
+	t.Run("league", func(t *testing.T) {
+		l, err := c.League(ctx, "L1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if l.Name != "Dynasty League" || l.PreviousID != "L0" || l.Kind() != "dynasty" {
+			t.Errorf("unexpected league %+v", l)
+		}
+	})
+
+	t.Run("drafts and picks", func(t *testing.T) {
+		ds, err := c.Drafts(ctx, "L1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ds) != 1 || ds[0].DraftID != "D1" || ds[0].Type != "linear" || ds[0].Settings.Rounds != 3 || ds[0].Season != "2026" {
+			t.Fatalf("unexpected drafts %+v", ds)
+		}
+		ps, err := c.DraftPicks(ctx, "D1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		p := ps[0]
+		if len(ps) != 3 || p.Round != 1 || p.PickNo != 1 || p.PlayerID != "13287" || p.PickedBy != "100" || p.RosterID != 11 {
+			t.Errorf("unexpected pick %+v", p)
+		}
+		if p.Metadata.FirstName+" "+p.Metadata.LastName != "Jeremiyah Love" || p.Metadata.Position != "RB" || p.IsKeeper {
+			t.Errorf("pick metadata = %+v keeper=%v", p.Metadata, p.IsKeeper)
 		}
 	})
 

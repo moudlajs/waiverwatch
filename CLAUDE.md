@@ -77,6 +77,9 @@ GET /league/{league_id}/matchups/{week}    -> live scores
 GET /state/nfl                             -> current season and week
 GET /players/nfl                           -> player dictionary (~15 MB)
 GET /players/nfl/trending/add              -> most-added players
+GET /league/{league_id}                    -> one league (previous_league_id)
+GET /league/{league_id}/drafts             -> drafts
+GET /draft/{draft_id}/picks                -> picks (picked_by, round, pick_no)
 ```
 
 - Starters fill `league.roster_positions` in order; `BN` slots follow.
@@ -95,6 +98,10 @@ GET /players/nfl/trending/add              -> most-added players
 - `settings.waiver_type`: 0 rolling priority, 1 reverse standings, 2 FAAB
   (`waiver_budget`, minus the roster's `waiver_budget_used`). Players carry
   `search_rank` (1 is best; missing for ~2% of players).
+- A dynasty league's startup draft lives in an earlier season's league:
+  follow `previous_league_id`. Redraft leagues' previous seasons are other
+  drafts entirely and aren't followed. `picked_by` is the user who picked;
+  `roster_id` only identifies a team within one season's league.
 - Matchups carry actual points only (`points`, `starters_points`,
   `players_points`), no projections (checked 2026-09-25, see #17). There is
   no per-game status either, so "yet to play" can't be told from 0 points.

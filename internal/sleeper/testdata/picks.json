@@ -1,0 +1,80 @@
+[
+  {
+    "draft_id": "D1",
+    "draft_slot": 1,
+    "is_keeper": null,
+    "metadata": {
+      "first_name": "Jeremiyah",
+      "injury_status": "Questionable",
+      "last_name": "Love",
+      "news_updated": "1787977842154",
+      "number": "4",
+      "player_id": "13287",
+      "position": "RB",
+      "sport": "nfl",
+      "status": "Active",
+      "team": "ARI",
+      "team_abbr": "",
+      "team_changed_at": "",
+      "years_exp": "0"
+    },
+    "pick_no": 1,
+    "picked_by": "100",
+    "player_id": "13287",
+    "reactions": null,
+    "roster_id": 11,
+    "round": 1
+  },
+  {
+    "draft_id": "D1",
+    "draft_slot": 2,
+    "is_keeper": null,
+    "metadata": {
+      "first_name": "Carnell",
+      "injury_status": "",
+      "last_name": "Tate",
+      "news_updated": "1788053451901",
+      "number": "14",
+      "player_id": "13279",
+      "position": "WR",
+      "sport": "nfl",
+      "status": "Active",
+      "team": "TEN",
+      "team_abbr": "",
+      "team_changed_at": "",
+      "years_exp": "0"
+    },
+    "pick_no": 2,
+    "picked_by": "200",
+    "player_id": "13279",
+    "reactions": null,
+    "roster_id": 8,
+    "round": 1
+  },
+  {
+    "draft_id": "D1",
+    "draft_slot": 3,
+    "is_keeper": null,
+    "metadata": {
+      "first_name": "Jadarian",
+      "injury_status": "",
+      "last_name": "Price",
+      "news_updated": "1787859352509",
+      "number": "8",
+      "player_id": "13286",
+      "position": "RB",
+      "sport": "nfl",
+      "status": "Active",
+      "team": "SEA",
+      "team_abbr": "",
+      "team_changed_at": "",
+      "years_exp": "0"
+    },
+    "pick_no": 3,
+    "picked_by": "200",
+    "player_id": "13286",
+    "reactions": null,
+    "roster_id": 6,
+    "round": 1
+  }
+]
