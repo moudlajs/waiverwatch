@@ -33,6 +33,8 @@ func connect(t *testing.T, username string) *sdk.ClientSession {
 		},
 		"/players/nfl":              map[string]sleeper.Player{"4046": {PlayerID: "4046", FullName: "Patrick Mahomes", Position: "QB", Team: "KC", Active: true}, "SEA": {PlayerID: "SEA", FirstName: "Seattle", LastName: "Seahawks", Position: "DEF", Team: "SEA", Active: true}},
 		"/players/nfl/trending/add": []sleeper.Trending{{PlayerID: "4046", Count: 7}},
+		"/league/L1/drafts":         []sleeper.Draft{{DraftID: "D1", Season: "2026", Type: "snake", Status: "complete"}},
+		"/draft/D1/picks":           []sleeper.Pick{{Round: 1, PickNo: 1, PlayerID: "4046", PickedBy: "100", RosterID: 1}},
 	}))
 
 	ctx := context.Background()
@@ -67,7 +69,7 @@ func TestListLeagues(t *testing.T) {
 		names = append(names, tl.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"compare_rosters", "get_matchups", "get_roster", "injury_report", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
+	if want := []string{"compare_rosters", "draft_results", "get_matchups", "get_roster", "injury_report", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
 		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
@@ -230,5 +232,25 @@ func TestCompareRosters(t *testing.T) {
 	}
 	if c.Week != 3 || len(c.Leagues) != 1 || !strings.Contains(c.Leagues[0].Note, "no opponent") {
 		t.Errorf("unexpected comparisons %+v", c)
+	}
+}
+
+func TestDraftResults(t *testing.T) {
+	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{
+		Name: "draft_results", Arguments: map[string]any{"player": "mahomes"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	raw, _ := json.Marshal(res.StructuredContent)
+	var r league.DraftReport
+	if err := json.Unmarshal(raw, &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.MyPicks != 1 || len(r.Leagues) != 1 || r.Leagues[0].Drafts[0].Picks[0].Name != "Patrick Mahomes" {
+		t.Errorf("unexpected report %+v", r)
 	}
 }

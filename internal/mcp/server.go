@@ -105,7 +105,24 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 		return nil, c, err
 	})
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "draft_results",
+		Description: "My draft picks in every league (round, overall pick, player, auction price, and whether he is still " +
+			"on my roster). Dynasty leagues include earlier seasons, i.e. the startup draft and past rookie drafts. " +
+			"Pass a player name to answer \"where did I draft X?\", including players I have since dropped or traded.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, func(ctx context.Context, _ *sdk.CallToolRequest, in DraftInput) (*sdk.CallToolResult, league.DraftReport, error) {
+		r, err := svc.Drafts(ctx, in.League, in.Player)
+		return nil, r, err
+	})
+
 	return s
+}
+
+// DraftInput is draft_results' arguments.
+type DraftInput struct {
+	League string `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
+	Player string `json:"player,omitempty" jsonschema:"only picks whose player name contains this, e.g. Walker; omit for all my picks"`
 }
 
 // RosterInput is get_roster's and compare_rosters' arguments.

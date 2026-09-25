@@ -55,6 +55,33 @@ func (c *Client) Leagues(ctx context.Context, userID, season string) ([]League, 
 	return ls, nil
 }
 
+// League returns one league by ID.
+func (c *Client) League(ctx context.Context, leagueID string) (League, error) {
+	var l League
+	if err := c.get(ctx, "/league/"+url.PathEscape(leagueID), &l); err != nil {
+		return League{}, fmt.Errorf("fetching league %s: %w", leagueID, err)
+	}
+	return l, nil
+}
+
+// Drafts lists a league's drafts.
+func (c *Client) Drafts(ctx context.Context, leagueID string) ([]Draft, error) {
+	var ds []Draft
+	if err := c.get(ctx, "/league/"+url.PathEscape(leagueID)+"/drafts", &ds); err != nil {
+		return nil, fmt.Errorf("fetching drafts for league %s: %w", leagueID, err)
+	}
+	return ds, nil
+}
+
+// DraftPicks returns every pick made in a draft, in order.
+func (c *Client) DraftPicks(ctx context.Context, draftID string) ([]Pick, error) {
+	var ps []Pick
+	if err := c.get(ctx, "/draft/"+url.PathEscape(draftID)+"/picks", &ps); err != nil {
+		return nil, fmt.Errorf("fetching picks for draft %s: %w", draftID, err)
+	}
+	return ps, nil
+}
+
 // Rosters returns every team's roster in a league.
 func (c *Client) Rosters(ctx context.Context, leagueID string) ([]Roster, error) {
 	var rs []Roster

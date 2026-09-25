@@ -1,0 +1,16 @@
+[
+  {
+    "draft_id": "D1",
+    "league_id": "L1",
+    "season": "2026",
+    "status": "complete",
+    "type": "linear",
+    "sport": "nfl",
+    "settings": {
+      "rounds": 3,
+      "teams": 12
+    },
+    "created": 1767179908503,
+    "start_time": 1788112885543
+  }
+]

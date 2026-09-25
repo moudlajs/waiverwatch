@@ -1,0 +1,11 @@
+{
+  "league_id": "L1",
+  "name": "Dynasty League",
+  "season": "2026",
+  "status": "in_season",
+  "total_rosters": 12,
+  "previous_league_id": "L0",
+  "settings": {
+    "type": 2
+  }
+}

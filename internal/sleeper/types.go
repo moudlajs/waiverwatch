@@ -13,6 +13,7 @@ type User struct {
 // League is one fantasy league in one season.
 type League struct {
 	LeagueID        string         `json:"league_id"`
+	PreviousID      string         `json:"previous_league_id"` // last season's league, for leagues that carry over
 	Name            string         `json:"name"`
 	Season          string         `json:"season"`
 	Status          string         `json:"status"` // pre_draft, drafting, in_season, complete
@@ -137,4 +138,34 @@ func (p Player) Name() string {
 		return p.FullName
 	}
 	return strings.TrimSpace(p.FirstName + " " + p.LastName)
+}
+
+// Draft is one draft in a league (a startup, a rookie draft, a redraft).
+type Draft struct {
+	DraftID  string `json:"draft_id"`
+	Season   string `json:"season"`
+	Status   string `json:"status"` // pre_draft, drafting, paused, complete
+	Type     string `json:"type"`   // snake, linear, auction
+	Settings struct {
+		Rounds int `json:"rounds"`
+		Teams  int `json:"teams"`
+	} `json:"settings"`
+}
+
+// Pick is one selection in a draft. PickedBy is the user who made it;
+// RosterID is the team the pick belonged to.
+type Pick struct {
+	Round    int    `json:"round"`
+	PickNo   int    `json:"pick_no"`
+	PlayerID string `json:"player_id"`
+	PickedBy string `json:"picked_by"`
+	RosterID int    `json:"roster_id"`
+	IsKeeper bool   `json:"is_keeper"`
+	Metadata struct {
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+		Position  string `json:"position"`
+		Team      string `json:"team"`
+		Amount    string `json:"amount"` // auction drafts: the price paid
+	} `json:"metadata"`
 }
