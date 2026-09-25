@@ -10,9 +10,9 @@ import (
 
 // HTTPHandler serves s over stateless Streamable HTTP at /mcp, and /healthz
 // for health checks. Stateless because hosted instances come and go; there
-// are no sessions to keep. /mcp sits behind one global rate limit: the
-// server has no login yet (see #34), so the limit caps what a stranger who
-// finds the URL can cost.
+// are no sessions to keep. /mcp sits behind a rate limit per instance (the
+// deploy caps instances): the server has no login yet (see #34), so the
+// limit caps what a stranger who finds the URL can cost.
 func HTTPHandler(s *sdk.Server, limit rate.Limit, burst int) http.Handler {
 	mcpHandler := sdk.NewStreamableHTTPHandler(
 		func(*http.Request) *sdk.Server { return s },

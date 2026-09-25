@@ -24,7 +24,8 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/store"
 )
 
-// Hosted rate limit: plenty for one person's Claude, little for anyone else.
+// Hosted rate limit per instance: plenty for one person's Claude, little for
+// anyone else.
 const (
 	requestsPerSecond = 5
 	requestBurst      = 20
