@@ -56,8 +56,15 @@ func run(ctx context.Context, username, port string) error {
 	return mcp.Serve(ctx, ":"+port, mcp.HTTPHandler(server, requestsPerSecond, requestBurst))
 }
 
-// version is the module version for `go install`ed binaries, else "dev".
+// buildVersion is set by the container build (-ldflags -X).
+var buildVersion string
+
+// version is the release the binary was built from: stamped in by the
+// container build, the module version for `go install`, else "dev".
 func version() string {
+	if buildVersion != "" {
+		return buildVersion
+	}
 	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
 		return bi.Main.Version
 	}
