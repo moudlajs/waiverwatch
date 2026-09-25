@@ -13,7 +13,7 @@ on Sunday gives you minutes to hit the waiver wire, wherever you are.
 
 ## Status
 
-Early. Today it's a CLI that lists your leagues. See the
+Early: runs locally over stdio. Tools so far: `list_leagues`. See the
 [milestones](https://github.com/moudlajs/waiverwatch/milestones) for the plan.
 
 ## Principles
@@ -33,11 +33,40 @@ Early. Today it's a CLI that lists your leagues. See the
 | Host | Google Cloud Run (free tier, scales to zero) |
 | Data | `api.sleeper.app`: public, free, no key |
 
-## Run
+## Use it locally
+
+Install (needs Go; puts `waiverwatch` in `$(go env GOPATH)/bin`):
 
 ```sh
-go run .
+go install github.com/moudlajs/waiverwatch@latest
 ```
+
+**Claude Code:**
+
+```sh
+claude mcp add --scope user waiverwatch -e WAIVERWATCH_USER=<your Sleeper username> -- "$(go env GOPATH)/bin/waiverwatch"
+```
+
+**Claude Desktop:** Settings → Developer → Edit Config, then add to
+`claude_desktop_config.json` (use the absolute path; Desktop doesn't read
+your shell's `PATH`):
+
+```json
+{
+  "mcpServers": {
+    "waiverwatch": {
+      "command": "/Users/<you>/go/bin/waiverwatch",
+      "env": { "WAIVERWATCH_USER": "<your Sleeper username>" }
+    }
+  }
+}
+```
+
+Restart Claude and ask *"How are my fantasy leagues looking?"*
+
+| Tool | Returns |
+|---|---|
+| `list_leagues` | every league this season: type, size, your team, record, points, standing |
 
 ## Contributing
 
