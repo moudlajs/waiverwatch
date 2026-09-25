@@ -70,11 +70,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build --build-arg VERSION=ci -t waiverwatch:ci .
-      - name: container serves /healthz
+      - name: container serves /health
         run: |
           docker run -d --name ww -p 8080:8080 -e WAIVERWATCH_USER=ci waiverwatch:ci
           for _ in $(seq 1 20); do
-            curl -fsS localhost:8080/healthz && exit 0
+            curl -fsS localhost:8080/health && exit 0
             sleep 0.5
           done
           docker logs ww

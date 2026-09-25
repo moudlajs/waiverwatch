@@ -10,8 +10,8 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// HTTPHandler serves s over stateless Streamable HTTP at /mcp, and /healthz
-// for health checks. Stateless because hosted instances come and go; there
+// HTTPHandler serves s over stateless Streamable HTTP at /mcp, and /health
+// for health checks (not /healthz: Cloud Run reserves paths ending in z). Stateless because hosted instances come and go; there
 // are no sessions to keep. /mcp sits behind a rate limit per instance (the
 // deploy caps instances): the server has no login yet (see #34), so the
 // limit caps what a stranger who finds the URL can cost.
@@ -23,7 +23,7 @@ func HTTPHandler(s *sdk.Server, limit rate.Limit, burst int) http.Handler {
 	limiter := rate.NewLimiter(limit, burst)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok\n"))
 	})
 	mux.Handle("/mcp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

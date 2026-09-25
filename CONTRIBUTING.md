@@ -37,7 +37,7 @@ golangci-lint run           # lint + gofmt/goimports (config: .golangci.yml)
 go test -race ./...         # tests never hit the real Sleeper API
 go build ./...
 govulncheck ./...           # go install golang.org/x/vuln/cmd/govulncheck@latest
-docker build -t waiverwatch . # the Cloud Run image; CI also checks /healthz
+docker build -t waiverwatch . # the Cloud Run image; CI also checks /health
 ```
 
 All five run in CI and are required on `main`, along with the PR title check
