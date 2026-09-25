@@ -104,6 +104,16 @@ func (c *Client) TrendingAdds(ctx context.Context, lookbackHours, limit int) ([]
 	return ts, nil
 }
 
+// Players returns the full NFL player dictionary, keyed by player ID. It is
+// ~15 MB; Sleeper asks callers to fetch it at most once a day.
+func (c *Client) Players(ctx context.Context) (map[string]Player, error) {
+	var ps map[string]Player
+	if err := c.get(ctx, "/players/nfl", &ps); err != nil {
+		return nil, fmt.Errorf("fetching player dictionary: %w", err)
+	}
+	return ps, nil
+}
+
 // get fetches base+path and decodes the JSON body into dst.
 func (c *Client) get(ctx context.Context, path string, dst any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+path, nil)

@@ -1,5 +1,7 @@
 package sleeper
 
+import "strings"
+
 // Only the fields waiverwatch uses are mapped; encoding/json ignores the rest.
 
 // User is a Sleeper account.
@@ -107,4 +109,27 @@ type State struct {
 type Trending struct {
 	PlayerID string `json:"player_id"`
 	Count    int    `json:"count"`
+}
+
+// Player is an entry in the player dictionary. Team defenses use the team
+// abbreviation as their ID and have no FullName.
+type Player struct {
+	PlayerID       string `json:"player_id"`
+	FullName       string `json:"full_name"`
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
+	Position       string `json:"position"`
+	Team           string `json:"team"` // empty for free agents
+	Status         string `json:"status"`
+	Active         bool   `json:"active"`
+	InjuryStatus   string `json:"injury_status"` // Questionable, Doubtful, Out, IR, PUP, Sus, NA...
+	InjuryBodyPart string `json:"injury_body_part"`
+}
+
+// Name is the display name, e.g. "Patrick Mahomes" or "Seattle Seahawks".
+func (p Player) Name() string {
+	if p.FullName != "" {
+		return p.FullName
+	}
+	return strings.TrimSpace(p.FirstName + " " + p.LastName)
 }
