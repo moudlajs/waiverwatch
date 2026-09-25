@@ -66,6 +66,16 @@ jobs:
           SLEEPER_USER: ${{ vars.WAIVERWATCH_USER }}
           BASE_URL: ${{ vars.WAIVERWATCH_BASE_URL }}
         run: |
+          # The connector URL: the repository variable, else this service's
+          # current URL (Cloud Run URLs don't change between deploys).
+          if [ -z "$BASE_URL" ]; then
+            BASE_URL=$(gcloud run services describe waiverwatch --region "$REGION" --format 'value(status.url)' 2>/dev/null || true)
+          fi
+          if [ -z "$BASE_URL" ]; then
+            echo "::error::Set the WAIVERWATCH_BASE_URL repository variable to the service URL (see CONTRIBUTING.md)."
+            exit 1
+          fi
+          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
           gcloud run deploy waiverwatch \
             --image "$IMAGE" \
             --region "$REGION" \
@@ -87,7 +97,7 @@ jobs:
       - name: Smoke test
         env:
           URL: ${{ steps.deploy.outputs.url }}
-          BASE_URL: ${{ vars.WAIVERWATCH_BASE_URL }}
+          BASE_URL: ${{ steps.deploy.outputs.base_url }}
         run: |
           health=$(curl -fsS --retry 5 --retry-all-errors "$URL/health")
           echo "$health"

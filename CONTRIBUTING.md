@@ -63,6 +63,12 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
   a budget alert, the `GCP_*` repository variables, and the OAuth secrets
   (`waiverwatch-signing-key`, generated; `waiverwatch-passphrase`, set by the
   owner with the command the script prints). Safe to re-run.
+- **Runtime settings** (repository variables, not secrets):
+  `WAIVERWATCH_USER` is the Sleeper username the server answers for, and
+  `WAIVERWATCH_BASE_URL` is the service URL the connector is added with. On
+  a first deploy there is no URL yet: deploy once without it and the workflow
+  falls back to the service's URL from then on, or set it by hand
+  (`gh variable set WAIVERWATCH_BASE_URL --body https://…run.app`).
 - **Every release:** merging the release-please PR tags the release, and
   `release.yml` calls `deploy.yml`: build, push, `gcloud run deploy`, then a
   smoke test that the new version is serving.
