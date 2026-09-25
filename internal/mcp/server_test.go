@@ -24,14 +24,14 @@ func connect(t *testing.T, username string) *sdk.ClientSession {
 		"/user/me":    sleeper.User{UserID: "100", DisplayName: "me"},
 		"/user/ghost": nil,
 		"/user/100/leagues/nfl/2026": []sleeper.League{
-			{LeagueID: "L1", Name: "Dynasty", TotalRosters: 1, Settings: sleeper.LeagueSettings{Type: 2}},
+			{LeagueID: "L1", Name: "Dynasty", TotalRosters: 1, RosterPositions: []string{"QB", "DEF"}, Settings: sleeper.LeagueSettings{Type: 2}},
 		},
-		"/league/L1/rosters": []sleeper.Roster{{RosterID: 1, OwnerID: "100", Settings: sleeper.RosterSettings{Wins: 3}}},
+		"/league/L1/rosters": []sleeper.Roster{{RosterID: 1, OwnerID: "100", Players: []string{"x"}, Settings: sleeper.RosterSettings{Wins: 3}}},
 		"/league/L1/users":   []sleeper.LeagueUser{{UserID: "100", DisplayName: "me"}},
 		"/league/L1/matchups/3": []sleeper.Matchup{
 			{RosterID: 1, MatchupID: 1, Points: 42.5, Starters: []string{"4046"}, StartersPoints: []float64{42.5}},
 		},
-		"/players/nfl":              map[string]sleeper.Player{"4046": {PlayerID: "4046", FullName: "Patrick Mahomes", Position: "QB"}},
+		"/players/nfl":              map[string]sleeper.Player{"4046": {PlayerID: "4046", FullName: "Patrick Mahomes", Position: "QB", Team: "KC", Active: true}, "SEA": {PlayerID: "SEA", FirstName: "Seattle", LastName: "Seahawks", Position: "DEF", Team: "SEA", Active: true}},
 		"/players/nfl/trending/add": []sleeper.Trending{{PlayerID: "4046", Count: 7}},
 	}))
 
@@ -67,7 +67,7 @@ func TestListLeagues(t *testing.T) {
 		names = append(names, tl.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"get_matchups", "list_leagues", "trending_players"}; !slices.Equal(names, want) {
+	if want := []string{"get_matchups", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
 		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
@@ -147,5 +147,33 @@ func TestTrendingPlayers(t *testing.T) {
 	// empty, so Mahomes is available there.
 	if r.LookbackHours != 24 || len(r.Players) != 1 || r.Players[0].Name != "Patrick Mahomes" || len(r.Players[0].AvailableIn) != 1 {
 		t.Errorf("unexpected report %+v", r)
+	}
+}
+
+func TestWaiverTargetsTool(t *testing.T) {
+	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{
+		Name: "waiver_targets", Arguments: map[string]any{"position": "d/st"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	raw, _ := json.Marshal(res.StructuredContent)
+	var r league.WaiverReport
+	if err := json.Unmarshal(raw, &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.Position != "DEF" || len(r.Leagues) != 1 || len(r.Leagues[0].Targets) != 1 || r.Leagues[0].Targets[0].Name != "Seattle Seahawks" {
+		t.Errorf("unexpected report %+v", r)
+	}
+}
+
+func TestNormalisePosition(t *testing.T) {
+	for in, want := range map[string]string{"rb": "RB", " wr ": "WR", "DST": "DEF", "d/st": "DEF", "pk": "K", "": ""} {
+		if got := normalisePosition(in); got != want {
+			t.Errorf("normalisePosition(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
