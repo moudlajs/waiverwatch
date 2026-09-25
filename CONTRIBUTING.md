@@ -60,7 +60,9 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
   creates the Artifact Registry repository, a runtime service account with no
   roles, a deploy service account that GitHub Actions reaches through
   Workload Identity Federation (only from `main` of this repository, no keys),
-  a budget alert, and the `GCP_*` repository variables. Safe to re-run.
+  a budget alert, the `GCP_*` repository variables, and the OAuth secrets
+  (`waiverwatch-signing-key`, generated; `waiverwatch-passphrase`, set by the
+  owner with the command the script prints). Safe to re-run.
 - **Every release:** merging the release-please PR tags the release, and
   `release.yml` calls `deploy.yml`: build, push, `gcloud run deploy`, then a
   smoke test that the new version is serving.

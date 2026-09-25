@@ -3,7 +3,8 @@
 #
 # Creates what the release workflow needs to deploy to Cloud Run, with no
 # keys stored anywhere: GitHub Actions signs in through Workload Identity
-# Federation, only from this repository's main branch.
+# Federation, only from this repository's main branch. Also creates the
+# OAuth sign-in secrets, readable only by the runtime service account.
 #
 # Prerequisites: a project with billing linked, `gcloud auth login` done,
 # and `gh auth login` for writing the repository variables.
@@ -49,6 +50,7 @@ gc services enable \
   iam.googleapis.com \
   iamcredentials.googleapis.com \
   sts.googleapis.com \
+  secretmanager.googleapis.com \
   billingbudgets.googleapis.com
 
 say "Artifact Registry: $AR_REPO in $REGION (keeps the 5 newest images)"
@@ -83,6 +85,31 @@ retry gc artifacts repositories add-iam-policy-binding "$AR_REPO" --location "$R
 # Deploying a service that runs as RUNTIME_SA requires acting as it.
 retry gc iam service-accounts add-iam-policy-binding "$RUNTIME_EMAIL" \
   --member "serviceAccount:$DEPLOY_EMAIL" --role roles/iam.serviceAccountUser >/dev/null
+
+say "Secrets (OAuth sign-in, #34)"
+# The signing key is random and never needs to be seen. The passphrase is
+# the owner's to choose: the secret is created empty and the script prints
+# how to add it, so it never passes through anyone else's hands.
+for secret in waiverwatch-signing-key waiverwatch-passphrase; do
+  if ! gc secrets describe "$secret" >/dev/null 2>&1; then
+    gc secrets create "$secret" --replication-policy automatic
+  fi
+  retry gc secrets add-iam-policy-binding "$secret" \
+    --member "serviceAccount:$RUNTIME_EMAIL" --role roles/secretmanager.secretAccessor >/dev/null
+done
+if [ -z "$(gc secrets versions list waiverwatch-signing-key --filter state=enabled --format 'value(name)')" ]; then
+  openssl rand -base64 48 | tr -d '\n' | gc secrets versions add waiverwatch-signing-key --data-file=- >/dev/null
+  echo "  generated a signing key"
+fi
+if [ -z "$(gc secrets versions list waiverwatch-passphrase --filter state=enabled --format 'value(name)')" ]; then
+  cat <<MSG
+  ACTION NEEDED: choose the sign-in passphrase (at least 12 characters) and
+  store it by running this in your own terminal. It is read without echo:
+
+    read -rs p && printf %s "\$p" | gcloud secrets versions add waiverwatch-passphrase --project $PROJECT --data-file=- && unset p
+
+MSG
+fi
 
 say "Workload Identity Federation for $REPO (main branch only)"
 if ! gc iam workload-identity-pools describe "$POOL" --location global >/dev/null 2>&1; then
