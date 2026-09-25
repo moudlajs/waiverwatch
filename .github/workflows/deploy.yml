@@ -1,0 +1,94 @@
+name: Deploy
+
+# Builds a release tag's image and deploys it to Cloud Run. Called by
+# release.yml when release-please publishes a release, or run by hand to
+# (re)deploy any tag, e.g. to roll back.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to deploy, e.g. v0.4.0
+        type: string
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation: no keys
+    env:
+      CLOUDSDK_CORE_PROJECT: ${{ vars.GCP_PROJECT_ID }} # every gcloud call below
+      TAG: ${{ inputs.tag }}
+      IMAGE: ${{ vars.GCP_IMAGE }}:${{ inputs.tag }}
+      REGION: ${{ vars.GCP_REGION }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      # Only runs from main: the identity provider's condition rejects
+      # tokens for any other ref.
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Build and push
+        run: |
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker build --build-arg VERSION="$TAG" -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      # Public with no login for now (#10, OAuth is #34). Cost is capped by
+      # one instance at most, scale to zero, the app's rate limit and the
+      # budget alert.
+      - name: Deploy
+        id: deploy
+        env:
+          RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
+          SLEEPER_USER: ${{ vars.WAIVERWATCH_USER }}
+        run: |
+          gcloud run deploy waiverwatch \
+            --image "$IMAGE" \
+            --region "$REGION" \
+            --service-account "$RUNTIME_SA" \
+            --allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 1 \
+            --cpu 1 \
+            --memory 256Mi \
+            --concurrency 20 \
+            --timeout 60 \
+            --set-env-vars "WAIVERWATCH_USER=$SLEEPER_USER" \
+            --quiet
+          url=$(gcloud run services describe waiverwatch --region "$REGION" --format 'value(status.url)')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed $TAG to $url/mcp" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          curl -fsS --retry 5 --retry-all-errors "$URL/healthz"
+          version=$(curl -fsS "$URL/mcp" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}' \
+            | jq -r .result.serverInfo.version)
+          echo "serving $version"
+          test "$version" = "$TAG"
