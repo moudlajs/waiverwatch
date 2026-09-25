@@ -53,8 +53,9 @@ fine, it's the transport).
   authorization server. Claude identifies itself with a Client ID Metadata
   Document; only Claude's two client IDs are accepted (claude.ai and Claude
   Code). The owner signs in with a passphrase; codes and tokens are
-  HMAC-signed and stateless (1h access, 90d refresh, rotated), so restarts
-  don't sign anyone out. HTTP mode refuses to start without
+  HMAC-signed and stateless (1h access, 90d refresh), so restarts don't
+  sign anyone out. A refresh issues a new refresh token but can't revoke the
+  old one (nothing is stored); rotating the signing key revokes everything. HTTP mode refuses to start without
   `WAIVERWATCH_BASE_URL`, `WAIVERWATCH_PASSPHRASE` (Secret Manager) and
   `WAIVERWATCH_SIGNING_KEY` (Secret Manager); `WAIVERWATCH_NO_AUTH=1` is for
   local testing only. Rotating the signing key signs every client out.

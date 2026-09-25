@@ -153,9 +153,10 @@ func (s *Server) token(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// issue answers a token request with a fresh access and refresh token. The
-// refresh token is replaced on every use, as OAuth 2.1 expects for public
-// clients.
+// issue answers a token request with a fresh access and refresh token.
+// Every refresh hands out a new refresh token, but tokens are stateless, so
+// earlier ones stay valid until they expire: this is not rotation with
+// revocation. Rotating the signing key is the way to revoke everything.
 func (s *Server) issue(w http.ResponseWriter, clientID string) {
 	now := s.now()
 	w.Header().Set("Cache-Control", "no-store")
