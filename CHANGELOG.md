@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0](https://github.com/moudlajs/waiverwatch/compare/v0.1.0...v0.2.0) (2026-09-25)
+
+
+### Features
+
+* **mcp:** get_matchups tool for this week across all leagues ([#25](https://github.com/moudlajs/waiverwatch/issues/25)) ([e2adac6](https://github.com/moudlajs/waiverwatch/commit/e2adac6ac4e615105ac4ec010995f73a92bd8e17))
+* **mcp:** trending_players tool with availability in my leagues ([#27](https://github.com/moudlajs/waiverwatch/issues/27)) ([2961b5e](https://github.com/moudlajs/waiverwatch/commit/2961b5e9c4aef4899f023f02c271cd512389e677))
+* **mcp:** waiver_targets tool for available players by position ([#28](https://github.com/moudlajs/waiverwatch/issues/28)) ([af2afd9](https://github.com/moudlajs/waiverwatch/commit/af2afd9d2e7833aa90243faa4df6dd13e85809dc))
+
 ## 0.1.0 (2026-09-25)
 
 
