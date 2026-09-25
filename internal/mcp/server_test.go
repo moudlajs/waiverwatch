@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -30,7 +31,8 @@ func connect(t *testing.T, username string) *sdk.ClientSession {
 		"/league/L1/matchups/3": []sleeper.Matchup{
 			{RosterID: 1, MatchupID: 1, Points: 42.5, Starters: []string{"4046"}, StartersPoints: []float64{42.5}},
 		},
-		"/players/nfl": map[string]sleeper.Player{"4046": {PlayerID: "4046", FullName: "Patrick Mahomes"}},
+		"/players/nfl":              map[string]sleeper.Player{"4046": {PlayerID: "4046", FullName: "Patrick Mahomes", Position: "QB"}},
+		"/players/nfl/trending/add": []sleeper.Trending{{PlayerID: "4046", Count: 7}},
 	}))
 
 	ctx := context.Background()
@@ -64,8 +66,9 @@ func TestListLeagues(t *testing.T) {
 		}
 		names = append(names, tl.Name)
 	}
-	if strings.Join(names, ",") != "get_matchups,list_leagues" && strings.Join(names, ",") != "list_leagues,get_matchups" {
-		t.Fatalf("tools = %v", names)
+	slices.Sort(names)
+	if want := []string{"get_matchups", "list_leagues", "trending_players"}; !slices.Equal(names, want) {
+		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
 	res, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_leagues"})
@@ -122,5 +125,27 @@ func TestGetMatchups(t *testing.T) {
 	}
 	if w.Week != 3 || len(w.Leagues) != 1 || w.Leagues[0].Me == nil || w.Leagues[0].Me.Starters[0].Name != "Patrick Mahomes" {
 		t.Errorf("unexpected week %+v", w)
+	}
+}
+
+func TestTrendingPlayers(t *testing.T) {
+	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{
+		Name: "trending_players", Arguments: map[string]any{"position": "qb"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	raw, _ := json.Marshal(res.StructuredContent)
+	var r league.TrendingReport
+	if err := json.Unmarshal(raw, &r); err != nil {
+		t.Fatal(err)
+	}
+	// Defaults applied and a lower-case position accepted. My L1 roster is
+	// empty, so Mahomes is available there.
+	if r.LookbackHours != 24 || len(r.Players) != 1 || r.Players[0].Name != "Patrick Mahomes" || len(r.Players[0].AvailableIn) != 1 {
+		t.Errorf("unexpected report %+v", r)
 	}
 }
