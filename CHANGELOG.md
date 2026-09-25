@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/moudlajs/waiverwatch/compare/v0.3.0...v0.4.0) (2026-09-25)
+
+
+### Features
+
+* **mcp:** compare_rosters tool for my team vs an opponent ([#32](https://github.com/moudlajs/waiverwatch/issues/32)) ([d2172c3](https://github.com/moudlajs/waiverwatch/commit/d2172c31fd542312da5dd8ffffe000a59be5d6d0))
+* **mcp:** Streamable HTTP transport for hosting ([#35](https://github.com/moudlajs/waiverwatch/issues/35)) ([3682f5e](https://github.com/moudlajs/waiverwatch/commit/3682f5e5240ed05dcb27b4594ffefd8c2cbc4d44))
+
 ## [0.3.0](https://github.com/moudlajs/waiverwatch/compare/v0.2.0...v0.3.0) (2026-09-25)
 
 
