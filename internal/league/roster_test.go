@@ -104,6 +104,7 @@ func TestRosters(t *testing.T) {
 		"/user/100/leagues/nfl/2026": []sleeper.League{
 			{LeagueID: "A", Name: "Alpha", RosterPositions: []string{"QB", "BN"}},
 			{LeagueID: "B", Name: "Beta", RosterPositions: []string{"QB", "BN"}},
+			{LeagueID: "G", Name: "Guillotine", Settings: sleeper.LeagueSettings{Type: 3}},
 		},
 		"/league/A/rosters": []sleeper.Roster{
 			{OwnerID: "100", Players: []string{"qb", "wr"}, Starters: []string{"qb"}},
@@ -112,6 +113,8 @@ func TestRosters(t *testing.T) {
 		"/league/A/users":   []sleeper.LeagueUser{user("100", "me", "Mine"), user("200", "rival", "Rival FC")},
 		"/league/B/rosters": []sleeper.Roster{{OwnerID: "100", Players: []string{"wr"}}},
 		"/league/B/users":   []sleeper.LeagueUser{user("100", "me", "")},
+		"/league/G/rosters": []sleeper.Roster{{OwnerID: "100"}}, // I was cut
+		"/league/G/users":   []sleeper.LeagueUser{user("100", "me", "")},
 		"/players/nfl": map[string]sleeper.Player{
 			"qb": {FullName: "Q B", Position: "QB"}, "wr": {FullName: "W R", Position: "WR"}, "rb": {FullName: "R B", Position: "RB"},
 		},
@@ -124,11 +127,17 @@ func TestRosters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(r.Rosters) != 2 || r.Rosters[0].Team != "Mine" || r.Rosters[0].Starters[0].Name != "Q B" || r.Rosters[0].Bench[0].Name != "W R" {
+		if len(r.Rosters) != 3 || r.Rosters[0].Team != "Mine" || r.Rosters[0].Starters[0].Name != "Q B" || r.Rosters[0].Bench[0].Name != "W R" {
 			t.Errorf("got %+v", r.Rosters)
 		}
 		if r.Rosters[1].Team != "me" { // no team name: display name
 			t.Errorf("Beta team = %q", r.Rosters[1].Team)
+		}
+		if g := r.Rosters[2]; !strings.Contains(g.Note, "eliminated") || g.Error != "" {
+			t.Errorf("guillotine = %+v, want an eliminated note", g)
+		}
+		if r.Rosters[0].Note != "" {
+			t.Errorf("Alpha note = %q, want none", r.Rosters[0].Note)
 		}
 	})
 

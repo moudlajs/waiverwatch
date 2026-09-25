@@ -28,6 +28,7 @@ type TeamRoster struct {
 	Bench    []RosterPlayer `json:"bench"`
 	IR       []RosterPlayer `json:"ir,omitempty"`
 	Taxi     []RosterPlayer `json:"taxi,omitempty"`
+	Note     string         `json:"note,omitempty"`
 	Error    string         `json:"error,omitempty" jsonschema:"set when this league could not be loaded or the owner was not found; the others are still valid"`
 }
 
@@ -80,6 +81,9 @@ func (s *Service) Rosters(ctx context.Context, leagueQuery, owner string) (Roste
 		}
 	}
 	if len(out.Rosters) == 0 {
+		if owner == "" {
+			return RosterReport{}, errors.New("no leagues this season")
+		}
 		return RosterReport{}, fmt.Errorf("no team matching %q in any of my leagues", owner)
 	}
 	return out, nil
@@ -121,6 +125,9 @@ func (s *Service) roster(ctx context.Context, l sleeper.League, userID, owner st
 		}
 	}
 	out.Starters, out.Bench, out.IR, out.Taxi = split(r, l.RosterPositions, players)
+	if len(r.Players) == 0 && l.Kind() == "guillotine" {
+		out.Note = "eliminated: guillotine teams are emptied when they are cut"
+	}
 	return out, nil
 }
 
