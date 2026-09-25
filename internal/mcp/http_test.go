@@ -80,3 +80,19 @@ func TestRateLimit(t *testing.T) {
 		t.Errorf("statuses = %v, want the first allowed and the rest 429", statuses)
 	}
 }
+
+func TestServeShutsDownOnCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- Serve(ctx, "127.0.0.1:0", http.NotFoundHandler()) }()
+	cancel()
+	if err := <-done; err != nil {
+		t.Errorf("Serve returned %v after cancel, want nil", err)
+	}
+}
+
+func TestServeReportsListenErrors(t *testing.T) {
+	if err := Serve(context.Background(), "not-an-address", http.NotFoundHandler()); err == nil {
+		t.Error("want a listen error")
+	}
+}

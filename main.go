@@ -8,13 +8,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime/debug"
 	"syscall"
-	"time"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -56,32 +53,7 @@ func run(ctx context.Context, username, port string) error {
 	if port == "" {
 		return server.Run(ctx, &sdk.StdioTransport{})
 	}
-	return serveHTTP(ctx, ":"+port, mcp.HTTPHandler(server, requestsPerSecond, requestBurst))
-}
-
-// serveHTTP serves h on addr until ctx is cancelled, then drains in-flight
-// requests (Cloud Run allows 10s after SIGTERM).
-func serveHTTP(ctx context.Context, addr string, h http.Handler) error {
-	srv := &http.Server{
-		Addr:              addr,
-		Handler:           h,
-		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      60 * time.Second,
-		IdleTimeout:       120 * time.Second,
-	}
-	errc := make(chan error, 1)
-	go func() { errc <- srv.ListenAndServe() }()
-	slog.Info("listening", "addr", addr, "version", version())
-
-	select {
-	case err := <-errc:
-		return err
-	case <-ctx.Done():
-	}
-	shutdown, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-	defer cancel()
-	return srv.Shutdown(shutdown) // not ctx: it is already cancelled
+	return mcp.Serve(ctx, ":"+port, mcp.HTTPHandler(server, requestsPerSecond, requestBurst))
 }
 
 // version is the module version for `go install`ed binaries, else "dev".
