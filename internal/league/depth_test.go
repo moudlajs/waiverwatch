@@ -48,7 +48,7 @@ func TestDepthChart(t *testing.T) {
 			Players: []string{"qb1", "rb1", "rb2", "rb3", "wr1", "wr2", "wr3", "te1", "k1", "def", "rbir", "wrtaxi", "lb1"},
 			Reserve: []string{"rbir"}, Taxi: []string{"wrtaxi"},
 		}
-		pos, flex := depthChart(standard, me, players)
+		pos, flex, _ := depthChart(standard, me, players)
 
 		rb, _ := at(pos, "RB")
 		wantRB := PositionDepth{Position: "RB", Slots: 2, Healthy: 2, Starting: 2, Backups: 0, Status: "thin",
@@ -73,7 +73,7 @@ func TestDepthChart(t *testing.T) {
 
 	t.Run("short: not enough healthy players", func(t *testing.T) {
 		me := sleeper.Roster{Players: []string{"qb1", "rb1", "rb3", "wr1", "wr2", "te1", "k1", "def"}}
-		pos, flex := depthChart(standard, me, players)
+		pos, flex, _ := depthChart(standard, me, players)
 		rb, _ := at(pos, "RB")
 		if rb.Status != "short" || rb.Healthy != 1 || len(rb.Unavailable) != 1 || rb.Unavailable[0] != "rb3 (Out)" {
 			t.Errorf("RB = %+v", rb)
@@ -85,7 +85,7 @@ func TestDepthChart(t *testing.T) {
 
 	t.Run("superflex without a QB slot", func(t *testing.T) {
 		me := sleeper.Roster{Players: []string{"qb1", "qb2", "rb1", "wr1", "te1", "k1"}}
-		pos, flex := depthChart([]string{"RB", "WR", "TE", "SUPER_FLEX", "BN"}, me, players)
+		pos, flex, _ := depthChart([]string{"RB", "WR", "TE", "SUPER_FLEX", "BN"}, me, players)
 		qb, ok := at(pos, "QB")
 		if !ok || qb.Slots != 0 || qb.Healthy != 2 || qb.Backups != 1 || qb.Status != "ok" {
 			t.Errorf("QB = %+v, want listed (superflex-eligible) with one QB spare", qb)
@@ -103,7 +103,7 @@ func TestDepthChart(t *testing.T) {
 		// One spare WR and one spare RB. WRRB_FLEX could take either; REC_FLEX
 		// can only take the WR, so it must get it.
 		me := sleeper.Roster{Players: []string{"rb1", "rb2", "wr1", "wr2"}}
-		_, flex := depthChart([]string{"RB", "WR", "WRRB_FLEX", "REC_FLEX"}, me, players)
+		_, flex, _ := depthChart([]string{"RB", "WR", "WRRB_FLEX", "REC_FLEX"}, me, players)
 		for _, f := range flex {
 			if f.Filled != 1 {
 				t.Errorf("%s filled %d of 1 (flex %+v)", f.Slot, f.Filled, flex)
@@ -164,5 +164,22 @@ func TestThinSpotsSkipStreamedPositions(t *testing.T) {
 	want := []string{"Alpha: TE thin (1 healthy, 1 starting, 0 backups)", "Alpha: DEF short (0 healthy, 0 starting, 0 backups)"}
 	if !reflect.DeepEqual(r.ThinSpots, want) {
 		t.Errorf("thin spots = %q\nwant %q", r.ThinSpots, want)
+	}
+}
+
+func TestDepthChartKeepsUnknownPlayers(t *testing.T) {
+	players := depthPlayers(map[string]string{"rb1": "RB"})
+	me := sleeper.Roster{Players: []string{"rb1", "brand-new-signing"}}
+	pos, _, unresolved := depthChart([]string{"RB", "RB"}, me, players)
+	if len(unresolved) != 1 || unresolved[0] != "brand-new-signing" {
+		t.Errorf("unresolved = %v, want the unknown ID listed, not dropped", unresolved)
+	}
+	if rb, _ := at(pos, "RB"); rb.Healthy != 1 || rb.Status != "short" {
+		t.Errorf("RB = %+v", rb)
+	}
+
+	// A league that starts nothing we track still gets a list, not null.
+	if pos, _, _ := depthChart([]string{"DL", "LB"}, me, players); pos == nil || len(pos) != 0 {
+		t.Errorf("IDP-only league: %#v, want []", pos)
 	}
 }

@@ -35,8 +35,12 @@ type DepthChart struct {
 	Kind      string          `json:"kind"`
 	Positions []PositionDepth `json:"positions"`
 	Flex      []FlexDepth     `json:"flex,omitempty"`
-	Note      string          `json:"note,omitempty"`
-	Error     string          `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
+	// Unresolved are rostered player IDs the player dictionary doesn't know
+	// yet (it refreshes daily), so their position is unknown and they aren't
+	// counted: depth may be understated right after a pickup.
+	Unresolved []string `json:"unresolved,omitempty"`
+	Note       string   `json:"note,omitempty"`
+	Error      string   `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
 }
 
 // PositionDepth is one position on the user's roster.
@@ -84,7 +88,10 @@ func (s *Service) Depth(ctx context.Context, leagueQuery string) (DepthReport, e
 		case len(p.me.Players) == 0 && l.Kind() == "guillotine":
 			ld.Note = "eliminated from this league"
 		default:
-			ld.Positions, ld.Flex = depthChart(l.RosterPositions, p.me, players)
+			ld.Positions, ld.Flex, ld.Unresolved = depthChart(l.RosterPositions, p.me, players)
+			if len(ld.Unresolved) > 0 {
+				ld.Note = "some players are too new for waiverwatch's player list (updated daily) and aren't counted; depth may be understated"
+			}
 			for _, pd := range ld.Positions {
 				// Kickers and defenses are streamed, not backed up: only an
 				// empty slot is worth reporting.
@@ -108,7 +115,7 @@ func (s *Service) Depth(ctx context.Context, leagueQuery string) (DepthReport, e
 
 // depthChart works out, for one roster, how the starting slots can be filled
 // by healthy players and what is left over.
-func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Player) ([]PositionDepth, []FlexDepth) {
+func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Player) ([]PositionDepth, []FlexDepth, []string) {
 	// Starting slots, dedicated and flex.
 	dedicated := map[string]int{}
 	flexCount := map[string]int{}
@@ -131,8 +138,13 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 			byPos[pos] = &PositionDepth{Position: pos, Slots: dedicated[pos]}
 		}
 	}
+	var unresolved []string
 	for _, id := range me.Players {
-		p := Lookup(players, id)
+		if _, known := players[id]; !known {
+			unresolved = append(unresolved, id)
+			continue
+		}
+		p := players[id]
 		pd, ok := byPos[p.Position]
 		if !ok {
 			continue // a position this league doesn't start (IDP, K without a K slot)
@@ -195,7 +207,7 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 		flex[i].Status = status(flex[i].Filled, flex[i].Slots, left)
 	}
 
-	var out []PositionDepth
+	out := []PositionDepth{}
 	for _, pos := range Positions {
 		pd, ok := byPos[pos]
 		if !ok {
@@ -211,7 +223,7 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 		}
 		out = append(out, *pd)
 	}
-	return out, flex
+	return out, flex, unresolved
 }
 
 // status grades filling need slots from have players with spare left over.
