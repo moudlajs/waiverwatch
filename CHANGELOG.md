@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/moudlajs/waiverwatch/compare/v0.5.1...v0.6.0) (2026-09-26)
+
+
+### Features
+
+* **deploy:** billing kill switch when the budget is exceeded ([#58](https://github.com/moudlajs/waiverwatch/issues/58)) ([feebb41](https://github.com/moudlajs/waiverwatch/commit/feebb41eda81bce65490ee8a5631621df979b2ee))
+
 ## [0.5.1](https://github.com/moudlajs/waiverwatch/compare/v0.5.0...v0.5.1) (2026-09-26)
 
 
