@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/moudlajs/waiverwatch/compare/v0.4.1...v0.5.0) (2026-09-25)
+
+
+### Features
+
+* **mcp:** draft_results tool: who I drafted, and where ([#45](https://github.com/moudlajs/waiverwatch/issues/45)) ([807a452](https://github.com/moudlajs/waiverwatch/commit/807a452212fa249af942af0aa30145b2545557ba))
+* **mcp:** OAuth sign-in for the hosted connector ([#43](https://github.com/moudlajs/waiverwatch/issues/43)) ([d021889](https://github.com/moudlajs/waiverwatch/commit/d0218895208c5f72d9ed19e34b1d32d4aafec5f7))
+
 ## [0.4.1](https://github.com/moudlajs/waiverwatch/compare/v0.4.0...v0.4.1) (2026-09-25)
 
 
