@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/moudlajs/waiverwatch/compare/v0.8.0...v0.9.0) (2026-09-26)
+
+
+### Features
+
+* **mcp:** position_depth tool across leagues ([#70](https://github.com/moudlajs/waiverwatch/issues/70)) ([14e3a1f](https://github.com/moudlajs/waiverwatch/commit/14e3a1fe9fdcc016cb0479905f35fce8710c5d6f))
+
+
+### Documentation
+
+* an open server means deleting the allowlist variable ([#69](https://github.com/moudlajs/waiverwatch/issues/69)) ([d0c7688](https://github.com/moudlajs/waiverwatch/commit/d0c7688b4977e187779f174eca199518f0aaf74b))
+* user guide for adding waiverwatch to Claude ([#67](https://github.com/moudlajs/waiverwatch/issues/67)) ([ad623fe](https://github.com/moudlajs/waiverwatch/commit/ad623fe721e92006af0a9db29bb3ad96bfc4354b))
+
 ## [0.8.0](https://github.com/moudlajs/waiverwatch/compare/v0.7.0...v0.8.0) (2026-09-26)
 
 
