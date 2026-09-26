@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 // fixtures maps request paths to files in testdata/. The files are real
@@ -285,5 +287,29 @@ func TestFixturesExist(t *testing.T) {
 		if _, err := os.Stat(filepath.Join("testdata", name)); err != nil {
 			t.Errorf("fixture for %s: %v", path, err)
 		}
+	}
+}
+
+func TestCallBudget(t *testing.T) {
+	c := newTestClient(t)
+	c.SetBudget(rate.Every(time.Hour), 1) // one call, then none for an hour
+
+	if _, err := c.State(context.Background()); err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	start := time.Now()
+	_, err := c.State(context.Background())
+	if !errors.Is(err, ErrBusy) {
+		t.Errorf("second call: %v, want ErrBusy", err)
+	}
+	if time.Since(start) > time.Second {
+		t.Error("an empty budget should fail at once, not wait")
+	}
+
+	// A cancelled request reports the cancellation, not a busy Sleeper.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := c.State(ctx); !errors.Is(err, context.Canceled) {
+		t.Errorf("cancelled: %v, want context.Canceled", err)
 	}
 }

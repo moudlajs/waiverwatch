@@ -158,8 +158,16 @@ func TestToolsAnswerForTheSignedInUser(t *testing.T) {
 			UserID: id, Extra: map[string]any{"sleeper_username": name},
 		}}}
 	}
+	g := newGate(60, 10)
+	enter := func(req *sdk.CallToolRequest) context.Context {
+		ctx, err := g.enter(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ctx
+	}
 	for _, tt := range []struct{ id, name, league string }{{"1", "alice", "Alice League"}, {"2", "bob", "Bob League"}} {
-		ov, err := svc.Overview(forUser(context.Background(), as(tt.id, tt.name)))
+		ov, err := svc.Overview(enter(as(tt.id, tt.name)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -169,7 +177,7 @@ func TestToolsAnswerForTheSignedInUser(t *testing.T) {
 	}
 
 	// No token and no default user: an error, never someone else's leagues.
-	if _, err := svc.Overview(forUser(context.Background(), &sdk.CallToolRequest{})); err == nil {
+	if _, err := svc.Overview(enter(&sdk.CallToolRequest{})); err == nil {
 		t.Error("want an error without a user")
 	}
 }
