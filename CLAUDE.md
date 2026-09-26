@@ -33,6 +33,8 @@ internal/league/     domain logic: knows football, not HTTP or MCP
 internal/store/      Store interface + in-memory impl
 internal/mcp/        tools + transport: knows MCP, never calls Sleeper
 internal/auth/       OAuth sign-in for the hosted server: knows OAuth only
+internal/killswitch/ unlinks billing when the budget is spent (own Cloud Run service)
+cmd/killswitch/      its binary, shipped in the same image
 ```
 
 `sleeper` never imports `mcp`; `mcp` never calls Sleeper (serving HTTP is
