@@ -65,7 +65,8 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
 - **Runtime settings** (repository variables, not secrets):
   `WAIVERWATCH_BASE_URL` is the service URL the connector is added with, and
   `WAIVERWATCH_ALLOWED_USERS` (optional, comma-separated Sleeper usernames)
-  restricts sign-in; empty means anyone (docs/multi-user.md).
+  restricts sign-in. To let anyone in, **delete** the variable (GitHub doesn't
+  allow empty ones); redeploy for either change to apply (docs/multi-user.md).
   When `WAIVERWATCH_BASE_URL` is unset, deploys use the existing service's
   URL. From scratch there is no service yet, so create a placeholder once to
   get its URL, then set the variable before the first release:
