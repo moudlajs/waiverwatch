@@ -102,8 +102,11 @@ if [ -z "$(gc secrets versions list waiverwatch-signing-key --filter state=enabl
   echo "  generated a signing key"
 fi
 if [ -z "$(gc secrets versions list waiverwatch-passphrase --filter state=enabled --format 'value(name)')" ]; then
-  # 30 characters from base64 without the symbols, so it pastes cleanly.
-  openssl rand -base64 24 | tr -d '\n/+=' | gc secrets versions add waiverwatch-passphrase --data-file=- >/dev/null
+  # Exactly 30 letters and digits (~178 bits), so it pastes cleanly. tr is
+  # read through < <(…): as a pipeline stage its SIGPIPE when head stops
+  # reading would fail the pipeline under pipefail and abort this script.
+  head -c 30 < <(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom) |
+    gc secrets versions add waiverwatch-passphrase --data-file=- >/dev/null
   echo "  generated a sign-in passphrase"
 fi
 cat <<MSG
