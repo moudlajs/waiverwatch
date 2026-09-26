@@ -87,9 +87,9 @@ retry gc iam service-accounts add-iam-policy-binding "$RUNTIME_EMAIL" \
   --member "serviceAccount:$DEPLOY_EMAIL" --role roles/iam.serviceAccountUser >/dev/null
 
 say "Secrets (OAuth sign-in, #34)"
-# The signing key is random and never needs to be seen. The passphrase is
-# the owner's to choose: the secret is created empty and the script prints
-# how to add it, so it never passes through anyone else's hands.
+# Both are random and generated once, straight into Secret Manager: nothing
+# is printed. The owner copies the passphrase into a password manager with
+# the command below; nobody needs to see the signing key.
 for secret in waiverwatch-signing-key waiverwatch-passphrase; do
   if ! gc secrets describe "$secret" >/dev/null 2>&1; then
     gc secrets create "$secret" --replication-policy automatic
@@ -102,14 +102,17 @@ if [ -z "$(gc secrets versions list waiverwatch-signing-key --filter state=enabl
   echo "  generated a signing key"
 fi
 if [ -z "$(gc secrets versions list waiverwatch-passphrase --filter state=enabled --format 'value(name)')" ]; then
-  cat <<MSG
-  ACTION NEEDED: choose the sign-in passphrase (at least 12 characters) and
-  store it by running this in your own terminal. It is read without echo:
-
-    read -rs p && printf %s "\$p" | gcloud secrets versions add waiverwatch-passphrase --project $PROJECT --data-file=- && unset p
-
-MSG
+  # Exactly 30 letters and digits (~178 bits), so it pastes cleanly. tr is
+  # read through < <(…): as a pipeline stage its SIGPIPE when head stops
+  # reading would fail the pipeline under pipefail and abort this script.
+  head -c 30 < <(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom) |
+    gc secrets versions add waiverwatch-passphrase --data-file=- >/dev/null
+  echo "  generated a sign-in passphrase"
 fi
+cat <<MSG
+  To copy the sign-in passphrase to the clipboard (for a password manager):
+    gcloud secrets versions access latest --secret waiverwatch-passphrase --project $PROJECT | pbcopy
+MSG
 
 say "Workload Identity Federation for $REPO (main branch only)"
 if ! gc iam workload-identity-pools describe "$POOL" --location global >/dev/null 2>&1; then
