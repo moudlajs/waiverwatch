@@ -127,7 +127,22 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		return r, err
 	}))
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "position_depth",
+		Description: "Am I thin anywhere? For each league: starting slots per position (flex slots filled from spare " +
+			"players), healthy players, backups, questionable and unavailable players, and a status: ok, thin (no " +
+			"backup) or short (can't fill the lineup). thin_spots lists every problem across leagues.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, limited(g, func(ctx context.Context, in DepthInput) (league.DepthReport, error) {
+		return svc.Depth(ctx, in.League)
+	}))
+
 	return s
+}
+
+// DepthInput is position_depth's arguments.
+type DepthInput struct {
+	League string `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
 }
 
 // DraftInput is draft_results' arguments.

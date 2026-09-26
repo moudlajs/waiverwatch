@@ -37,6 +37,7 @@ Then just ask:
 - *"Who should I pick up at RB?"* or *"…in my dynasty league?"*
 - *"What's trending on waivers, and where is he still available?"*
 - *"Compare me with my opponent in my 12-team league."*
+- *"Where am I thin? Any position without a backup?"*
 - *"Where did I draft Kenneth Walker?"*
 
 **Privacy.** There is no password: waiverwatch only reads public Sleeper
@@ -52,7 +53,8 @@ It's a free hobby project: it may be slow or down sometimes.
 ## Status
 
 Tools: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`,
-`draft_results`, `injury_report`, `trending_players`, `waiver_targets`. See the
+`draft_results`, `injury_report`, `position_depth`, `trending_players`,
+`waiver_targets`. See the
 [milestones](https://github.com/moudlajs/waiverwatch/milestones) for the plan.
 
 ## Principles
@@ -114,6 +116,7 @@ To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 | `get_roster` | a team's starters (by slot), bench, IR and taxi with injuries: yours, or any owner by name |
 | `compare_rosters` | your roster next to this week's opponent (or any owner), position by position, with records |
 | `draft_results` | your picks in every league (dynasty: startup and rookie drafts too); "where did I draft X?" |
+| `position_depth` | per league: starting slots (flex-aware) vs healthy players and backups; every thin spot across leagues |
 | `injury_report` | your injured players across all leagues, where they start for you, and a free replacement in each of those leagues |
 | `trending_players` | the most-added players on Sleeper, with the leagues where you can still claim each one |
 | `waiver_targets` | per league: the best free agents you can actually start there, your waiver priority or FAAB left |
