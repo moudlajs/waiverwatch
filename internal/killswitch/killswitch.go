@@ -13,6 +13,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"time"
 )
 
@@ -88,8 +89,12 @@ func (s *Switch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.DryRun {
-		ok, err := s.canUnlink(r.Context())
-		log.Warn("killswitch: over budget, DRY RUN: would unlink billing", "permitted", ok, "err", err)
+		// Exercise everything the armed path does except the unlink itself,
+		// so a missing permission shows up here, not during a real overage.
+		enabled, readErr := s.billingEnabled(r.Context())
+		ok, permErr := s.canUnlink(r.Context())
+		log.Warn("killswitch: over budget, DRY RUN: would unlink billing",
+			"billing_enabled", enabled, "read_err", readErr, "permitted", ok, "perm_err", permErr)
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -102,36 +107,56 @@ func (s *Switch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// unlink removes the project's billing account, unless it's already gone.
-func (s *Switch) unlink(ctx context.Context) error {
+func (s *Switch) billingInfoURL() string {
+	return fmt.Sprintf("%s/v1/projects/%s/billingInfo", s.BillingURL, s.Project)
+}
+
+// billingEnabled reads whether the project still has billing. It needs
+// resourcemanager.projects.get, which roles/billing.projectManager lacks.
+func (s *Switch) billingEnabled(ctx context.Context) (bool, error) {
 	var info struct {
 		BillingEnabled bool `json:"billingEnabled"`
 	}
-	url := fmt.Sprintf("%s/v1/projects/%s/billingInfo", s.BillingURL, s.Project)
-	if err := s.call(ctx, http.MethodGet, url, nil, &info); err != nil {
-		return fmt.Errorf("reading billing info: %w", err)
+	if err := s.call(ctx, http.MethodGet, s.billingInfoURL(), nil, &info); err != nil {
+		return false, fmt.Errorf("reading billing info: %w", err)
 	}
-	if !info.BillingEnabled {
+	return info.BillingEnabled, nil
+}
+
+// unlink removes the project's billing account, unless it's already gone.
+func (s *Switch) unlink(ctx context.Context) error {
+	enabled, err := s.billingEnabled(ctx)
+	if err != nil {
+		return err
+	}
+	if !enabled {
 		return nil
 	}
 	body := map[string]string{"billingAccountName": ""}
-	if err := s.call(ctx, http.MethodPut, url, body, nil); err != nil {
+	if err := s.call(ctx, http.MethodPut, s.billingInfoURL(), body, nil); err != nil {
 		return fmt.Errorf("unlinking billing: %w", err)
 	}
 	return nil
 }
 
-// canUnlink asks whether this identity holds the permission unlinking needs.
+// needed are the permissions the armed path uses: read, then unlink.
+var needed = []string{"resourcemanager.projects.get", "resourcemanager.projects.deleteBillingAssignment"}
+
+// canUnlink asks whether this identity holds every permission in needed.
 func (s *Switch) canUnlink(ctx context.Context) (bool, error) {
-	const perm = "resourcemanager.projects.deleteBillingAssignment"
 	var out struct {
 		Permissions []string `json:"permissions"`
 	}
 	url := fmt.Sprintf("%s/v1/projects/%s:testIamPermissions", s.ResourceURL, s.Project)
-	if err := s.call(ctx, http.MethodPost, url, map[string][]string{"permissions": {perm}}, &out); err != nil {
+	if err := s.call(ctx, http.MethodPost, url, map[string][]string{"permissions": needed}, &out); err != nil {
 		return false, err
 	}
-	return len(out.Permissions) == 1 && out.Permissions[0] == perm, nil
+	for _, p := range needed {
+		if !slices.Contains(out.Permissions, p) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (s *Switch) call(ctx context.Context, method, url string, in, out any) error {

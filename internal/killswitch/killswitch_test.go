@@ -36,7 +36,7 @@ type fakeGoogle struct {
 	calls          []string
 	billingEnabled bool
 	failPut        bool
-	permitted      bool
+	permitted      []string // permissions testIamPermissions grants
 	putBody        string
 }
 
@@ -60,9 +60,9 @@ func (f *fakeGoogle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		_, _ = w.Write([]byte(`{}`))
 	case r.Method == http.MethodPost && r.URL.Path == "/v1/projects/p1:testIamPermissions":
-		perms := []string{}
-		if f.permitted {
-			perms = []string{"resourcemanager.projects.deleteBillingAssignment"}
+		perms := f.permitted
+		if perms == nil {
+			perms = []string{}
 		}
 		_ = json.NewEncoder(w).Encode(map[string][]string{"permissions": perms})
 	default:
@@ -113,8 +113,8 @@ func TestSwitch(t *testing.T) {
 			[]string{"GET /v1/projects/p1/billingInfo"}},
 		{"failed unlink asks Pub/Sub to retry", &fakeGoogle{billingEnabled: true, failPut: true}, false, push(t, over), 500,
 			[]string{"GET /v1/projects/p1/billingInfo", "PUT /v1/projects/p1/billingInfo"}},
-		{"dry run only checks permission", &fakeGoogle{billingEnabled: true, permitted: true}, true, push(t, over), 204,
-			[]string{"POST /v1/projects/p1:testIamPermissions"}},
+		{"dry run reads billing and checks permissions, never unlinks", &fakeGoogle{billingEnabled: true, permitted: needed}, true, push(t, over), 204,
+			[]string{"GET /v1/projects/p1/billingInfo", "POST /v1/projects/p1:testIamPermissions"}},
 		{"malformed envelope is acknowledged", &fakeGoogle{billingEnabled: true}, false, strings.NewReader("{"), 204, nil},
 		{"malformed notification is acknowledged", &fakeGoogle{billingEnabled: true}, false,
 			strings.NewReader(`{"message":{"data":"bm90IGpzb24="}}`), 204, nil},
@@ -158,5 +158,26 @@ func TestMetadataToken(t *testing.T) {
 	tok, err := metadataToken(md.Client(), md.URL)(context.Background())
 	if err != nil || tok != "abc" {
 		t.Errorf("token %q, err %v", tok, err)
+	}
+}
+
+func TestCanUnlinkNeedsEveryPermission(t *testing.T) {
+	tests := []struct {
+		name    string
+		granted []string
+		want    bool
+	}{
+		{"both", needed, true},
+		{"unlink only, as with Project Billing Manager alone", []string{"resourcemanager.projects.deleteBillingAssignment"}, false},
+		{"read only", []string{"resourcemanager.projects.get"}, false},
+		{"none", nil, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := newSwitch(t, &fakeGoogle{permitted: tt.granted}, true).canUnlink(context.Background())
+			if err != nil || ok != tt.want {
+				t.Errorf("canUnlink = %v, %v; want %v", ok, err, tt.want)
+			}
+		})
 	}
 }

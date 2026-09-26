@@ -161,8 +161,12 @@ done
 # Unlinking billing needs resourcemanager.projects.deleteBillingAssignment,
 # which Project Billing Manager on this project grants. Nothing on the
 # billing account itself.
-retry gc projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$KILL_EMAIL" \
-  --role roles/billing.projectManager --condition None >/dev/null
+# Reading billing info first needs resourcemanager.projects.get, which only
+# roles/browser (read-only project metadata) adds.
+for role in roles/billing.projectManager roles/browser; do
+  retry gc projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$KILL_EMAIL" \
+    --role "$role" --condition None >/dev/null
+done
 
 if ! gc pubsub topics describe "$TOPIC" >/dev/null 2>&1; then
   gc pubsub topics create "$TOPIC"

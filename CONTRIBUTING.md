@@ -85,7 +85,9 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
   the cause, then re-link billing:
   `gcloud billing projects link waiverwatch-509716 --billing-account <id>`.
   It runs the latest release's image and is (re)deployed by `setup.sh`;
-  `KILLSWITCH_DRY_RUN=1 deploy/setup.sh …` deploys it log-only.
+  `KILLSWITCH_DRY_RUN=1 deploy/setup.sh …` deploys it log-only: an
+  over-budget message then runs the real billing read and a permission
+  check, everything except the unlink.
 - **Every release:** merging the release-please PR tags the release, and
   `release.yml` calls `deploy.yml`: build, push, `gcloud run deploy`, then a
   smoke test that the new version is serving.
