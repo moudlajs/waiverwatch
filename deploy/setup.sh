@@ -51,6 +51,8 @@ gc services enable \
   iamcredentials.googleapis.com \
   sts.googleapis.com \
   secretmanager.googleapis.com \
+  pubsub.googleapis.com \
+  cloudbilling.googleapis.com \
   billingbudgets.googleapis.com
 
 say "Artifact Registry: $AR_REPO in $REGION (keeps the 5 newest images)"
@@ -137,6 +139,62 @@ if ! grep -qx waiverwatch <<<"$budgets"; then
     --budget-amount "${BUDGET_CZK}CZK" --filter-projects "projects/$PROJECT" \
     --threshold-rule percent=0.5 --threshold-rule percent=1.0
 fi
+
+say "Billing kill switch (#51)"
+# The budget publishes to TOPIC; a push subscription delivers each message
+# to the private waiverwatch-killswitch service (only PUSH_SA may invoke
+# it). When actual cost reaches the budget, it unlinks the project's
+# billing, which stops every paid service. KILLSWITCH_DRY_RUN=1 deploys it
+# in log-only mode. It runs the latest release's image, so run this after
+# a release that contains /killswitch.
+TOPIC=billing-budget
+KILL_SA=killswitch
+PUSH_SA=killswitch-push
+KILL_EMAIL="$KILL_SA@$PROJECT.iam.gserviceaccount.com"
+PUSH_EMAIL="$PUSH_SA@$PROJECT.iam.gserviceaccount.com"
+for sa in "$KILL_SA:billing kill switch" "$PUSH_SA:Pub/Sub push to the kill switch"; do
+  name=${sa%%:*}
+  if ! gc iam service-accounts describe "$name@$PROJECT.iam.gserviceaccount.com" >/dev/null 2>&1; then
+    gc iam service-accounts create "$name" --display-name "${sa#*:}"
+  fi
+done
+# Unlinking billing needs resourcemanager.projects.deleteBillingAssignment,
+# which Project Billing Manager on this project grants. Nothing on the
+# billing account itself.
+# Reading billing info first needs resourcemanager.projects.get, which only
+# roles/browser (read-only project metadata) adds.
+for role in roles/billing.projectManager roles/browser; do
+  retry gc projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$KILL_EMAIL" \
+    --role "$role" --condition None >/dev/null
+done
+
+if ! gc pubsub topics describe "$TOPIC" >/dev/null 2>&1; then
+  gc pubsub topics create "$TOPIC"
+fi
+# Cloud Billing publishes budget notifications as this Google-managed account.
+retry gc pubsub topics add-iam-policy-binding "$TOPIC" \
+  --member serviceAccount:billing-budget-alert@system.gserviceaccount.com \
+  --role roles/pubsub.publisher >/dev/null
+
+TAG=$(gh release view --repo "$REPO" --json tagName --jq .tagName)
+gc run deploy waiverwatch-killswitch --region "$REGION" \
+  --image "$REGION-docker.pkg.dev/$PROJECT/$AR_REPO/waiverwatch:$TAG" \
+  --command /killswitch --service-account "$KILL_EMAIL" --no-allow-unauthenticated \
+  --min-instances 0 --max-instances 1 --cpu 1 --memory 256Mi --timeout 60 \
+  --set-env-vars "KILLSWITCH_PROJECT=$PROJECT,KILLSWITCH_DRY_RUN=${KILLSWITCH_DRY_RUN:-0}" >/dev/null
+KILL_URL=$(gc run services describe waiverwatch-killswitch --region "$REGION" --format 'value(status.url)')
+retry gc run services add-iam-policy-binding waiverwatch-killswitch --region "$REGION" \
+  --member "serviceAccount:$PUSH_EMAIL" --role roles/run.invoker >/dev/null
+if ! gc pubsub subscriptions describe killswitch >/dev/null 2>&1; then
+  retry gc pubsub subscriptions create killswitch --topic "$TOPIC" \
+    --push-endpoint "$KILL_URL" --push-auth-service-account "$PUSH_EMAIL" \
+    --ack-deadline 60 --message-retention-duration 1d
+fi
+budget=$(gcloud billing budgets list --billing-account "$BILLING" \
+  --filter 'displayName=waiverwatch' --format 'value(name)')
+gcloud billing budgets update "$budget" --billing-account "$BILLING" \
+  --notifications-rule-pubsub-topic "projects/$PROJECT/topics/$TOPIC" >/dev/null
+echo "  kill switch $TAG at $KILL_URL (dry run: ${KILLSWITCH_DRY_RUN:-0})"
 
 say "GitHub repository variables"
 gh variable set GCP_PROJECT_ID --repo "$REPO" --body "$PROJECT"

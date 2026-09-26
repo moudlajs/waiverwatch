@@ -77,6 +77,17 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
   gh variable set WAIVERWATCH_BASE_URL --body "$(gcloud run services describe \
     waiverwatch --region europe-west1 --format 'value(status.url)')"
   ```
+- **Billing kill switch** (#51): Google Cloud has no hard spending cap, so
+  the budget publishes to Pub/Sub and the private `waiverwatch-killswitch`
+  service unlinks the project's billing once actual cost reaches the budget
+  (25 CZK/month). Everything stops, including the connector. Cost data lags
+  by hours, so it caps the damage rather than every cent. To recover, find
+  the cause, then re-link billing:
+  `gcloud billing projects link waiverwatch-509716 --billing-account <id>`.
+  It runs the latest release's image and is (re)deployed by `setup.sh`;
+  `KILLSWITCH_DRY_RUN=1 deploy/setup.sh …` deploys it log-only: an
+  over-budget message then runs the real billing read and a permission
+  check, everything except the unlink.
 - **Every release:** merging the release-please PR tags the release, and
   `release.yml` calls `deploy.yml`: build, push, `gcloud run deploy`, then a
   smoke test that the new version is serving.
