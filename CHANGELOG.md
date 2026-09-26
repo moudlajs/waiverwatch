@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/moudlajs/waiverwatch/compare/v0.7.0...v0.8.0) (2026-09-26)
+
+
+### Features
+
+* per-user limits and a global Sleeper call budget ([#65](https://github.com/moudlajs/waiverwatch/issues/65)) ([2845329](https://github.com/moudlajs/waiverwatch/commit/2845329731b7365e5344dfa3590a7a50e2917f00))
+
 ## [0.7.0](https://github.com/moudlajs/waiverwatch/compare/v0.6.1...v0.7.0) (2026-09-26)
 
 
