@@ -61,8 +61,9 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
   project roles (it can read only its two OAuth secrets), a deploy service account that GitHub Actions reaches through
   Workload Identity Federation (only from `main` of this repository, no keys),
   a budget alert, the `GCP_*` repository variables, and the OAuth secrets
-  (`waiverwatch-signing-key`, generated; `waiverwatch-passphrase`, set by the
-  owner with the command the script prints). Safe to re-run.
+  (`waiverwatch-signing-key` and `waiverwatch-passphrase`, both random and
+  generated once, never printed; the script shows how to copy the passphrase
+  into a password manager). Safe to re-run.
 - **Runtime settings** (repository variables, not secrets):
   `WAIVERWATCH_USER` is the Sleeper username the server answers for, and
   `WAIVERWATCH_BASE_URL` is the service URL the connector is added with.
