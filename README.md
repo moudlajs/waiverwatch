@@ -69,7 +69,8 @@ Restart Claude and ask *"How are my fantasy leagues looking?"*
 
 1. On **claude.ai in a browser** (connectors can't be added from the phone
    app): **Customize → Connectors → Add custom connector**.
-2. URL: `https://waiverwatch-44okyiteea-ew.a.run.app/mcp`. Keep the detected
+2. URL: `https://<the Cloud Run URL>/mcp` (the public one follows with the
+   user guide, #57). Keep the detected
    settings ("Sign in now", "Use Claude's published identity") and click
    **Add**, then **Connect**.
 3. On the waiverwatch sign-in page, enter **your Sleeper username**. No
