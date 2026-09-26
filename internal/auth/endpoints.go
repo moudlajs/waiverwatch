@@ -268,9 +268,21 @@ func page(w http.ResponseWriter, status int, d pageData) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Frame-Options", "DENY") // no clickjacking the passphrase form
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'")
+	w.Header().Set("Content-Security-Policy", csp(d.Req.RedirectURI))
 	w.WriteHeader(status)
 	_ = signInPage.Execute(w, d)
+}
+
+// csp is the sign-in page's Content-Security-Policy. Browsers apply
+// form-action to the redirects that follow a form submission too, so the
+// validated redirect_uri's origin must be allowed, or the browser silently
+// blocks the way back to Claude after a correct passphrase.
+func csp(redirectURI string) string {
+	formAction := "'self'"
+	if u, err := url.Parse(redirectURI); err == nil && u.Scheme != "" && u.Host != "" {
+		formAction += " " + u.Scheme + "://" + u.Host
+	}
+	return "default-src 'none'; style-src 'unsafe-inline'; form-action " + formAction
 }
 
 var signInPage = template.Must(template.New("signin").Parse(`<!doctype html>
