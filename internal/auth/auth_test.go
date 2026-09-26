@@ -440,3 +440,30 @@ func TestUserFrom(t *testing.T) {
 		t.Errorf("got %+v, %v", id, ok)
 	}
 }
+
+func TestSignInPageAllowsTheWayBack(t *testing.T) {
+	tests := []struct {
+		redirect, want string
+	}{
+		{"https://claude.ai/api/mcp/auth_callback", "form-action 'self' https://claude.ai"},
+		{"http://localhost:3118/callback", "form-action 'self' http://localhost:3118"},
+		{"", "form-action 'self'"}, // error pages: no redirect to allow
+	}
+	for _, tt := range tests {
+		got := csp(tt.redirect)
+		if !strings.HasSuffix(got, tt.want) || !strings.HasPrefix(got, "default-src 'none'") {
+			t.Errorf("csp(%q) = %q, want it to end with %q", tt.redirect, got, tt.want)
+		}
+	}
+
+	// And the real page sends it.
+	base, clientID, _ := setup(t)
+	resp, err := http.Get(base + "/authorize?" + authorizeParams(clientID).Encode())
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if got := resp.Header.Get("Content-Security-Policy"); !strings.Contains(got, "form-action 'self' https://claude.ai") {
+		t.Errorf("sign-in page CSP = %q, must allow redirecting to https://claude.ai", got)
+	}
+}
