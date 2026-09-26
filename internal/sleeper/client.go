@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 // DefaultBaseURL is the public Sleeper API. No key, no auth.
@@ -21,19 +23,39 @@ const DefaultBaseURL = "https://api.sleeper.app/v1"
 // usually answers those with 200 and a JSON null rather than a 404.
 var ErrNotFound = errors.New("not found")
 
+// ErrBusy is returned when the call budget toward Sleeper is used up for
+// longer than a caller should wait.
+var ErrBusy = errors.New("waiverwatch has used up its Sleeper call budget for now; try again in a minute")
+
+// Sleeper asks apps to stay under 1000 calls a minute per IP and may block
+// above it. Every user of a hosted server shares its egress, so the client
+// holds all its calls to this budget, waiting at most budgetWait for room.
+const (
+	callsPerSecond = 10 // 600 a minute
+	callBurst      = 50
+	budgetWait     = 10 * time.Second
+)
+
 // Client calls the Sleeper API. The zero value is not usable; use New.
 type Client struct {
-	http *http.Client
-	base string
+	http   *http.Client
+	base   string
+	budget *rate.Limiter
 }
 
 // New returns a client for baseURL, normally DefaultBaseURL. Tests pass an
 // httptest server URL instead.
 func New(baseURL string) *Client {
 	return &Client{
-		http: &http.Client{Timeout: 10 * time.Second},
-		base: baseURL,
+		http:   &http.Client{Timeout: 10 * time.Second},
+		base:   baseURL,
+		budget: rate.NewLimiter(callsPerSecond, callBurst),
 	}
+}
+
+// SetBudget replaces the call budget (tests, or a different deployment).
+func (c *Client) SetBudget(perSecond rate.Limit, burst int) {
+	c.budget = rate.NewLimiter(perSecond, burst)
 }
 
 // User looks up a user by username or user ID.
@@ -143,6 +165,15 @@ func (c *Client) Players(ctx context.Context) (map[string]Player, error) {
 
 // get fetches base+path and decodes the JSON body into dst.
 func (c *Client) get(ctx context.Context, path string, dst any) error {
+	wait, cancel := context.WithTimeout(ctx, budgetWait)
+	err := c.budget.Wait(wait)
+	cancel()
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return ErrBusy
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+path, nil)
 	if err != nil {
 		return err

@@ -39,8 +39,8 @@ username into the tools; #55, a first-run step, is not needed.)
 
 | Limit | Why |
 |---|---|
-| Per user: tool calls per minute | one heavy user can't starve the rest |
-| Global: calls to Sleeper, ~600/min | Sleeper asks for < 1000/min per IP and may block above it; every user shares Cloud Run's egress, and one tool call makes 10-30 Sleeper calls |
+| Per user: 30 tool calls a minute, burst 10 | one heavy user can't starve the rest |
+| Global: calls to Sleeper, 600/min (10/s, burst 50) | Sleeper asks for < 1000/min per IP and may block above it; every user shares Cloud Run's egress, and one tool call makes 10-30 Sleeper calls |
 | Per instance: 5 req/s (exists) | backstop |
 | Billing kill switch at 25 CZK/month (exists) | last line |
 

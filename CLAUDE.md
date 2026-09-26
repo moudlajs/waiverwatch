@@ -68,6 +68,11 @@ fine, it's the transport).
   chatty ones. Work across all of the user's leagues by default.
 - Fan out per-league requests concurrently (`errgroup`), with a
   `context.Context` and a client timeout on every request.
+- **Limits** (#56): `sleeper.Client` holds every call to 10/s (600/min,
+  under Sleeper's 1000/min per IP), waiting up to 10s, else `ErrBusy`. Each
+  signed-in user gets 30 tool calls a minute (burst 10) via the `gate` that
+  wraps every tool (`mcp.limited`); stdio is unlimited. Both are per
+  instance: raising `max-instances` multiplies the Sleeper budget.
 
 ## Sleeper API
 
