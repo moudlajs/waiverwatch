@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/moudlajs/waiverwatch/compare/v0.6.0...v0.6.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **deploy:** enable the Cloud Resource Manager API for the kill switch ([#60](https://github.com/moudlajs/waiverwatch/issues/60)) ([45a4a73](https://github.com/moudlajs/waiverwatch/commit/45a4a7387989f6a81cd2dffccbe86e46943377ff))
+
 ## [0.6.0](https://github.com/moudlajs/waiverwatch/compare/v0.5.1...v0.6.0) (2026-09-26)
 
 
