@@ -53,6 +53,7 @@ gc services enable \
   secretmanager.googleapis.com \
   pubsub.googleapis.com \
   cloudbilling.googleapis.com \
+  cloudresourcemanager.googleapis.com \
   billingbudgets.googleapis.com
 
 say "Artifact Registry: $AR_REPO in $REGION (keeps the 5 newest images)"
