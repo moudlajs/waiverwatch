@@ -54,16 +54,16 @@ jobs:
           docker build --build-arg VERSION="$TAG" -t "$IMAGE" .
           docker push "$IMAGE"
 
-      # Reachable by anyone (Claude calls it from Anthropic's servers), but
-      # every MCP request needs an OAuth token that only the owner's
-      # passphrase can mint. The secrets come from Secret Manager at run
-      # time; this workflow never sees them. Cost is capped by one instance,
-      # scale to zero, the app's rate limits and the budget alert.
+      # Anyone signs in with their Sleeper username (docs/multi-user.md);
+      # WAIVERWATCH_ALLOWED_USERS, when set, restricts who. The signing key
+      # comes from Secret Manager at run time; this workflow never sees it.
+      # Cost is capped by one instance, scale to zero, the app's rate
+      # limits, the budget alert and the billing kill switch.
       - name: Deploy
         id: deploy
         env:
           RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
-          SLEEPER_USER: ${{ vars.WAIVERWATCH_USER }}
+          ALLOWED_USERS: ${{ vars.WAIVERWATCH_ALLOWED_USERS }}
           BASE_URL: ${{ vars.WAIVERWATCH_BASE_URL }}
         run: |
           # The connector URL: the repository variable, else this service's
@@ -87,8 +87,8 @@ jobs:
             --memory 256Mi \
             --concurrency 20 \
             --timeout 60 \
-            --set-env-vars "WAIVERWATCH_USER=$SLEEPER_USER,WAIVERWATCH_BASE_URL=$BASE_URL" \
-            --set-secrets "WAIVERWATCH_PASSPHRASE=waiverwatch-passphrase:latest,WAIVERWATCH_SIGNING_KEY=waiverwatch-signing-key:latest" \
+            --set-env-vars "^|^WAIVERWATCH_BASE_URL=$BASE_URL|WAIVERWATCH_ALLOWED_USERS=$ALLOWED_USERS" \
+            --set-secrets "WAIVERWATCH_SIGNING_KEY=waiverwatch-signing-key:latest" \
             --quiet
           url=$(gcloud run services describe waiverwatch --region "$REGION" --format 'value(status.url)')
           echo "url=$url" >> "$GITHUB_OUTPUT"

@@ -9,6 +9,7 @@ import (
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/moudlajs/waiverwatch/internal/auth"
 	"github.com/moudlajs/waiverwatch/internal/league"
 )
 
@@ -24,7 +25,8 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 		Description: "List every Sleeper league the user is in this season, with league type, size, " +
 			"the user's team name, record, points for/against and standing. Also returns the current NFL season and week.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
-	}, func(ctx context.Context, _ *sdk.CallToolRequest, _ struct{}) (*sdk.CallToolResult, league.Overview, error) {
+	}, func(ctx context.Context, req *sdk.CallToolRequest, _ struct{}) (*sdk.CallToolResult, league.Overview, error) {
+		ctx = forUser(ctx, req)
 		ov, err := svc.Overview(ctx)
 		return nil, ov, err
 	})
@@ -35,7 +37,8 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 			"(slot, name, position, NFL team, injury, points). Guillotine leagues have no opponent; they report my rank " +
 			"among surviving teams and my margin over the lowest one.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
-	}, func(ctx context.Context, _ *sdk.CallToolRequest, in MatchupsInput) (*sdk.CallToolResult, league.Week, error) {
+	}, func(ctx context.Context, req *sdk.CallToolRequest, in MatchupsInput) (*sdk.CallToolResult, league.Week, error) {
+		ctx = forUser(ctx, req)
 		w, err := svc.Matchups(ctx, in.Week)
 		return nil, w, err
 	})
@@ -45,7 +48,8 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 		Description: "The most-added players across all of Sleeper right now (the waiver-wire signal), each with the " +
 			"leagues where I can still claim him and the leagues where he is already on my roster.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
-	}, func(ctx context.Context, _ *sdk.CallToolRequest, in TrendingInput) (*sdk.CallToolResult, league.TrendingReport, error) {
+	}, func(ctx context.Context, req *sdk.CallToolRequest, in TrendingInput) (*sdk.CallToolResult, league.TrendingReport, error) {
+		ctx = forUser(ctx, req)
 		hours, limit := in.LookbackHours, in.Limit
 		if hours <= 0 {
 			hours = 24
@@ -63,7 +67,8 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 			"the league can start), ranked by this week's trending adds and then Sleeper's overall rank. Includes my " +
 			"waiver priority or FAAB budget left in each league. Use it for \"who should I pick up?\"",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
-	}, func(ctx context.Context, _ *sdk.CallToolRequest, in WaiverInput) (*sdk.CallToolResult, league.WaiverReport, error) {
+	}, func(ctx context.Context, req *sdk.CallToolRequest, in WaiverInput) (*sdk.CallToolResult, league.WaiverReport, error) {
+		ctx = forUser(ctx, req)
 		limit := in.Limit
 		if limit <= 0 {
 			limit = 5
@@ -78,7 +83,8 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 			"NFL team and injury. Mine by default, or any owner by team or display name. Without a league it covers " +
 			"every league (for an owner: every league they are in).",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
-	}, func(ctx context.Context, _ *sdk.CallToolRequest, in RosterInput) (*sdk.CallToolResult, league.RosterReport, error) {
+	}, func(ctx context.Context, req *sdk.CallToolRequest, in RosterInput) (*sdk.CallToolResult, league.RosterReport, error) {
+		ctx = forUser(ctx, req)
 		r, err := svc.Rosters(ctx, in.League, in.Owner)
 		return nil, r, err
 	})
@@ -89,7 +95,8 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 			"serious and most-started first, with the leagues where he is in my lineup. Where he is starting, it " +
 			"suggests the best available replacement at his position in that league.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
-	}, func(ctx context.Context, _ *sdk.CallToolRequest, _ struct{}) (*sdk.CallToolResult, league.InjuryReport, error) {
+	}, func(ctx context.Context, req *sdk.CallToolRequest, _ struct{}) (*sdk.CallToolResult, league.InjuryReport, error) {
+		ctx = forUser(ctx, req)
 		r, err := svc.Injuries(ctx)
 		return nil, r, err
 	})
@@ -100,7 +107,8 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 			"bench, then IR), with both records. By default the other team is this week's opponent in every league; " +
 			"name an owner (team or display name) to compare against anyone, e.g. before a trade.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
-	}, func(ctx context.Context, _ *sdk.CallToolRequest, in RosterInput) (*sdk.CallToolResult, league.Comparisons, error) {
+	}, func(ctx context.Context, req *sdk.CallToolRequest, in RosterInput) (*sdk.CallToolResult, league.Comparisons, error) {
+		ctx = forUser(ctx, req)
 		c, err := svc.Compare(ctx, in.League, in.Owner)
 		return nil, c, err
 	})
@@ -111,7 +119,8 @@ func NewServer(svc *league.Service, version string) *sdk.Server {
 			"on my roster). Dynasty leagues include earlier seasons, i.e. the startup draft and past rookie drafts. " +
 			"Pass a player name to answer \"where did I draft X?\", including players I have since dropped or traded.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
-	}, func(ctx context.Context, _ *sdk.CallToolRequest, in DraftInput) (*sdk.CallToolResult, league.DraftReport, error) {
+	}, func(ctx context.Context, req *sdk.CallToolRequest, in DraftInput) (*sdk.CallToolResult, league.DraftReport, error) {
+		ctx = forUser(ctx, req)
 		r, err := svc.Drafts(ctx, in.League, in.Player)
 		return nil, r, err
 	})
@@ -163,3 +172,16 @@ type MatchupsInput struct {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// forUser makes the tool answer for the Sleeper user the request's access
+// token names (hosted). Without a token (stdio) the Service's default user
+// applies.
+func forUser(ctx context.Context, req *sdk.CallToolRequest) context.Context {
+	if req == nil || req.Extra == nil {
+		return ctx
+	}
+	if id, ok := auth.UserFrom(req.Extra.TokenInfo); ok {
+		return league.WithUser(ctx, id.Username)
+	}
+	return ctx
+}

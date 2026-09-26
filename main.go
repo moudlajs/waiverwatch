@@ -1,9 +1,11 @@
 // Command waiverwatch is an MCP server for Sleeper fantasy football. It
 // speaks MCP over stdio for local clients (Claude Code, Claude Desktop), or
-// over HTTP at /mcp when PORT is set (Cloud Run). Over HTTP it requires
-// OAuth sign-in, configured by WAIVERWATCH_BASE_URL, WAIVERWATCH_PASSPHRASE
-// and WAIVERWATCH_SIGNING_KEY; WAIVERWATCH_NO_AUTH=1 turns it off for
-// local testing.
+// over HTTP at /mcp when PORT is set (Cloud Run). Over stdio it answers for
+// WAIVERWATCH_USER. Over HTTP anyone signs in with their Sleeper username
+// (OAuth; WAIVERWATCH_BASE_URL, WAIVERWATCH_SIGNING_KEY, optional
+// WAIVERWATCH_ALLOWED_USERS) and each request answers for its signed-in
+// user; WAIVERWATCH_NO_AUTH=1 turns sign-in off for local testing, with
+// WAIVERWATCH_USER as the only user.
 package main
 
 import (
@@ -15,6 +17,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"strings"
 	"syscall"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -48,17 +51,17 @@ func main() {
 }
 
 func run(ctx context.Context, username, port string) error {
-	if username == "" {
-		return errors.New("no Sleeper user: pass -user or set WAIVERWATCH_USER")
-	}
 	api := sleeper.New(sleeper.DefaultBaseURL)
 	players := league.NewDirectory(store.NewMemory(), api.Players)
 	server := mcp.NewServer(league.NewService(api, players, username), version())
 
 	if port == "" {
+		if username == "" {
+			return errors.New("no Sleeper user: pass -user or set WAIVERWATCH_USER")
+		}
 		return server.Run(ctx, &sdk.StdioTransport{})
 	}
-	signIn, err := signInServer()
+	signIn, err := signInServer(api, username)
 	if err != nil {
 		return fmt.Errorf("sign-in: %w", err)
 	}
@@ -68,16 +71,41 @@ func run(ctx context.Context, username, port string) error {
 // signInServer builds the OAuth server from the environment. It returns nil
 // only when WAIVERWATCH_NO_AUTH=1, so a missing secret stops the server
 // instead of silently leaving it open.
-func signInServer() (*auth.Server, error) {
+func signInServer(api *sleeper.Client, username string) (*auth.Server, error) {
 	if os.Getenv("WAIVERWATCH_NO_AUTH") == "1" {
+		if username == "" {
+			return nil, errors.New("WAIVERWATCH_NO_AUTH=1 needs WAIVERWATCH_USER")
+		}
 		slog.Warn("WAIVERWATCH_NO_AUTH=1: anyone who can reach this server can use it")
 		return nil, nil
 	}
+	var allowed []string
+	if list := os.Getenv("WAIVERWATCH_ALLOWED_USERS"); list != "" {
+		allowed = strings.Split(list, ",")
+	}
 	return auth.New(auth.Config{
 		BaseURL:    os.Getenv("WAIVERWATCH_BASE_URL"),
-		Passphrase: os.Getenv("WAIVERWATCH_PASSPHRASE"),
 		SigningKey: []byte(os.Getenv("WAIVERWATCH_SIGNING_KEY")),
+		Lookup:     sleeperLookup(api),
+		Allowed:    allowed,
 	})
+}
+
+// sleeperLookup resolves sign-in usernames against Sleeper.
+func sleeperLookup(api *sleeper.Client) auth.Lookup {
+	return func(ctx context.Context, name string) (auth.Identity, error) {
+		u, err := api.User(ctx, name)
+		if errors.Is(err, sleeper.ErrNotFound) {
+			return auth.Identity{}, auth.ErrNoSuchUser
+		}
+		if err != nil {
+			return auth.Identity{}, err
+		}
+		if u.Username == "" {
+			u.Username = strings.ToLower(name)
+		}
+		return auth.Identity{UserID: u.UserID, Username: u.Username}, nil
+	}
 }
 
 // buildVersion is set by the container build (-ldflags -X).

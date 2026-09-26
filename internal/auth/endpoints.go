@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -93,17 +94,30 @@ func (s *Server) authorizeSubmit(w http.ResponseWriter, r *http.Request) {
 		page(w, http.StatusBadRequest, pageData{Error: err.Error()})
 		return
 	}
-	if !s.logins.Allow() {
-		page(w, http.StatusTooManyRequests, pageData{Req: req, Error: "Too many attempts. Wait a minute and try again."})
+	username := strings.TrimSpace(r.PostForm.Get("username"))
+	if username == "" {
+		page(w, http.StatusBadRequest, pageData{Req: req, Error: "Enter your Sleeper username."})
 		return
 	}
-	if !s.passphraseOK(r.PostForm.Get("passphrase")) {
-		page(w, http.StatusUnauthorized, pageData{Req: req, Error: "Wrong passphrase."})
+	if !s.logins.Allow() {
+		page(w, http.StatusTooManyRequests, pageData{Req: req, Username: username, Error: "Too many sign-ins right now. Try again in a minute."})
+		return
+	}
+	id, err := s.lookup(r.Context(), username)
+	switch {
+	case errors.Is(err, ErrNoSuchUser):
+		page(w, http.StatusUnauthorized, pageData{Req: req, Username: username, Error: fmt.Sprintf("Sleeper has no user named %q.", username)})
+		return
+	case err != nil:
+		page(w, http.StatusBadGateway, pageData{Req: req, Username: username, Error: "Couldn't reach Sleeper. Try again in a moment."})
+		return
+	case !s.allowedUser(id.Username):
+		page(w, http.StatusForbidden, pageData{Req: req, Username: username, Error: "This waiverwatch server is invite-only right now."})
 		return
 	}
 
 	code := s.signer.sign(claims{
-		Kind: kindCode, ClientID: req.ClientID, RedirectURI: req.RedirectURI,
+		Kind: kindCode, ClientID: req.ClientID, Subject: id.UserID, Username: id.Username, RedirectURI: req.RedirectURI,
 		Challenge: req.Challenge, ID: randomID(), Expires: s.now().Add(codeTTL).Unix(),
 	})
 	back, _ := url.Parse(req.RedirectURI) // validated above
@@ -136,7 +150,7 @@ func (s *Server) token(w http.ResponseWriter, r *http.Request) {
 		case !s.useCode(c.ID, time.Unix(c.Expires, 0)):
 			tokenError(w, "invalid_grant", "code already used")
 		default:
-			s.issue(w, c.ClientID)
+			s.issue(w, c)
 		}
 	case "refresh_token":
 		c, err := s.signer.verify(f.Get("refresh_token"), kindRefresh, s.now())
@@ -145,8 +159,11 @@ func (s *Server) token(w http.ResponseWriter, r *http.Request) {
 			tokenError(w, "invalid_grant", "invalid or expired refresh token")
 		case f.Get("client_id") != "" && f.Get("client_id") != c.ClientID:
 			tokenError(w, "invalid_grant", "refresh token was issued to another client")
+		case c.Subject == "" || !s.allowedUser(c.Username):
+			// Pre-username tokens, or a user taken off the allowlist.
+			tokenError(w, "invalid_grant", "sign in again")
 		default:
-			s.issue(w, c.ClientID)
+			s.issue(w, c)
 		}
 	default:
 		tokenError(w, "unsupported_grant_type", "use authorization_code or refresh_token")
@@ -157,17 +174,19 @@ func (s *Server) token(w http.ResponseWriter, r *http.Request) {
 // Every refresh hands out a new refresh token, but tokens are stateless, so
 // earlier ones stay valid until they expire: this is not rotation with
 // revocation. Rotating the signing key is the way to revoke everything.
-func (s *Server) issue(w http.ResponseWriter, clientID string) {
+func (s *Server) issue(w http.ResponseWriter, from claims) {
 	now := s.now()
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"access_token": s.signer.sign(claims{
-			Kind: kindAccess, ClientID: clientID, Audience: s.Resource(), Expires: now.Add(accessTTL).Unix(),
+			Kind: kindAccess, ClientID: from.ClientID, Subject: from.Subject, Username: from.Username,
+			Audience: s.Resource(), Expires: now.Add(accessTTL).Unix(),
 		}),
 		"token_type": "Bearer",
 		"expires_in": int(accessTTL.Seconds()),
 		"refresh_token": s.signer.sign(claims{
-			Kind: kindRefresh, ClientID: clientID, Expires: now.Add(refreshTTL).Unix(),
+			Kind: kindRefresh, ClientID: from.ClientID, Subject: from.Subject, Username: from.Username,
+			Expires: now.Add(refreshTTL).Unix(),
 		}),
 		"scope": scope,
 	})
@@ -260,14 +279,15 @@ func tokenError(w http.ResponseWriter, code, description string) {
 }
 
 type pageData struct {
-	Req   authRequest
-	Error string
+	Req      authRequest
+	Username string
+	Error    string
 }
 
 func page(w http.ResponseWriter, status int, d pageData) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Frame-Options", "DENY") // no clickjacking the passphrase form
+	w.Header().Set("X-Frame-Options", "DENY") // no clickjacking the sign-in form
 	w.Header().Set("Content-Security-Policy", csp(d.Req.RedirectURI))
 	w.WriteHeader(status)
 	_ = signInPage.Execute(w, d)
@@ -276,7 +296,7 @@ func page(w http.ResponseWriter, status int, d pageData) {
 // csp is the sign-in page's Content-Security-Policy. Browsers apply
 // form-action to the redirects that follow a form submission too, so the
 // validated redirect_uri's origin must be allowed, or the browser silently
-// blocks the way back to Claude after a correct passphrase.
+// blocks the way back to Claude after a successful sign-in.
 func csp(redirectURI string) string {
 	formAction := "'self'"
 	if u, err := url.Parse(redirectURI); err == nil && u.Scheme != "" && u.Host != "" {
@@ -295,7 +315,7 @@ input{background:#1c1c1c;color:#eee}button{background:#d97757;color:#111;border:
 </style></head><body><main>
 <h1>waiverwatch</h1>
 {{if .Req.ClientID}}
-<p><strong>{{.Req.ClientHost}}</strong>{{if .Req.ClientName}} ({{.Req.ClientName}}){{end}} wants to read your fantasy leagues.</p>
+<p><strong>{{.Req.ClientHost}}</strong>{{if .Req.ClientName}} ({{.Req.ClientName}}){{end}} wants to read your Sleeper fantasy leagues.</p>
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 <form method="post" action="/authorize">
 <input type="hidden" name="response_type" value="code">
@@ -306,11 +326,11 @@ input{background:#1c1c1c;color:#eee}button{background:#d97757;color:#111;border:
 <input type="hidden" name="code_challenge_method" value="S256">
 <input type="hidden" name="scope" value="{{.Req.Scope}}">
 <input type="hidden" name="resource" value="{{.Req.Resource}}">
-<label for="p">Passphrase</label>
-<input id="p" type="password" name="passphrase" autocomplete="current-password" autofocus required>
+<label for="u">Your Sleeper username</label>
+<input id="u" type="text" name="username" value="{{.Username}}" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus required>
 <button type="submit">Sign in</button>
 </form>
-<p class="muted">Only the owner of this server has the passphrase.</p>
+<p class="muted">waiverwatch reads public Sleeper data for this username. No password, and nothing is stored.</p>
 {{else}}
 <p class="err">{{.Error}}</p>
 {{end}}

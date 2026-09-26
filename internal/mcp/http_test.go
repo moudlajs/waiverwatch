@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	sdkauth "github.com/modelcontextprotocol/go-sdk/auth"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/time/rate"
 
@@ -101,8 +102,8 @@ func TestServeReportsListenErrors(t *testing.T) {
 
 func TestHTTPRequiresSignIn(t *testing.T) {
 	signIn, err := auth.New(auth.Config{
-		BaseURL: "https://waiverwatch.example", Passphrase: "correct horse battery",
-		SigningKey: []byte("0123456789abcdef0123456789abcdef"),
+		BaseURL: "https://waiverwatch.example", SigningKey: []byte("0123456789abcdef0123456789abcdef"),
+		Lookup: func(context.Context, string) (auth.Identity, error) { return auth.Identity{}, auth.ErrNoSuchUser },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -133,5 +134,42 @@ func TestHTTPRequiresSignIn(t *testing.T) {
 		if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), want) {
 			t.Errorf("%s: %d %q, want %q", path, resp.StatusCode, body, want)
 		}
+	}
+}
+
+// Two signed-in users, one server with no default user: each tool call
+// answers for the user in its own token.
+func TestToolsAnswerForTheSignedInUser(t *testing.T) {
+	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
+		"/state/nfl":               sleeper.State{Season: "2026", Week: 3},
+		"/user/alice":              sleeper.User{UserID: "1", Username: "alice"},
+		"/user/bob":                sleeper.User{UserID: "2", Username: "bob"},
+		"/user/1/leagues/nfl/2026": []sleeper.League{{LeagueID: "A", Name: "Alice League"}},
+		"/user/2/leagues/nfl/2026": []sleeper.League{{LeagueID: "B", Name: "Bob League"}},
+		"/league/A/rosters":        []sleeper.Roster{{RosterID: 1, OwnerID: "1"}},
+		"/league/A/users":          []sleeper.LeagueUser{{UserID: "1", DisplayName: "alice"}},
+		"/league/B/rosters":        []sleeper.Roster{{RosterID: 1, OwnerID: "2"}},
+		"/league/B/users":          []sleeper.LeagueUser{{UserID: "2", DisplayName: "bob"}},
+	}))
+	svc := league.NewService(api, nil, "") // hosted: no default user
+
+	as := func(id, name string) *sdk.CallToolRequest {
+		return &sdk.CallToolRequest{Extra: &sdk.RequestExtra{TokenInfo: &sdkauth.TokenInfo{
+			UserID: id, Extra: map[string]any{"sleeper_username": name},
+		}}}
+	}
+	for _, tt := range []struct{ id, name, league string }{{"1", "alice", "Alice League"}, {"2", "bob", "Bob League"}} {
+		ov, err := svc.Overview(forUser(context.Background(), as(tt.id, tt.name)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ov.Leagues) != 1 || ov.Leagues[0].Name != tt.league {
+			t.Errorf("%s got %+v", tt.name, ov.Leagues)
+		}
+	}
+
+	// No token and no default user: an error, never someone else's leagues.
+	if _, err := svc.Overview(forUser(context.Background(), &sdk.CallToolRequest{})); err == nil {
+		t.Error("want an error without a user")
 	}
 }

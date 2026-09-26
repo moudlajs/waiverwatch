@@ -2,6 +2,7 @@ package league
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -17,14 +18,33 @@ const fanOut = 8
 // Service answers questions about one user's leagues. Every call fetches
 // live data from Sleeper; only the player dictionary is cached.
 type Service struct {
-	api      *sleeper.Client
-	players  *Directory
-	username string
+	api         *sleeper.Client
+	players     *Directory
+	defaultUser string
 }
 
-// NewService returns a Service for the Sleeper user username.
-func NewService(api *sleeper.Client, players *Directory, username string) *Service {
-	return &Service{api: api, players: players, username: username}
+// NewService returns a Service. Calls answer for the user set on their
+// context with WithUser, else for defaultUser (the local, single-user case);
+// defaultUser may be empty when every call carries a user.
+func NewService(api *sleeper.Client, players *Directory, defaultUser string) *Service {
+	return &Service{api: api, players: players, defaultUser: defaultUser}
+}
+
+type userKey struct{}
+
+// WithUser makes Service calls under ctx answer for this Sleeper username.
+func WithUser(ctx context.Context, username string) context.Context {
+	return context.WithValue(ctx, userKey{}, username)
+}
+
+func (s *Service) user(ctx context.Context) (string, error) {
+	if u, _ := ctx.Value(userKey{}).(string); u != "" {
+		return u, nil
+	}
+	if s.defaultUser != "" {
+		return s.defaultUser, nil
+	}
+	return "", errors.New("no Sleeper user for this request")
 }
 
 // Overview is the user's leagues for the current season and week.
@@ -77,7 +97,11 @@ func (s *Service) myLeagues(ctx context.Context) (sleeper.State, sleeper.User, [
 	if err != nil {
 		return sleeper.State{}, sleeper.User{}, nil, err
 	}
-	user, err := s.api.User(ctx, s.username)
+	username, err := s.user(ctx)
+	if err != nil {
+		return sleeper.State{}, sleeper.User{}, nil, err
+	}
+	user, err := s.api.User(ctx, username)
 	if err != nil {
 		return sleeper.State{}, sleeper.User{}, nil, err
 	}

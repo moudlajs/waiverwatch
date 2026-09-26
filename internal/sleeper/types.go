@@ -7,6 +7,7 @@ import "strings"
 // User is a Sleeper account.
 type User struct {
 	UserID      string `json:"user_id"`
+	Username    string `json:"username"` // lowercase login name
 	DisplayName string `json:"display_name"`
 }
 

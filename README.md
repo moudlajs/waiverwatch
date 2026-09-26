@@ -67,14 +67,14 @@ Restart Claude and ask *"How are my fantasy leagues looking?"*
 
 ## Use it on claude.ai and your phone
 
-The hosted server is for its owner only: it asks for a passphrase once per
-Claude app you connect.
-
 1. On **claude.ai in a browser** (connectors can't be added from the phone
    app): **Customize → Connectors → Add custom connector**.
-2. URL: `https://<your Cloud Run URL>/mcp`. Leave the OAuth fields empty;
-   Claude uses its published client identity.
-3. Claude opens the waiverwatch sign-in page: enter the passphrase.
+2. URL: `https://<the Cloud Run URL>/mcp` (the public one follows with the
+   user guide, #57). Keep the detected
+   settings ("Sign in now", "Use Claude's published identity") and click
+   **Add**, then **Connect**.
+3. On the waiverwatch sign-in page, enter **your Sleeper username**. No
+   password: waiverwatch only reads public Sleeper data, and stores nothing.
 4. The connector syncs to the Claude mobile app. Enable it per chat with
    **+ → Connectors**.
 

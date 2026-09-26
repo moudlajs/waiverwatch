@@ -72,9 +72,8 @@ jobs:
       - run: docker build --build-arg VERSION=ci -t waiverwatch:ci .
       - name: container serves /health
         run: |
-          docker run -d --name ww -p 8080:8080 -e WAIVERWATCH_USER=ci \
+          docker run -d --name ww -p 8080:8080 \
             -e WAIVERWATCH_BASE_URL=http://127.0.0.1:8080 \
-            -e WAIVERWATCH_PASSPHRASE=ci-only-passphrase \
             -e WAIVERWATCH_SIGNING_KEY=ci-only-signing-key-0123456789abcdef \
             waiverwatch:ci
           for _ in $(seq 1 20); do
