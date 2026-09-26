@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/moudlajs/waiverwatch/compare/v0.6.1...v0.7.0) (2026-09-26)
+
+
+### Features
+
+* **auth:** sign in with your Sleeper username ([#64](https://github.com/moudlajs/waiverwatch/issues/64)) ([1017f0c](https://github.com/moudlajs/waiverwatch/commit/1017f0c61799ba10fee416445c77840c4b6dd845))
+
+
+### Documentation
+
+* multi-user design ([#62](https://github.com/moudlajs/waiverwatch/issues/62)) ([e03ed8f](https://github.com/moudlajs/waiverwatch/commit/e03ed8fdab828899177c3677bd7a0f3c1c28f1d2))
+
 ## [0.6.1](https://github.com/moudlajs/waiverwatch/compare/v0.6.0...v0.6.1) (2026-09-26)
 
 
