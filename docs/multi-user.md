@@ -24,7 +24,8 @@ usernames, all to protect data that is public anyway.
 
 - Open to every Sleeper user.
 - `WAIVERWATCH_ALLOWED_USERS` (comma-separated usernames) restricts sign-in
-  when set; empty means anyone. For abuse, not for day-to-day use.
+  when set; unset (the repository variable deleted, since GitHub doesn't
+  allow empty ones) means anyone. For abuse, not for day-to-day use.
 
 Rejected: an invite list. Adding people one by one doesn't fit a public post,
 and email invites would need an email service.
