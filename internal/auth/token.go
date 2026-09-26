@@ -23,6 +23,8 @@ const (
 type claims struct {
 	Kind        string `json:"k"`
 	ClientID    string `json:"c"`
+	Subject     string `json:"s,omitempty"`  // Sleeper user ID
+	Username    string `json:"u,omitempty"`  // Sleeper username
 	Audience    string `json:"a,omitempty"`  // access tokens: the MCP resource URL
 	RedirectURI string `json:"r,omitempty"`  // codes
 	Challenge   string `json:"pc,omitempty"` // codes: PKCE S256 challenge

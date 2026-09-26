@@ -1,19 +1,24 @@
 package auth
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
+
+	sdkauth "github.com/modelcontextprotocol/go-sdk/auth"
 )
 
 const (
-	pass     = "correct horse battery"
+	username = "Moudlajs" // as typed; Sleeper's canonical form is lowercase
 	verifier = "a-perfectly-random-pkce-verifier-that-is-long-enough-0123456789"
 )
 
@@ -24,10 +29,23 @@ func challenge(v string) string {
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
+// fakeLookup knows two Sleeper users; "sleeperdown" fails like an outage.
+func fakeLookup(_ context.Context, name string) (Identity, error) {
+	switch strings.ToLower(name) {
+	case "moudlajs":
+		return Identity{UserID: "1213", Username: "moudlajs"}, nil
+	case "friend":
+		return Identity{UserID: "42", Username: "friend"}, nil
+	case "sleeperdown":
+		return Identity{}, errors.New("connection refused")
+	}
+	return Identity{}, ErrNoSuchUser
+}
+
 // setup runs a fake client metadata host and the auth server behind a mux
-// with a protected /mcp. It returns the auth server's URL, the client_id,
-// and the server.
-func setup(t *testing.T) (string, string, *Server) {
+// with a protected /mcp that echoes the signed-in username. It returns the
+// auth server's URL, the client_id, and the server.
+func setup(t *testing.T, allowed ...string) (string, string, *Server) {
 	t.Helper()
 	var clientID string
 	meta := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -43,13 +61,14 @@ func setup(t *testing.T) (string, string, *Server) {
 	mux := http.NewServeMux()
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	s, err := New(Config{BaseURL: srv.URL, Passphrase: pass, SigningKey: key, Clients: []string{clientID}})
+	s, err := New(Config{BaseURL: srv.URL, SigningKey: key, Lookup: fakeLookup, Allowed: allowed, Clients: []string{clientID}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	s.Routes(mux)
-	mux.Handle("/mcp", s.Protect(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("tools"))
+	mux.Handle("/mcp", s.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, _ := UserFrom(sdkauth.TokenInfoFromContext(r.Context()))
+		_, _ = w.Write([]byte(id.Username))
 	})))
 	return srv.URL, clientID, s
 }
@@ -64,7 +83,7 @@ func authorizeParams(clientID string) url.Values {
 
 var noRedirect = &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 
-// signIn posts the passphrase and returns the status and, on success, where
+// signIn posts the sign-in form and returns the status and, on success, where
 // it redirects.
 func signIn(t *testing.T, base string, form url.Values) (int, *url.URL) {
 	t.Helper()
@@ -91,6 +110,13 @@ func tokenRequest(t *testing.T, base string, form url.Values) (int, map[string]a
 
 func mcpStatus(t *testing.T, base, bearer string) (int, string) {
 	t.Helper()
+	status, header, _ := mcpCall(t, base, bearer)
+	return status, header
+}
+
+// mcpCall returns the status, WWW-Authenticate header and body of a POST /mcp.
+func mcpCall(t *testing.T, base, bearer string) (int, string, string) {
+	t.Helper()
 	req, _ := http.NewRequest(http.MethodPost, base+"/mcp", nil)
 	if bearer != "" {
 		req.Header.Set("Authorization", "Bearer "+bearer)
@@ -100,7 +126,8 @@ func mcpStatus(t *testing.T, base, bearer string) (int, string) {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
-	return resp.StatusCode, resp.Header.Get("WWW-Authenticate")
+	body, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, resp.Header.Get("WWW-Authenticate"), string(body)
 }
 
 func TestFullFlow(t *testing.T) {
@@ -144,9 +171,9 @@ func TestFullFlow(t *testing.T) {
 		t.Fatalf("authorize page: %d", resp.StatusCode)
 	}
 
-	// 4. Right passphrase: redirect back with code, state and iss.
+	// 4. A real Sleeper username: redirect back with code, state and iss.
 	form := authorizeParams(clientID)
-	form.Set("passphrase", pass)
+	form.Set("username", username)
 	backStatus, loc := signIn(t, base, form)
 	if backStatus != http.StatusFound || loc.Host != "claude.ai" || loc.Query().Get("state") != "xyz" || loc.Query().Get("iss") != base {
 		t.Fatalf("redirect: %d %s", backStatus, loc)
@@ -169,9 +196,10 @@ func TestFullFlow(t *testing.T) {
 		t.Errorf("code reuse: %d %v", status, body)
 	}
 
-	// 7. The access token opens /mcp; the refresh token does not.
-	if status, _ := mcpStatus(t, base, access); status != http.StatusOK {
-		t.Errorf("with access token: %d", status)
+	// 7. The access token opens /mcp for the signed-in user (canonical
+	// username); the refresh token does not.
+	if status, _, body := mcpCall(t, base, access); status != http.StatusOK || body != "moudlajs" {
+		t.Errorf("with access token: %d, user %q", status, body)
 	}
 	if status, _ := mcpStatus(t, base, tokens["refresh_token"].(string)); status != http.StatusUnauthorized {
 		t.Errorf("refresh token used as bearer: %d", status)
@@ -203,7 +231,7 @@ func TestAuthorizeRejects(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			v := authorizeParams(clientID)
 			tt.edit(v)
-			v.Set("passphrase", pass)
+			v.Set("username", username)
 			// Both the page and the submit refuse, and never redirect.
 			resp, err := http.Get(base + "/authorize?" + v.Encode())
 			if err != nil {
@@ -217,30 +245,57 @@ func TestAuthorizeRejects(t *testing.T) {
 	}
 }
 
-func TestWrongPassphraseAndRateLimit(t *testing.T) {
+func TestSignInRejects(t *testing.T) {
+	tests := []struct {
+		name     string
+		allowed  []string
+		username string
+		want     int
+		wantText string
+	}{
+		{"unknown user", nil, "nobody", http.StatusUnauthorized, "has no user named"},
+		{"empty", nil, "  ", http.StatusBadRequest, "Enter your Sleeper username"},
+		{"Sleeper down", nil, "sleeperdown", http.StatusBadGateway, "reach Sleeper"},
+		{"not on the allowlist", []string{"friend"}, username, http.StatusForbidden, "invite-only"},
+		{"on the allowlist, any case", []string{" MOUDLAJS "}, username, http.StatusFound, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base, clientID, _ := setup(t, tt.allowed...)
+			form := authorizeParams(clientID)
+			form.Set("username", tt.username)
+			resp, err := noRedirect.PostForm(base+"/authorize", form)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if resp.StatusCode != tt.want || !strings.Contains(string(body), tt.wantText) {
+				t.Errorf("%d, want %d with %q", resp.StatusCode, tt.want, tt.wantText)
+			}
+		})
+	}
+}
+
+func TestSignInRateLimit(t *testing.T) {
 	base, clientID, _ := setup(t)
 	form := authorizeParams(clientID)
-	form.Set("passphrase", "not the passphrase")
-	var statuses []int
-	for range 7 {
-		status, _ := signIn(t, base, form)
-		statuses = append(statuses, status)
+	form.Set("username", "nobody")
+	limited := 0
+	for range 40 {
+		if status, _ := signIn(t, base, form); status == http.StatusTooManyRequests {
+			limited++
+		}
 	}
-	for i, s := range statuses {
-		want := http.StatusUnauthorized
-		if i >= 5 {
-			want = http.StatusTooManyRequests
-		}
-		if s != want {
-			t.Errorf("attempt %d: %d, want %d (all: %v)", i+1, s, want, statuses)
-		}
+	if limited == 0 {
+		t.Error("40 sign-ins in a burst were never rate limited")
 	}
 }
 
 func TestTokenRejects(t *testing.T) {
 	base, clientID, s := setup(t)
 	form := authorizeParams(clientID)
-	form.Set("passphrase", pass)
+	form.Set("username", username)
 	_, loc := signIn(t, base, form)
 	code := loc.Query().Get("code")
 	good := url.Values{
@@ -294,11 +349,12 @@ func TestAccessTokenScope(t *testing.T) {
 		bearer string
 		want   int
 	}{
-		{"valid", tok(claims{Kind: kindAccess, Audience: s.Resource(), Expires: now.Add(time.Hour).Unix()}), http.StatusOK},
-		{"expired", tok(claims{Kind: kindAccess, Audience: s.Resource(), Expires: now.Add(-time.Second).Unix()}), http.StatusUnauthorized},
-		{"other audience", tok(claims{Kind: kindAccess, Audience: "https://other.example/mcp", Expires: now.Add(time.Hour).Unix()}), http.StatusUnauthorized},
-		{"a code", tok(claims{Kind: kindCode, Audience: s.Resource(), Expires: now.Add(time.Hour).Unix()}), http.StatusUnauthorized},
-		{"other key", signer{key: []byte(strings.Repeat("k", 32))}.sign(claims{Kind: kindAccess, Audience: s.Resource(), Expires: now.Add(time.Hour).Unix()}), http.StatusUnauthorized},
+		{"valid", tok(claims{Kind: kindAccess, Subject: "1213", Username: "moudlajs", Audience: s.Resource(), Expires: now.Add(time.Hour).Unix()}), http.StatusOK},
+		{"no subject (passphrase era)", tok(claims{Kind: kindAccess, Audience: s.Resource(), Expires: now.Add(time.Hour).Unix()}), http.StatusUnauthorized},
+		{"expired", tok(claims{Kind: kindAccess, Subject: "1213", Audience: s.Resource(), Expires: now.Add(-time.Second).Unix()}), http.StatusUnauthorized},
+		{"other audience", tok(claims{Kind: kindAccess, Subject: "1213", Audience: "https://other.example/mcp", Expires: now.Add(time.Hour).Unix()}), http.StatusUnauthorized},
+		{"a code", tok(claims{Kind: kindCode, Subject: "1213", Audience: s.Resource(), Expires: now.Add(time.Hour).Unix()}), http.StatusUnauthorized},
+		{"other key", signer{key: []byte(strings.Repeat("k", 32))}.sign(claims{Kind: kindAccess, Subject: "1213", Audience: s.Resource(), Expires: now.Add(time.Hour).Unix()}), http.StatusUnauthorized},
 		{"garbage", "not-a-token", http.StatusUnauthorized},
 	}
 	for _, tt := range tests {
@@ -336,44 +392,51 @@ func TestNewValidates(t *testing.T) {
 		name string
 		cfg  Config
 	}{
-		{"plain http", Config{BaseURL: "http://example.com", Passphrase: pass, SigningKey: key}},
-		{"no base", Config{Passphrase: pass, SigningKey: key}},
-		{"short passphrase", Config{BaseURL: "https://example.com", Passphrase: "short", SigningKey: key}},
-		{"short key", Config{BaseURL: "https://example.com", Passphrase: pass, SigningKey: []byte("k")}},
+		{"plain http", Config{BaseURL: "http://example.com", SigningKey: key, Lookup: fakeLookup}},
+		{"no base", Config{SigningKey: key, Lookup: fakeLookup}},
+		{"no lookup", Config{BaseURL: "https://example.com", SigningKey: key}},
+		{"short key", Config{BaseURL: "https://example.com", SigningKey: []byte("k"), Lookup: fakeLookup}},
 	}
 	for _, tt := range tests {
 		if _, err := New(tt.cfg); err == nil {
 			t.Errorf("%s: want an error", tt.name)
 		}
 	}
-	if _, err := New(Config{BaseURL: "https://example.com/", Passphrase: pass, SigningKey: key}); err != nil {
+	if _, err := New(Config{BaseURL: "https://example.com/", SigningKey: key, Lookup: fakeLookup}); err != nil {
 		t.Errorf("valid config: %v", err)
 	}
 }
 
-func TestSignInPageAllowsTheWayBack(t *testing.T) {
+func TestRefreshRechecksIdentity(t *testing.T) {
+	base, clientID, s := setup(t, "friend")
+	later := time.Now().Add(time.Hour).Unix()
 	tests := []struct {
-		redirect, want string
+		name string
+		c    claims
+		want int
 	}{
-		{"https://claude.ai/api/mcp/auth_callback", "form-action 'self' https://claude.ai"},
-		{"http://localhost:3118/callback", "form-action 'self' http://localhost:3118"},
-		{"", "form-action 'self'"}, // error pages: no redirect to allow
+		{"allowed user", claims{Kind: kindRefresh, ClientID: clientID, Subject: "42", Username: "friend", Expires: later}, http.StatusOK},
+		{"taken off the allowlist", claims{Kind: kindRefresh, ClientID: clientID, Subject: "1213", Username: "moudlajs", Expires: later}, http.StatusBadRequest},
+		{"passphrase-era token", claims{Kind: kindRefresh, ClientID: clientID, Expires: later}, http.StatusBadRequest},
 	}
 	for _, tt := range tests {
-		got := csp(tt.redirect)
-		if !strings.HasSuffix(got, tt.want) || !strings.HasPrefix(got, "default-src 'none'") {
-			t.Errorf("csp(%q) = %q, want it to end with %q", tt.redirect, got, tt.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			status, body := tokenRequest(t, base, url.Values{
+				"grant_type": {"refresh_token"}, "refresh_token": {s.signer.sign(tt.c)}, "client_id": {clientID},
+			})
+			if status != tt.want {
+				t.Errorf("%d %v, want %d", status, body, tt.want)
+			}
+		})
 	}
+}
 
-	// And the real page sends it.
-	base, clientID, _ := setup(t)
-	resp, err := http.Get(base + "/authorize?" + authorizeParams(clientID).Encode())
-	if err != nil {
-		t.Fatal(err)
+func TestUserFrom(t *testing.T) {
+	if _, ok := UserFrom(nil); ok {
+		t.Error("nil token info should have no user")
 	}
-	resp.Body.Close()
-	if got := resp.Header.Get("Content-Security-Policy"); !strings.Contains(got, "form-action 'self' https://claude.ai") {
-		t.Errorf("sign-in page CSP = %q, must allow redirecting to https://claude.ai", got)
+	id, ok := UserFrom(&sdkauth.TokenInfo{UserID: "1", Extra: map[string]any{usernameKey: "friend"}})
+	if !ok || id != (Identity{UserID: "1", Username: "friend"}) {
+		t.Errorf("got %+v, %v", id, ok)
 	}
 }

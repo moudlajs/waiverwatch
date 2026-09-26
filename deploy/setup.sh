@@ -4,7 +4,7 @@
 # Creates what the release workflow needs to deploy to Cloud Run, with no
 # keys stored anywhere: GitHub Actions signs in through Workload Identity
 # Federation, only from this repository's main branch. Also creates the
-# OAuth sign-in secrets, readable only by the runtime service account.
+# token signing key, readable only by the runtime service account.
 #
 # Prerequisites: a project with billing linked, `gcloud auth login` done,
 # and `gh auth login` for writing the repository variables.
@@ -17,7 +17,7 @@ BILLING=${2:?usage: deploy/setup.sh <project-id> <billing-account-id>}
 REPO=moudlajs/waiverwatch
 REGION=europe-west1          # Belgium: closest Cloud Run region with free tier pricing to Prague
 AR_REPO=waiverwatch          # Artifact Registry repository
-RUNTIME_SA=waiverwatch-run   # identity the service runs as: no project roles, reads only its two secrets
+RUNTIME_SA=waiverwatch-run   # identity the service runs as: no project roles, reads only its signing key
 DEPLOY_SA=github-deploy      # identity GitHub Actions deploys as
 POOL=github
 PROVIDER=github-oidc
@@ -89,33 +89,19 @@ retry gc artifacts repositories add-iam-policy-binding "$AR_REPO" --location "$R
 retry gc iam service-accounts add-iam-policy-binding "$RUNTIME_EMAIL" \
   --member "serviceAccount:$DEPLOY_EMAIL" --role roles/iam.serviceAccountUser >/dev/null
 
-say "Secrets (OAuth sign-in, #34)"
-# Both are random and generated once, straight into Secret Manager: nothing
-# is printed. The owner copies the passphrase into a password manager with
-# the command below; nobody needs to see the signing key.
-for secret in waiverwatch-signing-key waiverwatch-passphrase; do
-  if ! gc secrets describe "$secret" >/dev/null 2>&1; then
-    gc secrets create "$secret" --replication-policy automatic
-  fi
-  retry gc secrets add-iam-policy-binding "$secret" \
-    --member "serviceAccount:$RUNTIME_EMAIL" --role roles/secretmanager.secretAccessor >/dev/null
-done
+say "Secrets (OAuth sign-in)"
+# The token signing key: random, generated once straight into Secret
+# Manager, never printed. (Sign-in itself needs no secret: people sign in
+# with their Sleeper username, docs/multi-user.md.)
+if ! gc secrets describe waiverwatch-signing-key >/dev/null 2>&1; then
+  gc secrets create waiverwatch-signing-key --replication-policy automatic
+fi
+retry gc secrets add-iam-policy-binding waiverwatch-signing-key \
+  --member "serviceAccount:$RUNTIME_EMAIL" --role roles/secretmanager.secretAccessor >/dev/null
 if [ -z "$(gc secrets versions list waiverwatch-signing-key --filter state=enabled --format 'value(name)')" ]; then
   openssl rand -base64 48 | tr -d '\n' | gc secrets versions add waiverwatch-signing-key --data-file=- >/dev/null
   echo "  generated a signing key"
 fi
-if [ -z "$(gc secrets versions list waiverwatch-passphrase --filter state=enabled --format 'value(name)')" ]; then
-  # Exactly 30 letters and digits (~178 bits), so it pastes cleanly. tr is
-  # read through < <(…): as a pipeline stage its SIGPIPE when head stops
-  # reading would fail the pipeline under pipefail and abort this script.
-  head -c 30 < <(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom) |
-    gc secrets versions add waiverwatch-passphrase --data-file=- >/dev/null
-  echo "  generated a sign-in passphrase"
-fi
-cat <<MSG
-  To copy the sign-in passphrase to the clipboard (for a password manager):
-    gcloud secrets versions access latest --secret waiverwatch-passphrase --project $PROJECT | pbcopy
-MSG
 
 say "Workload Identity Federation for $REPO (main branch only)"
 if ! gc iam workload-identity-pools describe "$POOL" --location global >/dev/null 2>&1; then

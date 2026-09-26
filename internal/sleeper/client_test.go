@@ -75,7 +75,7 @@ func TestClientDecodes(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := (User{UserID: "100", DisplayName: "TestUser"}); u != want {
+		if want := (User{UserID: "100", Username: "testuser", DisplayName: "TestUser"}); u != want {
 			t.Errorf("got %+v, want %+v", u, want)
 		}
 	})

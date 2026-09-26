@@ -54,13 +54,16 @@ fine, it's the transport).
 - **Hosted sign-in (`internal/auth`):** waiverwatch is its own tiny OAuth 2.1
   authorization server. Claude identifies itself with a Client ID Metadata
   Document; only Claude's two client IDs are accepted (claude.ai and Claude
-  Code). The owner signs in with a passphrase; codes and tokens are
-  HMAC-signed and stateless (1h access, 90d refresh), so restarts don't
-  sign anyone out. A refresh issues a new refresh token but can't revoke the
-  old one (nothing is stored); rotating the signing key revokes everything. HTTP mode refuses to start without
-  `WAIVERWATCH_BASE_URL`, `WAIVERWATCH_PASSPHRASE` (Secret Manager) and
-  `WAIVERWATCH_SIGNING_KEY` (Secret Manager); `WAIVERWATCH_NO_AUTH=1` is for
-  local testing only. Rotating the signing key signs every client out.
+  Code). People sign in with their **Sleeper username** (checked against
+  Sleeper; public data, so no password: docs/multi-user.md); tokens carry the
+  Sleeper user id and username, and every tool answers for the token's user
+  (`auth.UserFrom` → `league.WithUser`). stdio uses `WAIVERWATCH_USER`.
+  Tokens are HMAC-signed and stateless (1h access, 90d refresh), so restarts
+  don't sign anyone out. A refresh re-checks the optional allowlist
+  (`WAIVERWATCH_ALLOWED_USERS`) but can't revoke old tokens (nothing is
+  stored); rotating the signing key signs everyone out. HTTP mode refuses to
+  start without `WAIVERWATCH_BASE_URL` and `WAIVERWATCH_SIGNING_KEY`;
+  `WAIVERWATCH_NO_AUTH=1` (with `WAIVERWATCH_USER`) is for local testing only.
 - **Tools are coarse.** One call returning a useful chunk beats several
   chatty ones. Work across all of the user's leagues by default.
 - Fan out per-league requests concurrently (`errgroup`), with a
