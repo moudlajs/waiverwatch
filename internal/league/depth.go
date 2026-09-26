@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
@@ -164,38 +165,18 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 		}
 	}
 
-	// Spares after dedicated slots fill the flex slots, most restrictive flex
-	// first, each time taking from the position with the most spares.
+	// Spares after dedicated slots fill the flex slots.
 	spare := map[string]int{}
 	for pos, pd := range byPos {
 		spare[pos] = max(0, pd.Healthy-pd.Slots)
 	}
+	filled, flexUsed := fillFlex(flexCount, spare)
 	var flex []FlexDepth
-	kinds := make([]string, 0, len(flexCount))
-	for k := range flexCount {
-		kinds = append(kinds, k)
+	for _, kind := range slices.Sorted(maps.Keys(flexCount)) {
+		flex = append(flex, FlexDepth{Slot: kind, Slots: flexCount[kind], Filled: filled[kind]})
 	}
-	slices.SortFunc(kinds, func(a, b string) int {
-		return cmp.Or(cmp.Compare(len(flexSlots[a]), len(flexSlots[b])), cmp.Compare(a, b))
-	})
-	flexUsed := map[string]int{}
-	for _, kind := range kinds {
-		fd := FlexDepth{Slot: kind, Slots: flexCount[kind]}
-		for range fd.Slots {
-			best := ""
-			for _, pos := range flexSlots[kind] {
-				if spare[pos] > 0 && (best == "" || spare[pos] > spare[best]) {
-					best = pos
-				}
-			}
-			if best == "" {
-				break
-			}
-			spare[best]--
-			flexUsed[best]++
-			fd.Filled++
-		}
-		flex = append(flex, fd)
+	for pos, n := range flexUsed {
+		spare[pos] -= n
 	}
 	// Grade each flex group once every group is filled: it has a backup if
 	// any eligible position still has a spare.
@@ -224,6 +205,82 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 		out = append(out, *pd)
 	}
 	return out, flex, unresolved
+}
+
+// fillFlex assigns spare players to flex slots so that as many slots as
+// possible are filled. It is a bipartite matching (augmenting paths):
+// filling one flex kind at a time can strand a slot when two kinds share a
+// position. Positions with the most spares are drawn on first, keeping
+// backups where they're scarce. Rosters are tiny, so this is cheap.
+func fillFlex(flexCount, spare map[string]int) (filled, used map[string]int) {
+	var slotKinds []string // one entry per flex slot
+	for _, kind := range slices.Sorted(maps.Keys(flexCount)) {
+		for range flexCount[kind] {
+			slotKinds = append(slotKinds, kind)
+		}
+	}
+	var units []string // one entry per spare player, by position
+	order := slices.Clone(Positions)
+	slices.SortStableFunc(order, func(a, b string) int { return cmp.Compare(spare[b], spare[a]) })
+	for _, pos := range order {
+		for range spare[pos] {
+			units = append(units, pos)
+		}
+	}
+
+	owner := make([]int, len(units)) // unit -> slot, or -1
+	for i := range owner {
+		owner[i] = -1
+	}
+	var assign func(slot int, seen []bool) bool
+	assign = func(slot int, seen []bool) bool {
+		for u, pos := range units {
+			if seen[u] || !slices.Contains(flexSlots[slotKinds[slot]], pos) {
+				continue
+			}
+			seen[u] = true
+			if owner[u] == -1 || assign(owner[u], seen) {
+				owner[u] = slot
+				return true
+			}
+		}
+		return false
+	}
+	for slot := range slotKinds {
+		assign(slot, make([]bool, len(units)))
+	}
+
+	filled, used = map[string]int{}, map[string]int{}
+	slotPos := make([]string, len(slotKinds)) // position filling each slot, "" if none
+	for u, slot := range owner {
+		if slot >= 0 {
+			filled[slotKinds[slot]]++
+			used[units[u]]++
+			slotPos[slot] = units[u]
+		}
+	}
+
+	// Rebalance: a slot that took a position's last spare moves to another
+	// eligible position with two or more left, so as few positions as
+	// possible end up without a backup.
+	for changed := true; changed; {
+		changed = false
+		for slot, pos := range slotPos {
+			if pos == "" || spare[pos]-used[pos] > 0 {
+				continue
+			}
+			for _, alt := range flexSlots[slotKinds[slot]] {
+				if alt != pos && spare[alt]-used[alt] >= 2 {
+					used[pos]--
+					used[alt]++
+					slotPos[slot] = alt
+					changed = true
+					break
+				}
+			}
+		}
+	}
+	return filled, used
 }
 
 // status grades filling need slots from have players with spare left over.

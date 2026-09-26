@@ -183,3 +183,38 @@ func TestDepthChartKeepsUnknownPlayers(t *testing.T) {
 		t.Errorf("IDP-only league: %#v, want []", pos)
 	}
 }
+
+func TestFillFlexFindsTheBestAssignment(t *testing.T) {
+	// The review's case: REC_FLEX (WR/TE) and WRRB_FLEX (WR/RB) share WR.
+	// Spares: one WR, one TE, no RB. Filling REC_FLEX first with the WR
+	// would strand WRRB_FLEX; the right answer fills both.
+	filled, used := fillFlex(
+		map[string]int{"REC_FLEX": 1, "WRRB_FLEX": 1},
+		map[string]int{"WR": 1, "TE": 1},
+	)
+	if filled["REC_FLEX"] != 1 || filled["WRRB_FLEX"] != 1 {
+		t.Errorf("filled = %v, want both flex slots filled", filled)
+	}
+	if used["WR"] != 1 || used["TE"] != 1 {
+		t.Errorf("used = %v", used)
+	}
+
+	// Through depthChart: nothing reported short.
+	players := depthPlayers(map[string]string{"wr1": "WR", "wr2": "WR", "rb1": "RB", "te1": "TE", "te2": "TE"})
+	me := sleeper.Roster{Players: []string{"wr1", "wr2", "rb1", "te1", "te2"}}
+	_, flex, _ := depthChart([]string{"WR", "RB", "TE", "WRRB_FLEX", "REC_FLEX"}, me, players)
+	for _, f := range flex {
+		if f.Filled != 1 || f.Status == "short" {
+			t.Errorf("%+v, want filled", f)
+		}
+	}
+}
+
+func TestFillFlexKeepsBackupsSpread(t *testing.T) {
+	// One FLEX slot. RB has 1 spare, WR has 2: the flex should take a WR,
+	// leaving a backup at both positions.
+	_, used := fillFlex(map[string]int{"FLEX": 1}, map[string]int{"RB": 1, "WR": 2})
+	if used["WR"] != 1 || used["RB"] != 0 {
+		t.Errorf("used = %v, want the WR spare used", used)
+	}
+}
