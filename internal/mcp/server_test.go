@@ -69,7 +69,7 @@ func TestListLeagues(t *testing.T) {
 		names = append(names, tl.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"compare_rosters", "draft_results", "get_matchups", "get_roster", "injury_report", "list_leagues", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
+	if want := []string{"compare_rosters", "draft_results", "get_matchups", "get_roster", "injury_report", "list_leagues", "position_depth", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
 		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
@@ -251,6 +251,24 @@ func TestDraftResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	if r.MyPicks != 1 || len(r.Leagues) != 1 || r.Leagues[0].Drafts[0].Picks[0].Name != "Patrick Mahomes" {
+		t.Errorf("unexpected report %+v", r)
+	}
+}
+
+func TestPositionDepth(t *testing.T) {
+	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{Name: "position_depth", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	raw, _ := json.Marshal(res.StructuredContent)
+	var r league.DepthReport
+	if err := json.Unmarshal(raw, &r); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Leagues) != 1 || r.ThinSpots == nil {
 		t.Errorf("unexpected report %+v", r)
 	}
 }
