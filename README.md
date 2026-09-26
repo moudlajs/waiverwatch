@@ -11,10 +11,48 @@ your phone:
 The Sleeper app shows one league at a time. Fantasy needs reaction: an injury
 on Sunday gives you minutes to hit the waiver wire, wherever you are.
 
+## Add it to your Claude (for Sleeper players)
+
+Works on claude.ai, the Claude desktop app and the Claude mobile app. You
+need a Claude plan that allows custom connectors.
+
+1. On **claude.ai in a browser** (connectors can't be added from the phone
+   app): **Customize → Connectors → Add custom connector**.
+2. Name `waiverwatch`, URL:
+
+   ```
+   https://waiverwatch-44okyiteea-ew.a.run.app/mcp
+   ```
+
+   Keep the detected settings ("Sign in now", "Use Claude's published
+   identity") and click **Add**, then **Connect**.
+3. On the waiverwatch sign-in page, type **your Sleeper username** and click
+   **Sign in**. It then syncs to the Claude app on your phone; switch it on
+   per chat under **+ → Connectors**.
+
+Then just ask:
+
+- *"How are my matchups this week?"*
+- *"Who's hurt on my teams, and who can I pick up instead?"*
+- *"Who should I pick up at RB?"* or *"…in my dynasty league?"*
+- *"What's trending on waivers, and where is he still available?"*
+- *"Compare me with my opponent in my 12-team league."*
+- *"Where did I draft Kenneth Walker?"*
+
+**Privacy.** There is no password: waiverwatch only reads public Sleeper
+data for the username you enter, the same data anyone can see in the
+Sleeper app. waiverwatch stores nothing. Google's standard request logs
+keep IP addresses, paths and status codes for 30 days; usernames are not
+logged.
+
+**Limits.** 30 requests a minute per person, and a shared budget toward
+Sleeper. If Claude reports "slow down" or "call budget", wait a minute.
+It's a free hobby project: it may be slow or down sometimes.
+
 ## Status
 
-Runs locally over stdio, and hosted on Cloud Run for claude.ai and the
-Claude mobile app. Tools so far: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`, `draft_results`, `injury_report`, `trending_players`, `waiver_targets`. See the
+Tools: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`,
+`draft_results`, `injury_report`, `trending_players`, `waiver_targets`. See the
 [milestones](https://github.com/moudlajs/waiverwatch/milestones) for the plan.
 
 ## Principles
@@ -34,7 +72,7 @@ Claude mobile app. Tools so far: `list_leagues`, `get_matchups`, `get_roster`, `
 | Host | Google Cloud Run (free tier, scales to zero) |
 | Data | `api.sleeper.app`: public, free, no key |
 
-## Use it locally
+## Run it locally (developers)
 
 Install (needs Go; puts `waiverwatch` in `$(go env GOPATH)/bin`):
 
@@ -65,18 +103,7 @@ your shell's `PATH`):
 
 Restart Claude and ask *"How are my fantasy leagues looking?"*
 
-## Use it on claude.ai and your phone
-
-1. On **claude.ai in a browser** (connectors can't be added from the phone
-   app): **Customize → Connectors → Add custom connector**.
-2. URL: `https://<the Cloud Run URL>/mcp` (the public one follows with the
-   user guide, #57). Keep the detected
-   settings ("Sign in now", "Use Claude's published identity") and click
-   **Add**, then **Connect**.
-3. On the waiverwatch sign-in page, enter **your Sleeper username**. No
-   password: waiverwatch only reads public Sleeper data, and stores nothing.
-4. The connector syncs to the Claude mobile app. Enable it per chat with
-   **+ → Connectors**.
+## Host your own
 
 To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 

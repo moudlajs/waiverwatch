@@ -59,8 +59,10 @@ switch bounds the worst case at the budget plus a few hours.
 
 ## Privacy
 
-Nothing is stored. Logs hold request paths and status codes, not usernames.
-The public guide (#57) says so.
+waiverwatch stores nothing. Cloud Run's standard request logs keep IP
+addresses, paths and status codes (30 days by default); usernames are not
+logged (they travel in the sign-in form body and inside signed tokens). The
+public guide (#57) says so.
 
 ## Order
 
