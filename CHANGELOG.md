@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/moudlajs/waiverwatch/compare/v0.5.0...v0.5.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **auth:** let the browser follow the redirect back to Claude ([#48](https://github.com/moudlajs/waiverwatch/issues/48)) ([c044bbd](https://github.com/moudlajs/waiverwatch/commit/c044bbd4507f70efdf62bc90e462f8a65f979a93))
+
 ## [0.5.0](https://github.com/moudlajs/waiverwatch/compare/v0.4.1...v0.5.0) (2026-09-25)
 
 
