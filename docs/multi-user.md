@@ -48,7 +48,14 @@ Free tier: 2M requests and 180k vCPU-seconds a month. A tool call takes
 roughly 0.1-0.5 CPU-seconds, so hundreds of thousands of calls a month fit.
 The Sleeper budget binds long before cost does (~20-60 tool calls a minute
 across everyone); `max-instances` can go from 1 to 2-3 if people wait on
-each other, and stays inside the free tier at this scale.
+each other.
+
+That 20-60 a minute is a **ceiling, not a free-tier guarantee**: sustained
+around the clock for a month it would be up to ~2.6M tool calls and roughly
+0.8-1.3M vCPU-seconds, 4-7x the free tier (Cloud Run bills the whole request,
+including time spent waiting on Sleeper). Realistic use is a small fraction
+of that; per-user limits keep one user from driving it, and the billing kill
+switch bounds the worst case at the budget plus a few hours.
 
 ## Privacy
 
