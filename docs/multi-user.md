@@ -48,7 +48,8 @@ username into the tools; #55, a first-run step, is not needed.)
 Free tier: 2M requests and 180k vCPU-seconds a month. A tool call takes
 roughly 0.1-0.5 CPU-seconds, so hundreds of thousands of calls a month fit.
 The Sleeper budget binds long before cost does (~20-60 tool calls a minute
-across everyone); `max-instances` can go from 1 to 2-3 if people wait on
+across everyone without caching; the shared cache added before launch makes
+repeat questions and league mates nearly free); `max-instances` can go from 1 to 2-3 if people wait on
 each other.
 
 That 20-60 a minute is a **ceiling, not a free-tier guarantee**: sustained

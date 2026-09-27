@@ -40,11 +40,21 @@ cmd/killswitch/      its binary, shipped in the same image
 `sleeper` never imports `mcp`; `mcp` never calls Sleeper (serving HTTP is
 fine, it's the transport).
 
-- **Refresh on demand.** Live data (rosters, matchups, trending, state) is
-  fetched on every tool call. No TTL caches for live data: stale is wrong.
-- **Player dictionary** (`/players/nfl`, ~15 MB) is the only cache. Sleeper
-  asks for at most one fetch per day. It is the join table: every other
-  endpoint returns player IDs only.
+- **Fresh within a minute.** `sleeper.Client` keeps raw responses in a
+  shared in-memory cache (lost on scale-to-zero, fine): rosters, members and
+  matchups 60 s; NFL state and trending 5 min; username lookups, a user's
+  leagues and draft lists 10 min; earlier seasons' leagues and completed
+  drafts' picks 24 h. Shared across users, so league mates share fetches;
+  concurrent misses share one request (singleflight); errors are never
+  cached; hits don't spend the call budget. Never longer than a minute for
+  anything that changes during games.
+- **Player dictionary** (`/players/nfl`, ~15 MB) is cached decoded for a day
+  by `league.Directory`, not by the client. Sleeper asks for at most one
+  fetch per day. It is the join table: every other endpoint returns player
+  IDs only.
+- **Errors are for people.** Sleeper failures become `ErrRateLimited` (429),
+  `ErrUnavailable` (5xx, unreachable) and our own `ErrBusy` (call budget),
+  worded so Claude can pass them on as they are.
 - **Storage** sits behind a `Store` interface; in-memory now. Cloud Run's
   disk is ephemeral, so nothing may depend on local files surviving.
 - **Transports:** stdio for local Claude Code / Desktop; stateless

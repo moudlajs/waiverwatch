@@ -102,6 +102,9 @@ func (s *Service) myLeagues(ctx context.Context) (sleeper.State, sleeper.User, [
 		return sleeper.State{}, sleeper.User{}, nil, err
 	}
 	user, err := s.api.User(ctx, username)
+	if errors.Is(err, sleeper.ErrNotFound) {
+		return sleeper.State{}, sleeper.User{}, nil, fmt.Errorf("sleeper has no user named %q: %w", username, err)
+	}
 	if err != nil {
 		return sleeper.State{}, sleeper.User{}, nil, err
 	}
