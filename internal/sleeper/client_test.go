@@ -59,7 +59,13 @@ func newTestClient(t *testing.T) *Client {
 		case name == "500":
 			http.Error(w, "boom", http.StatusInternalServerError)
 		case name == "slow":
-			<-r.Context().Done()
+			// Slower than the caller's 50ms deadline. The shared fetch keeps
+			// going after the caller gives up, so don't hang until the
+			// client's 10s timeout either.
+			select {
+			case <-r.Context().Done():
+			case <-time.After(300 * time.Millisecond):
+			}
 		default:
 			http.ServeFile(w, r, filepath.Join("testdata", name))
 		}
@@ -208,7 +214,7 @@ func TestClientDecodes(t *testing.T) {
 		if len(ds) != 1 || ds[0].DraftID != "D1" || ds[0].Type != "linear" || ds[0].Settings.Rounds != 3 || ds[0].Season != "2026" {
 			t.Fatalf("unexpected drafts %+v", ds)
 		}
-		ps, err := c.DraftPicks(ctx, "D1")
+		ps, err := c.DraftPicks(ctx, "D1", true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -298,7 +304,7 @@ func TestCallBudget(t *testing.T) {
 		t.Fatalf("first call: %v", err)
 	}
 	start := time.Now()
-	_, err := c.State(context.Background())
+	_, err := c.User(context.Background(), "testuser") // a different path: State is cached now
 	if !errors.Is(err, ErrBusy) {
 		t.Errorf("second call: %v, want ErrBusy", err)
 	}
@@ -309,7 +315,7 @@ func TestCallBudget(t *testing.T) {
 	// A cancelled request reports the cancellation, not a busy Sleeper.
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := c.State(ctx); !errors.Is(err, context.Canceled) {
+	if _, err := c.Rosters(ctx, "L1"); !errors.Is(err, context.Canceled) {
 		t.Errorf("cancelled: %v, want context.Canceled", err)
 	}
 }

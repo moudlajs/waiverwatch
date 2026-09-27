@@ -113,7 +113,7 @@ func (s *Service) leagueDrafts(ctx context.Context, l sleeper.League, userID str
 			return out, err
 		}
 		for _, d := range drafts {
-			picks, err := s.api.DraftPicks(ctx, d.DraftID)
+			picks, err := s.api.DraftPicks(ctx, d.DraftID, d.Status == "complete")
 			if err != nil {
 				return out, err
 			}

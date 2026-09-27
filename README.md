@@ -61,8 +61,9 @@ Tools: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`,
 
 ## Principles
 
-- **Always fresh.** Live data (rosters, matchups, waivers) is fetched from
-  Sleeper on every request. Only the player dictionary is cached.
+- **Fresh within a minute.** Rosters, matchups and waivers are at most a
+  minute old; the player list is refreshed daily. A short shared cache keeps
+  Sleeper's load low when many people ask at once.
 - **Read-only.** Public Sleeper API, no account credentials, no scraping.
 - **Claude is the UI.** No web frontend.
 - **Zero running cost.** Free tiers only.
