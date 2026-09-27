@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/moudlajs/waiverwatch/compare/v0.10.0...v0.11.0) (2026-09-27)
+
+
+### Features
+
+* **sleeper:** shared short-lived cache and friendly errors ([#76](https://github.com/moudlajs/waiverwatch/issues/76)) ([adff8d7](https://github.com/moudlajs/waiverwatch/commit/adff8d79f7e01ed4c6fb847d43f4950e29078ac1))
+
 ## [0.10.0](https://github.com/moudlajs/waiverwatch/compare/v0.9.0...v0.10.0) (2026-09-27)
 
 
