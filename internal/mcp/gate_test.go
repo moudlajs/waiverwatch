@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -85,5 +86,32 @@ func TestAnonID(t *testing.T) {
 	}
 	if strings.Contains(a, "1213") || newGate(60, 1, nil).anonID("1213", day) != "" {
 		t.Error("no key: no ID; and the ID must not contain the user id")
+	}
+}
+
+// The usage log must never contain who called: not the username, not the
+// Sleeper user id. Only the anonymous daily ID.
+func TestUsageLogNamesNobody(t *testing.T) {
+	var buf strings.Builder
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	g := newGate(60, 10, []byte("usage key"))
+	h := limited(g, func(context.Context, struct{}) (string, error) { return "ok", nil })
+	req := signedIn("1213266616368758784", "moudlajs")
+	req.Params = &sdk.CallToolParamsRaw{Name: "list_leagues"}
+	if _, _, err := h(context.Background(), req, struct{}{}); err != nil {
+		t.Fatal(err)
+	}
+
+	log := buf.String()
+	for _, secret := range []string{"moudlajs", "1213266616368758784"} {
+		if strings.Contains(log, secret) {
+			t.Errorf("usage log contains %q: %s", secret, log)
+		}
+	}
+	if !strings.Contains(log, `"tool":"list_leagues"`) || !strings.Contains(log, g.anonID("1213266616368758784", time.Now())) {
+		t.Errorf("usage log is missing the tool or the anonymous ID: %s", log)
 	}
 }

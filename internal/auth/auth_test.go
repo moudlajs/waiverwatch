@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -465,5 +466,29 @@ func TestSignInPageAllowsTheWayBack(t *testing.T) {
 	resp.Body.Close()
 	if got := resp.Header.Get("Content-Security-Policy"); !strings.Contains(got, "form-action 'self' https://claude.ai") {
 		t.Errorf("sign-in page CSP = %q, must allow redirecting to https://claude.ai", got)
+	}
+}
+
+// Sign-in logs the outcome only, never the username typed.
+func TestSignInLogNamesNobody(t *testing.T) {
+	var buf strings.Builder
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	base, clientID, _ := setup(t)
+	for _, name := range []string{username, "someone-unknown"} {
+		form := authorizeParams(clientID)
+		form.Set("username", name)
+		signIn(t, base, form)
+	}
+	log := strings.ToLower(buf.String())
+	for _, secret := range []string{"moudlajs", "someone-unknown", "1213"} {
+		if strings.Contains(log, secret) {
+			t.Errorf("sign-in log contains %q: %s", secret, log)
+		}
+	}
+	if !strings.Contains(log, `"outcome":"ok"`) || !strings.Contains(log, `"outcome":"unknown_user"`) {
+		t.Errorf("sign-in log is missing outcomes: %s", log)
 	}
 }
