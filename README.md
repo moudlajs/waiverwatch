@@ -42,9 +42,11 @@ Then just ask:
 
 **Privacy.** There is no password: waiverwatch only reads public Sleeper
 data for the username you enter, the same data anyone can see in the
-Sleeper app. waiverwatch stores nothing. Google's standard request logs
-keep IP addresses, paths and status codes for 30 days; usernames are not
-logged.
+Sleeper app. waiverwatch stores nothing about you. To count usage it logs,
+per request, which tool ran and whether it worked, with an anonymous ID
+that changes every day (it can't be turned back into your username, and
+days can't be linked). Google's standard request logs keep IP addresses,
+paths and status codes. Logs are kept 30 days; usernames are never logged.
 
 **Limits.** 30 requests a minute per person, and a shared budget toward
 Sleeper. If Claude reports "slow down" or "call budget", wait a minute.

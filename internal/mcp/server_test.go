@@ -39,7 +39,7 @@ func connect(t *testing.T, username string) *sdk.ClientSession {
 
 	ctx := context.Background()
 	serverT, clientT := sdk.NewInMemoryTransports()
-	ss, err := NewServer(league.NewService(api, league.NewDirectory(store.NewMemory(), api.Players), username), "test").Connect(ctx, serverT, nil)
+	ss, err := NewServer(league.NewService(api, league.NewDirectory(store.NewMemory(), api.Players), username), "test", nil).Connect(ctx, serverT, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

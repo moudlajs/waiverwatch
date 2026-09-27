@@ -91,6 +91,8 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
 - **Every release:** merging the release-please PR tags the release, and
   `release.yml` calls `deploy.yml`: build, push, `gcloud run deploy`, then a
   smoke test that the new version is serving.
+- **Usage:** `deploy/stats.sh [days]` prints distinct users, tool calls,
+  errors, sign-ins and top tools per day from the anonymous usage log.
 - **By hand / rollback:** Actions → Deploy → Run workflow on `main` with a
   tag (`gh workflow run deploy.yml -f tag=v0.4.0`). Deploys only work from
   `main`; the identity provider rejects other refs.

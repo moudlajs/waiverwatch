@@ -53,7 +53,9 @@ func main() {
 func run(ctx context.Context, username, port string) error {
 	api := sleeper.New(sleeper.DefaultBaseURL)
 	players := league.NewDirectory(store.NewMemory(), api.Players)
-	server := mcp.NewServer(league.NewService(api, players, username), version())
+	// Hosted: the signing key also keys the anonymous usage IDs. Local: none.
+	usageKey := []byte(os.Getenv("WAIVERWATCH_SIGNING_KEY"))
+	server := mcp.NewServer(league.NewService(api, players, username), version(), usageKey)
 
 	if port == "" {
 		if username == "" {
@@ -61,6 +63,7 @@ func run(ctx context.Context, username, port string) error {
 		}
 		return server.Run(ctx, &sdk.StdioTransport{})
 	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{ReplaceAttr: cloudLogging})))
 	signIn, err := signInServer(api, username)
 	if err != nil {
 		return fmt.Errorf("sign-in: %w", err)
@@ -89,6 +92,24 @@ func signInServer(api *sleeper.Client, username string) (*auth.Server, error) {
 		Lookup:     sleeperLookup(api),
 		Allowed:    allowed,
 	})
+}
+
+// cloudLogging names the level and message fields the way Cloud Logging
+// reads them from JSON logs, so the console shows severities.
+func cloudLogging(groups []string, a slog.Attr) slog.Attr {
+	if len(groups) > 0 {
+		return a
+	}
+	switch a.Key {
+	case slog.LevelKey:
+		a.Key = "severity"
+		if a.Value.String() == slog.LevelWarn.String() {
+			a.Value = slog.StringValue("WARNING") // Cloud Logging's name for it
+		}
+	case slog.MessageKey:
+		a.Key = "message"
+	}
+	return a
 }
 
 // sleeperLookup resolves sign-in usernames against Sleeper.

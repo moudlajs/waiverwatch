@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -94,27 +95,35 @@ func (s *Server) authorizeSubmit(w http.ResponseWriter, r *http.Request) {
 		page(w, http.StatusBadRequest, pageData{Error: err.Error()})
 		return
 	}
+	// Usage log: the outcome only, never the username.
+	outcome := func(o string) { slog.InfoContext(r.Context(), "sign in", "outcome", o) }
 	username := strings.TrimSpace(r.PostForm.Get("username"))
 	if username == "" {
+		outcome("empty")
 		page(w, http.StatusBadRequest, pageData{Req: req, Error: "Enter your Sleeper username."})
 		return
 	}
 	if !s.logins.Allow() {
+		outcome("rate_limited")
 		page(w, http.StatusTooManyRequests, pageData{Req: req, Username: username, Error: "Too many sign-ins right now. Try again in a minute."})
 		return
 	}
 	id, err := s.lookup(r.Context(), username)
 	switch {
 	case errors.Is(err, ErrNoSuchUser):
+		outcome("unknown_user")
 		page(w, http.StatusUnauthorized, pageData{Req: req, Username: username, Error: fmt.Sprintf("Sleeper has no user named %q.", username)})
 		return
 	case err != nil:
+		outcome("sleeper_error")
 		page(w, http.StatusBadGateway, pageData{Req: req, Username: username, Error: "Couldn't reach Sleeper. Try again in a moment."})
 		return
 	case !s.allowedUser(id.Username):
+		outcome("invite_only")
 		page(w, http.StatusForbidden, pageData{Req: req, Username: username, Error: "This waiverwatch server is invite-only right now."})
 		return
 	}
+	outcome("ok")
 
 	code := s.signer.sign(claims{
 		Kind: kindCode, ClientID: req.ClientID, Subject: id.UserID, Username: id.Username, RedirectURI: req.RedirectURI,

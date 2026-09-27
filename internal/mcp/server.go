@@ -20,8 +20,10 @@ const (
 )
 
 // NewServer returns an MCP server with every waiverwatch tool registered.
-func NewServer(svc *league.Service, version string) *sdk.Server {
-	return newServer(svc, version, newGate(toolCallsPerMinute, toolCallBurst))
+// usageKey keys the anonymous daily user IDs in the usage log (the hosted
+// signing key); nil logs none.
+func NewServer(svc *league.Service, version string, usageKey []byte) *sdk.Server {
+	return newServer(svc, version, newGate(toolCallsPerMinute, toolCallBurst, usageKey))
 }
 
 func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
