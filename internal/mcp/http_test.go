@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	sdkauth "github.com/modelcontextprotocol/go-sdk/auth"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -27,7 +28,7 @@ func httpServer(t *testing.T, limit rate.Limit, burst int) *httptest.Server {
 		"/user/100/leagues/nfl/2026": []sleeper.League{},
 	}))
 	svc := league.NewService(api, league.NewDirectory(store.NewMemory(), api.Players), "me")
-	srv := httptest.NewServer(HTTPHandler(NewServer(svc, "test"), "test", nil, limit, burst))
+	srv := httptest.NewServer(HTTPHandler(NewServer(svc, "test", nil), "test", nil, limit, burst))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -109,7 +110,7 @@ func TestHTTPRequiresSignIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := league.NewService(sleeper.New("http://unused.invalid"), nil, "me")
-	srv := httptest.NewServer(HTTPHandler(NewServer(svc, "test"), "v9.9.9", signIn, rate.Inf, 1))
+	srv := httptest.NewServer(HTTPHandler(NewServer(svc, "test", nil), "v9.9.9", signIn, rate.Inf, 1))
 	t.Cleanup(srv.Close)
 
 	resp, err := http.Post(srv.URL+"/mcp", "application/json", strings.NewReader(`{}`))
@@ -158,9 +159,9 @@ func TestToolsAnswerForTheSignedInUser(t *testing.T) {
 			UserID: id, Extra: map[string]any{"sleeper_username": name},
 		}}}
 	}
-	g := newGate(60, 10)
+	g := newGate(60, 10, nil)
 	enter := func(req *sdk.CallToolRequest) context.Context {
-		ctx, err := g.enter(context.Background(), req)
+		ctx, _, err := g.enter(context.Background(), req, time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}

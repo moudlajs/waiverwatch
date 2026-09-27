@@ -62,8 +62,13 @@ switch bounds the worst case at the budget plus a few hours.
 
 waiverwatch stores nothing. Cloud Run's standard request logs keep IP
 addresses, paths and status codes (30 days by default); usernames are not
-logged (they travel in the sign-in form body and inside signed tokens). The
-public guide (#57) says so.
+logged (they travel in the sign-in form body and inside signed tokens).
+
+Usage counting (#71): one JSON log line per tool call (tool, ok, duration,
+and an anonymous user ID = HMAC(signing key, UTC day + Sleeper user id),
+truncated) and per sign-in attempt (outcome only). The ID counts distinct
+users per day; it can't be reversed without the key and changes daily.
+`deploy/stats.sh` summarises it. The public guide says so.
 
 ## Order
 
