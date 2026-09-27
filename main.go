@@ -103,6 +103,9 @@ func cloudLogging(groups []string, a slog.Attr) slog.Attr {
 	switch a.Key {
 	case slog.LevelKey:
 		a.Key = "severity"
+		if a.Value.String() == slog.LevelWarn.String() {
+			a.Value = slog.StringValue("WARNING") // Cloud Logging's name for it
+		}
 	case slog.MessageKey:
 		a.Key = "message"
 	}
