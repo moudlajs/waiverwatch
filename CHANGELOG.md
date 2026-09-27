@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/moudlajs/waiverwatch/compare/v0.9.0...v0.10.0) (2026-09-27)
+
+
+### Features
+
+* anonymous usage counters and a stats command ([#72](https://github.com/moudlajs/waiverwatch/issues/72)) ([66eccf3](https://github.com/moudlajs/waiverwatch/commit/66eccf38c7f89bfa46aadff2a5f3b47f9a52830a))
+
 ## [0.9.0](https://github.com/moudlajs/waiverwatch/compare/v0.8.0...v0.9.0) (2026-09-26)
 
 
