@@ -59,7 +59,13 @@ func newTestClient(t *testing.T) *Client {
 		case name == "500":
 			http.Error(w, "boom", http.StatusInternalServerError)
 		case name == "slow":
-			<-r.Context().Done()
+			// Slower than the caller's 50ms deadline. The shared fetch keeps
+			// going after the caller gives up, so don't hang until the
+			// client's 10s timeout either.
+			select {
+			case <-r.Context().Done():
+			case <-time.After(300 * time.Millisecond):
+			}
 		default:
 			http.ServeFile(w, r, filepath.Join("testdata", name))
 		}

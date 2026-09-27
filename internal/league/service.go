@@ -15,8 +15,9 @@ import (
 // fanOut caps concurrent requests to Sleeper when working across leagues.
 const fanOut = 8
 
-// Service answers questions about one user's leagues. Every call fetches
-// live data from Sleeper; only the player dictionary is cached.
+// Service answers questions about a Sleeper user's leagues. Data comes from
+// sleeper.Client, which keeps live data at most a minute (see its cache);
+// the player dictionary comes from Directory.
 type Service struct {
 	api         *sleeper.Client
 	players     *Directory

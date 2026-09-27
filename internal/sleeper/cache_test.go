@@ -146,3 +146,33 @@ func TestCacheSizeLimit(t *testing.T) {
 		t.Error("an entry bigger than the cache must not be stored")
 	}
 }
+
+// Two users need the same path at once; the first one's request is
+// cancelled mid-fetch. The second must still get the data.
+func TestSharedFetchSurvivesTheLeadersCancellation(t *testing.T) {
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		<-release
+		_, _ = w.Write([]byte(`[{"roster_id":1}]`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New(srv.URL)
+
+	leaderCtx, cancelLeader := context.WithCancel(context.Background())
+	leaderErr := make(chan error, 1)
+	go func() { _, err := c.Rosters(leaderCtx, "L1"); leaderErr <- err }()
+	time.Sleep(20 * time.Millisecond) // the leader's fetch is in flight
+
+	otherErr := make(chan error, 1)
+	go func() { _, err := c.Rosters(context.Background(), "L1"); otherErr <- err }()
+	time.Sleep(20 * time.Millisecond) // the other caller is waiting on it
+
+	cancelLeader()
+	if err := <-leaderErr; !errors.Is(err, context.Canceled) {
+		t.Errorf("leader: %v, want context.Canceled", err)
+	}
+	close(release)
+	if err := <-otherErr; err != nil {
+		t.Errorf("the other caller failed with the leader's cancellation: %v", err)
+	}
+}

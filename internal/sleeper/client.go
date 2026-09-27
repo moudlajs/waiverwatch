@@ -191,21 +191,32 @@ func (c *Client) get(ctx context.Context, path string, ttl time.Duration, dst an
 	if raw, ok := c.cache.get(path); ok {
 		return decode(raw, dst)
 	}
-	v, err, _ := c.cache.flight.Do(path, func() (any, error) {
+	// The fetch is shared by every caller waiting on this path, often other
+	// users' requests, so it must not die with whichever caller started it:
+	// it runs without that caller's cancellation (the HTTP client and budget
+	// wait have their own timeouts), and each caller only stops waiting when
+	// its own context ends.
+	shared := context.WithoutCancel(ctx)
+	ch := c.cache.flight.DoChan(path, func() (any, error) {
 		if raw, ok := c.cache.get(path); ok { // filled while we waited
 			return raw, nil
 		}
-		raw, err := c.fetch(ctx, path)
+		raw, err := c.fetch(shared, path)
 		if err != nil {
 			return nil, err
 		}
 		c.cache.put(path, raw, ttl)
 		return raw, nil
 	})
-	if err != nil {
-		return err
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case r := <-ch:
+		if r.Err != nil {
+			return r.Err
+		}
+		return decode(r.Val.([]byte), dst)
 	}
-	return decode(v.([]byte), dst)
 }
 
 // fetch GETs base+path within the call budget and returns the raw JSON body.
