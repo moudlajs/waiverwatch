@@ -154,7 +154,8 @@ func (c *Client) table(ctx context.Context, name string) ([]map[string]string, e
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w (HTTP %d for %s)", ErrUnavailable, resp.StatusCode, name)
 	}
-	r := csv.NewReader(io.LimitReader(resp.Body, maxBody))
+	body := &io.LimitedReader{R: resp.Body, N: maxBody + 1}
+	r := csv.NewReader(body)
 	header, err := r.Read()
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", name, err)
@@ -163,6 +164,9 @@ func (c *Client) table(ctx context.Context, name string) ([]map[string]string, e
 	for {
 		rec, err := r.Read()
 		if errors.Is(err, io.EOF) {
+			if body.N == 0 {
+				return nil, fmt.Errorf("reading %s: larger than %d bytes", name, maxBody)
+			}
 			return rows, nil
 		}
 		if err != nil {

@@ -38,6 +38,18 @@ func (s *Service) market(ctx context.Context, settings fantasycalc.Settings) (ma
 	return nil, "", err
 }
 
+// marketLabel names where values came from: the FantasyCalc market, or the
+// backup's dynasty values when note says the backup was used.
+func marketLabel(settings fantasycalc.Settings, note string) string {
+	if note == "" {
+		return settings.String()
+	}
+	if settings.QBs >= 2 {
+		return "DynastyProcess dynasty superflex (backup)"
+	}
+	return "DynastyProcess dynasty 1QB (backup)"
+}
+
 // redraftNote says that keeper and guillotine leagues get redraft values,
 // unless the backup's dynasty values are in use (its own note covers that).
 func redraftNote(l sleeper.League, source string) string {

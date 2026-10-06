@@ -57,7 +57,7 @@ func TestFallback(t *testing.T) {
 	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), down, "me").WithFallback(backup)
 
 	r, err := svc.Values(ctx, "", "", nil)
-	if err != nil || r.Leagues[0].Total != 4000 || !strings.Contains(r.Leagues[0].Note, "DynastyProcess") {
+	if err != nil || r.Leagues[0].Total != 4000 || !strings.Contains(r.Leagues[0].Note, "DynastyProcess") || r.Leagues[0].Market != "DynastyProcess dynasty 1QB (backup)" {
 		t.Errorf("player_values: %+v, err %v", r.Leagues, err)
 	}
 	tr, err := svc.EvaluateTrade(ctx, "", []string{"q b"}, []string{"w r"})

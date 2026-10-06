@@ -38,7 +38,7 @@ type ValueBoard struct {
 	LeagueID string        `json:"league_id"`
 	League   string        `json:"league"`
 	Kind     string        `json:"kind"`
-	Market   string        `json:"market" jsonschema:"the FantasyCalc market these values come from, e.g. dynasty superflex 10-team PPR"`
+	Market   string        `json:"market" jsonschema:"where these values come from: the FantasyCalc market (e.g. dynasty superflex 10-team PPR), or the backup source"`
 	Team     string        `json:"team,omitempty" jsonschema:"roster values: whose roster"`
 	Owner    string        `json:"owner,omitempty"`
 	Total    int           `json:"total,omitempty" jsonschema:"roster values: the roster's summed value"`
@@ -176,6 +176,7 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
+	out.Market = marketLabel(settings, source)
 	addNote(&out.Note, redraftNote(l, source))
 	addNote(&out.Note, source)
 	mine, ok := MyRoster(rosters, userID)

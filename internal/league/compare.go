@@ -40,7 +40,7 @@ type TeamRecord struct {
 
 // SideValues totals both rosters' trade values.
 type SideValues struct {
-	Market         string `json:"market" jsonschema:"the FantasyCalc market these values come from"`
+	Market         string `json:"market" jsonschema:"where these values come from: the FantasyCalc market, or the backup source"`
 	Mine           int    `json:"mine" jsonschema:"my whole roster, taxi squad included (per-position totals leave taxi out)"`
 	Theirs         int    `json:"theirs"`
 	MineStarters   int    `json:"mine_starters" jsonschema:"my current starters only"`
@@ -168,7 +168,7 @@ func (s *Service) compare(ctx context.Context, l sleeper.League, userID, owner s
 		}
 		addNote(&out.Note, note)
 		out.Value = &SideValues{
-			Market:         settings.String(),
+			Market:         marketLabel(settings, note),
 			Mine:           rosterValue(mine.Players, market),
 			Theirs:         rosterValue(them.Players, market),
 			MineStarters:   rosterValue(mine.Starters, market),
