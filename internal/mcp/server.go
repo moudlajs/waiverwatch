@@ -150,7 +150,26 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		return svc.Values(ctx, in.League, in.Owner, in.Players)
 	}))
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "evaluate_trade",
+		Description: "Is this trade fair? Values what I give and what I get (players, and dynasty draft picks like " +
+			"\"2027 1st\") with FantasyCalc values for that league's format, and says who wins and by how much. " +
+			"Two good players are not worth one great one: each side's best piece counts in full and lesser pieces " +
+			"are discounted, so 2-for-1 deals are judged fairly. Without a league, it uses the one league where I " +
+			"have everything I give.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, limited(g, func(ctx context.Context, in TradeInput) (league.TradeReport, error) {
+		return svc.EvaluateTrade(ctx, in.League, in.Give, in.Get)
+	}))
+
 	return s
+}
+
+// TradeInput is evaluate_trade's arguments.
+type TradeInput struct {
+	Give   []string `json:"give" jsonschema:"players (or picks, e.g. 2027 1st) I give, by name or part of it"`
+	Get    []string `json:"get" jsonschema:"players (or picks) I get"`
+	League string   `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit to use the one league where I have everything I give"`
 }
 
 // ValuesInput is player_values' arguments.

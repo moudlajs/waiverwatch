@@ -73,7 +73,7 @@ func TestListLeagues(t *testing.T) {
 		names = append(names, tl.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"compare_rosters", "draft_results", "get_matchups", "get_roster", "injury_report", "list_leagues", "player_values", "position_depth", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
+	if want := []string{"compare_rosters", "draft_results", "evaluate_trade", "get_matchups", "get_roster", "injury_report", "list_leagues", "player_values", "position_depth", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
 		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
@@ -294,6 +294,26 @@ func TestPlayerValues(t *testing.T) {
 	}
 	if len(r.Leagues) != 1 || r.Leagues[0].Market != "dynasty 1QB 8-team standard" || len(r.Leagues[0].Players) != 1 ||
 		r.Leagues[0].Players[0].Value != 7000 {
+		t.Errorf("unexpected report %+v", r)
+	}
+}
+
+func TestEvaluateTrade(t *testing.T) {
+	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{
+		Name: "evaluate_trade", Arguments: map[string]any{"give": []string{"mahomes"}, "get": []string{"seahawks"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	raw, _ := json.Marshal(res.StructuredContent)
+	var r league.TradeReport
+	if err := json.Unmarshal(raw, &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.GiveValue != 7000 || r.Get[0].Name != "Seattle Seahawks" || !r.Get[0].Unrated {
 		t.Errorf("unexpected report %+v", r)
 	}
 }
