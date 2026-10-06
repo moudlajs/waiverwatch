@@ -219,7 +219,7 @@ func TestEvaluateTrade(t *testing.T) {
 		{"empty side", "dynasty", []string{"gibbs"}, nil, "each side"},
 		{"picks alone", "", []string{"2027 1st"}, []string{"chase"}, "name the league"},
 		{"empty name", "dynasty", []string{"gibbs"}, []string{" "}, "empty"},
-		{"two of mine match", "", []string{"jahmyr", "e"}, []string{"chase"}, "matches more than one"}, // Dynasty: Jahmyr Gibbs and Kicker Guy both contain "e"
+		{"two of mine match", "", []string{"jahmyr", "y"}, []string{"chase"}, "matches more than one"}, // Dynasty: Jahmyr Gibbs and Kicker Guy both contain "y"
 		{"ambiguous outside the rosters", "dynasty", []string{"gibbs"}, []string{"smith"}, "Joe Smith"},
 	}
 	for _, tt := range errs {
