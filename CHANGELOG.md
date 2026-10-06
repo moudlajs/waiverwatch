@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/moudlajs/waiverwatch/compare/v0.17.0...v0.18.0) (2026-10-06)
+
+
+### Features
+
+* DynastyProcess values as a fallback source ([#98](https://github.com/moudlajs/waiverwatch/issues/98)) ([4b57829](https://github.com/moudlajs/waiverwatch/commit/4b578295c47abdca9b338706307d14d3522ab25c))
+
 ## [0.17.0](https://github.com/moudlajs/waiverwatch/compare/v0.16.0...v0.17.0) (2026-10-06)
 
 
