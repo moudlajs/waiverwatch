@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/moudlajs/waiverwatch/compare/v0.16.0...v0.17.0) (2026-10-06)
+
+
+### Features
+
+* **mcp:** trade_targets tool ([#96](https://github.com/moudlajs/waiverwatch/issues/96)) ([076558f](https://github.com/moudlajs/waiverwatch/commit/076558f37c05c86fb4007032ce5e42b914665b23))
+
 ## [0.16.0](https://github.com/moudlajs/waiverwatch/compare/v0.15.0...v0.16.0) (2026-10-06)
 
 
