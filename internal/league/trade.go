@@ -62,6 +62,9 @@ func (s *Service) EvaluateTrade(ctx context.Context, leagueQuery string, give, g
 	if len(give) == 0 || len(get) == 0 {
 		return TradeReport{}, errors.New("name at least one player or pick on each side")
 	}
+	if slices.ContainsFunc(slices.Concat(give, get), func(n string) bool { return foldName(n) == "" }) {
+		return TradeReport{}, errors.New("a player or pick name is empty")
+	}
 	_, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
 		return TradeReport{}, err
@@ -127,13 +130,14 @@ func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League,
 			found = append(found, l.Name)
 		}
 	}
+	// A league that failed to load might be the one: don't guess past it.
+	if err := errors.Join(errs...); err != nil && len(kept) < 2 {
+		return nil, fmt.Errorf("couldn't check every league, so name the league: %w", err)
+	}
 	switch len(kept) {
 	case 1:
 		return kept, nil
 	case 0:
-		if err := errors.Join(errs...); err != nil {
-			return nil, fmt.Errorf("couldn't check every league, so name the league: %w", err)
-		}
 		return nil, fmt.Errorf("no league where I have all of %s; name the league (mine: %s)", strings.Join(give, ", "), strings.Join(names, "; "))
 	default:
 		return nil, fmt.Errorf("%s: on my roster in more than one league; name one of: %s", strings.Join(give, ", "), strings.Join(found, "; "))
