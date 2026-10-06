@@ -56,6 +56,8 @@ func TestVerdict(t *testing.T) {
 	}{
 		{10000, 10000, "fair"},
 		{10000, 9600, "fair"},
+		{10000, 9500, "fair"}, // exactly 5%
+		{10000, 9499, "I lose slightly (5%)"},
 		{10000, 9000, "I lose slightly (10%)"},
 		{9000, 10000, "I win slightly (10%)"},
 		{10000, 5000, "I lose clearly (50%)"},
@@ -163,7 +165,7 @@ func TestEvaluateTrade(t *testing.T) {
 		if r.League != "Dynasty" || r.Partner != "Rival FC" || r.Market != "dynasty 1QB 12-team PPR" {
 			t.Errorf("league %q partner %q market %q", r.League, r.Partner, r.Market)
 		}
-		if r.GiveValue != 10000 || r.GetValue != 12000 || r.GiveAdjusted != 10000 || r.GetAdjusted != 10530 || r.Margin != 530 || r.Verdict != "I win slightly (5%)" && r.Verdict != "fair" {
+		if r.GiveValue != 10000 || r.GetValue != 12000 || r.GiveAdjusted != 10000 || r.GetAdjusted != 10530 || r.Margin != 530 || r.Verdict != "I win slightly (5%)" {
 			t.Errorf("got %+v", r)
 		}
 		if !slices.ContainsFunc(r.Notes, func(n string) bool { return strings.Contains(n, "1 more player") }) {
