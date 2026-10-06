@@ -194,17 +194,17 @@ func TestValueRanking(t *testing.T) {
 	}
 	users := []sleeper.LeagueUser{user("a", "A", ""), user("b", "B", ""), user("c", "C", ""), user("d", "D", "")}
 	// Same name twice: ranks still go by roster.
-	if _, ranks := valueRanking([]sleeper.Roster{{RosterID: 1, OwnerID: "x", Players: []string{"y"}}, {RosterID: 2, OwnerID: "x"}}, nil, map[string]fantasycalc.Value{"y": {Value: 1}}, 2); ranks[1] != 1 || ranks[2] != 2 {
+	if _, ranks := valueRanking([]sleeper.Roster{{RosterID: 1, OwnerID: "x", Players: []string{"y"}}, {RosterID: 2, OwnerID: "x", Players: []string{"z"}}}, nil, map[string]fantasycalc.Value{"y": {Value: 1}}, 2); ranks[1] != 1 || ranks[2] != 2 {
 		t.Errorf("shared names: ranks %v", ranks)
 	}
 	market := map[string]fantasycalc.Value{"x": {Value: 100}, "y": {Value: 300}, "z": {Value: 200}}
 	got, ranks := valueRanking(rosters, users, market, 3)
-	want := []TeamValue{{1, "B", 500, false}, {2, "C", 400, true}, {3, "A", 100, false}, {4, "D", 0, false}}
-	if !slices.Equal(got, want) || ranks[1] != 3 || ranks[4] != 4 {
+	want := []TeamValue{{1, "B", 500, false}, {2, "C", 400, true}, {3, "A", 100, false}} // D was cut: not ranked
+	if !slices.Equal(got, want) || ranks[1] != 3 || ranks[4] != 0 {
 		t.Errorf("got %+v, ranks %v\nwant %+v", got, ranks, want)
 	}
 	market["x"] = fantasycalc.Value{Value: 400}
-	if got, _ := valueRanking(rosters, users, market, 1); got[1].Rank != 2 || got[2].Rank != 2 || got[3].Rank != 4 { // A and C tie at 400
+	if got, _ := valueRanking(rosters, users, market, 1); got[1].Rank != 2 || got[2].Rank != 2 || len(got) != 3 { // A and C tie at 400
 		t.Errorf("ties: %+v", got)
 	}
 }

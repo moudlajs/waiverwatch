@@ -42,7 +42,7 @@ type TeamRecord struct {
 // SideValues totals both rosters' trade values.
 type SideValues struct {
 	Market         string `json:"market" jsonschema:"the FantasyCalc market these values come from"`
-	Mine           int    `json:"mine" jsonschema:"my whole roster"`
+	Mine           int    `json:"mine" jsonschema:"my whole roster, taxi squad included (per-position totals leave taxi out)"`
 	Theirs         int    `json:"theirs"`
 	MineStarters   int    `json:"mine_starters" jsonschema:"my current starters only"`
 	TheirsStarters int    `json:"theirs_starters"`

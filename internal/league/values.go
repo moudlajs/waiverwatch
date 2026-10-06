@@ -306,10 +306,11 @@ func rosterValue(ids []string, market map[string]fantasycalc.Value) int {
 }
 
 // valueRanking orders a league's teams by summed roster value, most valuable
-// first; tied teams share a rank. ranks maps roster IDs to their rank (team
-// names can be empty or shared).
+// first; tied teams share a rank. Empty rosters (teams cut from a guillotine
+// league) are left out. ranks maps roster IDs to their rank (team names can
+// be empty or shared).
 func valueRanking(rosters []sleeper.Roster, users []sleeper.LeagueUser, market map[string]fantasycalc.Value, mineID int) (out []TeamValue, ranks map[int]int) {
-	sorted := slices.Clone(rosters)
+	sorted := slices.DeleteFunc(slices.Clone(rosters), func(r sleeper.Roster) bool { return len(r.Players) == 0 })
 	slices.SortStableFunc(sorted, func(a, b sleeper.Roster) int {
 		return cmp.Compare(rosterValue(b.Players, market), rosterValue(a.Players, market))
 	})
