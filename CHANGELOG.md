@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/moudlajs/waiverwatch/compare/v0.13.0...v0.14.0) (2026-10-06)
+
+
+### Features
+
+* **mcp:** pick ownership, projected slot and depth in evaluate_trade ([#89](https://github.com/moudlajs/waiverwatch/issues/89)) ([b13423c](https://github.com/moudlajs/waiverwatch/commit/b13423cd1cae9f5690200dcd7020c5d7c5d99b63))
+
 ## [0.13.0](https://github.com/moudlajs/waiverwatch/compare/v0.12.0...v0.13.0) (2026-10-06)
 
 
