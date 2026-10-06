@@ -165,13 +165,35 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		return svc.EvaluateTrade(ctx, in.League, in.Give, in.Get)
 	}))
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "trade_targets",
+		Description: "Who should I trade for? Per league: my thin positions (no healthy backup, or can't fill the lineup), " +
+			"my spare players (healthy depth beyond what my lineup needs, where I can afford to lose it), and players on " +
+			"other teams at the thin positions that my spares can buy, each with the cheapest offer (one or two spares). " +
+			"Name a position to look there even if it isn't thin. Check a deal with evaluate_trade before proposing it.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, limited(g, func(ctx context.Context, in TargetsInput) (league.TargetReport, error) {
+		limit := in.Limit
+		if limit <= 0 {
+			limit = 5
+		}
+		return svc.TradeTargets(ctx, in.League, normalisePosition(in.Position), min(limit, 20))
+	}))
+
 	return s
+}
+
+// TargetsInput is trade_targets' arguments.
+type TargetsInput struct {
+	League   string `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
+	Position string `json:"position,omitempty" jsonschema:"look for this position (QB, RB, WR, TE) even if it isn't thin; omit for my thin positions"`
+	Limit    int    `json:"limit,omitempty" jsonschema:"targets per league, 1-20; default 5"`
 }
 
 // toolNames are every tool NewServer registers; a test keeps it in step.
 var toolNames = []string{
 	"list_leagues", "get_matchups", "trending_players", "waiver_targets", "get_roster", "injury_report",
-	"compare_rosters", "draft_results", "position_depth", "player_values", "evaluate_trade",
+	"compare_rosters", "draft_results", "position_depth", "player_values", "evaluate_trade", "trade_targets",
 }
 
 // Claude keeps a stored copy of a connector's tool list until the connector
