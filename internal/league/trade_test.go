@@ -141,6 +141,8 @@ func TestEvaluateTrade(t *testing.T) {
 			"te":    {PlayerID: "te", FullName: "Tight End", Position: "TE", Active: true},
 			"fa":    {PlayerID: "fa", FullName: "Free Agent", Position: "RB", Active: true},
 			"k":     {PlayerID: "k", FullName: "Kicker Guy", Position: "K", Active: true},
+			"sm1":   {PlayerID: "sm1", FullName: "Joe Smith", Position: "WR", Active: true},
+			"sm2":   {PlayerID: "sm2", FullName: "Bob Smith", Position: "TE", Active: true},
 		},
 	}))
 	values := func(_ context.Context, s fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
@@ -185,6 +187,13 @@ func TestEvaluateTrade(t *testing.T) {
 		}
 	})
 
+	t.Run("a pick on the give side doesn't stop finding the league", func(t *testing.T) {
+		r, err := svc.EvaluateTrade(ctx, "", []string{"jahmyr", "2027 1st"}, []string{"tight end"})
+		if err != nil || r.League != "Dynasty" || r.Give[1].Position != "PICK" {
+			t.Errorf("got %+v, err %v", r, err)
+		}
+	})
+
 	t.Run("free agent and unrated player", func(t *testing.T) {
 		r, err := svc.EvaluateTrade(ctx, "dynasty", []string{"kicker"}, []string{"free agent"})
 		if err != nil {
@@ -208,6 +217,8 @@ func TestEvaluateTrade(t *testing.T) {
 		{"named twice", "dynasty", []string{"gibbs"}, []string{"chase", "ja'marr chase"}, "twice"},
 		{"nobody", "dynasty", []string{"gibbs"}, []string{"zzz"}, "no player or pick"},
 		{"empty side", "dynasty", []string{"gibbs"}, nil, "each side"},
+		{"picks alone", "", []string{"2027 1st"}, []string{"chase"}, "name the league"},
+		{"ambiguous outside the rosters", "dynasty", []string{"gibbs"}, []string{"smith"}, "Joe Smith"},
 	}
 	for _, tt := range errs {
 		t.Run(tt.name, func(t *testing.T) {
@@ -222,5 +233,24 @@ func TestEvaluateTrade(t *testing.T) {
 				t.Errorf("err = %v, want it to contain %q", err, tt.want)
 			}
 		})
+	}
+}
+
+func TestEvaluateTradeLeagueDown(t *testing.T) {
+	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
+		"/state/nfl": sleeper.State{Season: "2026", Week: 5},
+		"/user/me":   sleeper.User{UserID: "100"},
+		"/user/100/leagues/nfl/2026": []sleeper.League{
+			{LeagueID: "A", Name: "Alpha"}, {LeagueID: "B", Name: "Beta"},
+		},
+		"/league/A/rosters": []sleeper.Roster{{RosterID: 1, OwnerID: "100"}},
+		// Beta's rosters are missing: Sleeper fails for that league.
+		"/players/nfl": map[string]sleeper.Player{"x": {PlayerID: "x", FullName: "Some Player", Position: "WR"}},
+	}))
+	none := func(context.Context, fantasycalc.Settings) (map[string]fantasycalc.Value, error) { return nil, nil }
+	_, err := NewService(api, NewDirectory(store.NewMemory(), api.Players), none, "me").
+		EvaluateTrade(context.Background(), "", []string{"some player"}, []string{"x"})
+	if err == nil || !strings.Contains(err.Error(), "couldn't check every league") || !errors.Is(err, sleeper.ErrNotFound) {
+		t.Errorf("err = %v, want the league error passed on", err)
 	}
 }

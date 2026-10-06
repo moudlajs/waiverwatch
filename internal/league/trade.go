@@ -1,6 +1,7 @@
 package league
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -81,26 +82,42 @@ func (s *Service) EvaluateTrade(ctx context.Context, leagueQuery string, give, g
 	return s.evaluate(ctx, leagues[0], user.UserID, give, get, players)
 }
 
-// leaguesWithMine narrows leagues to the single one where every name in
-// give is on my roster.
+// leaguesWithMine narrows leagues to the single one where every player in
+// give is on my roster. Names that match no NFL player are taken for draft
+// picks and don't narrow anything; a give of picks alone needs a league.
 func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League, userID string, give []string, players map[string]sleeper.Player) ([]sleeper.League, error) {
+	var named []string
+	for _, n := range give {
+		if len(findPlayers(players, n)) > 0 {
+			named = append(named, n)
+		}
+	}
+	if len(named) == 0 {
+		return nil, errors.New("name the league: draft picks alone don't tell which one")
+	}
+
 	has := make([]bool, len(leagues))
+	errs := make([]error, len(leagues))
 	eachLeague(leagues, func(i int, l sleeper.League) {
 		rosters, err := s.api.Rosters(ctx, l.LeagueID)
 		if err != nil {
+			errs[i] = err
 			return
 		}
 		mine, ok := MyRoster(rosters, userID)
 		if !ok {
-			return
+			return // not in this league's rosters: nothing of mine to trade
 		}
-		for _, n := range give {
+		for _, n := range named {
 			if _, err := onRoster(mine.Players, n, players); err != nil {
 				return
 			}
 		}
 		has[i] = true
 	})
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	var found, names []string
 	var kept []sleeper.League
 	for i, l := range leagues {
@@ -114,6 +131,9 @@ func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League,
 	case 1:
 		return kept, nil
 	case 0:
+		if err := errors.Join(errs...); err != nil {
+			return nil, fmt.Errorf("couldn't check every league, so name the league: %w", err)
+		}
 		return nil, fmt.Errorf("no league where I have all of %s; name the league (mine: %s)", strings.Join(give, ", "), strings.Join(names, "; "))
 	default:
 		return nil, fmt.Errorf("%s: on my roster in more than one league; name one of: %s", strings.Join(give, ", "), strings.Join(found, "; "))
@@ -239,7 +259,13 @@ func asset(name string, pool []string, players map[string]sleeper.Player, market
 		return TradeAsset{}, err
 	}
 	if err != nil {
-		if found := findPlayers(players, name); len(found) > 0 {
+		if found := findPlayers(players, name); len(found) > 1 {
+			var names []string
+			for _, p := range found {
+				names = append(names, fmt.Sprintf("%s (%s %s)", p.Name(), p.Position, cmp.Or(p.Team, "FA")))
+			}
+			return TradeAsset{}, fmt.Errorf("%q %w: %s", name, errAmbiguous, strings.Join(names, ", "))
+		} else if len(found) == 1 {
 			id = found[0].PlayerID
 		} else if pick, ok := findPick(market, name); ok {
 			return TradeAsset{PlayerID: pick.SleeperID, Name: pick.Name, Position: "PICK", Value: pick.Value}, nil
