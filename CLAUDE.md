@@ -22,6 +22,7 @@ waiver day matters more than polish.
 
 ```
 Claude (phone/web/desktop) --MCP--> waiverwatch (Cloud Run) --HTTP--> api.sleeper.app
+                                                               --HTTP--> api.fantasycalc.com (trade values)
 ```
 
 Target layout (grow into it, don't create empty packages):
@@ -29,6 +30,7 @@ Target layout (grow into it, don't create empty packages):
 ```
 main.go              wiring only
 internal/sleeper/    API client: HTTP + JSON, nothing else
+internal/fantasycalc/ trade values client: HTTP + JSON, nothing else
 internal/league/     domain logic: knows football, not HTTP or MCP
 internal/store/      Store interface + in-memory impl
 internal/mcp/        tools + transport: knows MCP, never calls Sleeper
@@ -126,6 +128,22 @@ GET /draft/{draft_id}/picks                -> picks (picked_by, round, pick_no)
   `players_points`), no projections (checked 2026-09-25, see #17). There is
   no per-game status either, so "yet to play" can't be told from 0 points.
 
+## FantasyCalc API
+
+Trade values, public, no key, undocumented. One endpoint:
+`GET https://api.fantasycalc.com/values/current?isDynasty=&numQbs=&numTeams=&ppr=`.
+
+- Each entry has `player.sleeperId`, so it joins straight onto Sleeper IDs.
+  Dynasty markets add draft picks (`position: PICK`, IDs like
+  `FP_2027_early_0`).
+- Markets (checked 2026-10-06): `numQbs` 1 or 2, `numTeams` 8/10/12/14
+  (16+ silently returns the 12-team values), `ppr` 0/0.5/1; anything else 404s.
+  `fantasycalc.Settings.Normalise` maps leagues onto these (bigger leagues:
+  14). `league.ValueSettings` derives them: dynasty only for `settings.type`
+  2; 2 QBs when `QB` + `SUPER_FLEX` slots ≥ 2; PPR from `scoring_settings.rec`.
+- ~150 KB redraft, ~330 KB dynasty. Cached per market for 3 h; on a failed
+  refresh the stale copy is served.
+
 ## Go conventions
 
 - Errors are values, wrapped with context: `fmt.Errorf("fetching rosters: %w", err)`.
@@ -139,7 +157,8 @@ GET /draft/{draft_id}/picks                -> picks (picked_by, round, pick_no)
 ## Milestones
 
 M0 Foundation · M1 Local MCP · M2 Hosted (phone) · M3 Waiver insights ·
-M4 Alerts. Versions come from commits via release-please.
+M4 Alerts · M5 Multi-user · M6 Trade values. Versions come from commits via
+release-please.
 
 ## Out of scope
 

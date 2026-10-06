@@ -21,6 +21,12 @@ type League struct {
 	TotalRosters    int            `json:"total_rosters"`
 	RosterPositions []string       `json:"roster_positions"`
 	Settings        LeagueSettings `json:"settings"`
+	Scoring         Scoring        `json:"scoring_settings"`
+}
+
+// Scoring holds the scoring settings waiverwatch cares about.
+type Scoring struct {
+	Rec float64 `json:"rec"` // points per reception: 0, 0.5, 1...
 }
 
 // LeagueSettings holds the league settings waiverwatch cares about.

@@ -27,7 +27,7 @@ func httpServer(t *testing.T, limit rate.Limit, burst int) *httptest.Server {
 		"/user/me":                   sleeper.User{UserID: "100"},
 		"/user/100/leagues/nfl/2026": []sleeper.League{},
 	}))
-	svc := league.NewService(api, league.NewDirectory(store.NewMemory(), api.Players), "me")
+	svc := league.NewService(api, league.NewDirectory(store.NewMemory(), api.Players), nil, "me")
 	srv := httptest.NewServer(HTTPHandler(NewServer(svc, "test", nil), "test", nil, limit, burst))
 	t.Cleanup(srv.Close)
 	return srv
@@ -109,7 +109,7 @@ func TestHTTPRequiresSignIn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	svc := league.NewService(sleeper.New("http://unused.invalid"), nil, "me")
+	svc := league.NewService(sleeper.New("http://unused.invalid"), nil, nil, "me")
 	srv := httptest.NewServer(HTTPHandler(NewServer(svc, "test", nil), "v9.9.9", signIn, rate.Inf, 1))
 	t.Cleanup(srv.Close)
 
@@ -152,7 +152,7 @@ func TestToolsAnswerForTheSignedInUser(t *testing.T) {
 		"/league/B/rosters":        []sleeper.Roster{{RosterID: 1, OwnerID: "2"}},
 		"/league/B/users":          []sleeper.LeagueUser{{UserID: "2", DisplayName: "bob"}},
 	}))
-	svc := league.NewService(api, nil, "") // hosted: no default user
+	svc := league.NewService(api, nil, nil, "") // hosted: no default user
 
 	as := func(id, name string) *sdk.CallToolRequest {
 		return &sdk.CallToolRequest{Extra: &sdk.RequestExtra{TokenInfo: &sdkauth.TokenInfo{

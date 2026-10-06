@@ -119,7 +119,7 @@ func TestRosters(t *testing.T) {
 			"qb": {FullName: "Q B", Position: "QB"}, "wr": {FullName: "W R", Position: "WR"}, "rb": {FullName: "R B", Position: "RB"},
 		},
 	}))
-	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), "me")
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
 	ctx := context.Background()
 
 	t.Run("mine everywhere", func(t *testing.T) {

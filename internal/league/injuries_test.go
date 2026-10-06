@@ -45,7 +45,7 @@ func TestInjuries(t *testing.T) {
 			"wrfree":  {FullName: "Wr Free", Position: "WR", Team: "NE", Active: true, SearchRank: 60},
 		},
 	}))
-	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), "me")
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
 
 	r, err := svc.Injuries(context.Background())
 	if err != nil {

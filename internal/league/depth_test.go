@@ -128,7 +128,7 @@ func TestDepth(t *testing.T) {
 			"rb3": {FullName: "Rb Out", Position: "RB", InjuryStatus: "Out"},
 		},
 	}))
-	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), "me")
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
 
 	r, err := svc.Depth(context.Background(), "")
 	if err != nil {
@@ -155,7 +155,7 @@ func TestThinSpotsSkipStreamedPositions(t *testing.T) {
 			"k1": {FullName: "Kicker", Position: "K"}, "te1": {FullName: "Tight End", Position: "TE"},
 		},
 	}))
-	r, err := NewService(api, NewDirectory(store.NewMemory(), api.Players), "me").Depth(context.Background(), "")
+	r, err := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me").Depth(context.Background(), "")
 	if err != nil {
 		t.Fatal(err)
 	}

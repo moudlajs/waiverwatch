@@ -45,7 +45,7 @@ func trendingService(t *testing.T) *Service {
 			"30": {PlayerID: "30", FullName: "Rb Three", Position: "RB", Team: "BUF"},
 		},
 	}))
-	return NewService(api, NewDirectory(store.NewMemory(), api.Players), "me")
+	return NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
 }
 
 func TestTrending(t *testing.T) {

@@ -133,7 +133,7 @@ func TestMatchups(t *testing.T) {
 		"/league/X/users":      []sleeper.LeagueUser{me},
 		"/players/nfl":         map[string]sleeper.Player{"4046": {PlayerID: "4046", FullName: "Patrick Mahomes"}},
 	}))
-	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), "me")
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
 
 	w, err := svc.Matchups(context.Background(), 2)
 	if err != nil {

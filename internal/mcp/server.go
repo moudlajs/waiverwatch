@@ -139,7 +139,25 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		return svc.Depth(ctx, in.League)
 	}))
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "player_values",
+		Description: "Trade values: what players are worth on the trade market right now (FantasyCalc, from real fantasy " +
+			"trades; up to ~11000), fitted to each league's format: dynasty or redraft, superflex or 1QB, size, PPR. " +
+			"Name players to see their value in each league and whose team they are on; omit players for a whole " +
+			"roster's values and total (mine, or an owner's). Use it for \"is this trade fair?\": compare the sides' sums.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, limited(g, func(ctx context.Context, in ValuesInput) (league.ValueReport, error) {
+		return svc.Values(ctx, in.League, in.Owner, in.Players)
+	}))
+
 	return s
+}
+
+// ValuesInput is player_values' arguments.
+type ValuesInput struct {
+	Players []string `json:"players,omitempty" jsonschema:"player names (or parts, e.g. Gibbs); omit to value a whole roster"`
+	League  string   `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
+	Owner   string   `json:"owner,omitempty" jsonschema:"only without players: team name or owner display name whose roster to value; omit for mine"`
 }
 
 // DepthInput is position_depth's arguments.
