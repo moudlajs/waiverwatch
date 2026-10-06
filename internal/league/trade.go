@@ -388,11 +388,16 @@ func (t *trade) pick(q pickQuery, holders []int, side string) (TradeAsset, error
 	t.seen[id] = true
 
 	slot, projected := q.slot, ""
+	// The earliest draft FantasyCalc values is the next one: it drops a
+	// draft's picks once that draft is done.
 	if slot == "" && q.season == seasons[0] {
 		slot = projectSlot(t.rosters, p.origin)
 		projected = slot
 	}
 	v, rated := pickValue(t.market, p.season, p.round, slot)
+	if q.slot != "" && v.Name == label {
+		return TradeAsset{}, fmt.Errorf("%s: FantasyCalc has no %s value for a %s; name it without %q", side, q.slot, label, q.slot)
+	}
 	name := label
 	if v.Name == label {
 		projected = "" // no value for that slot: valued as a generic pick of its round

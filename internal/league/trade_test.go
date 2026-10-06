@@ -307,6 +307,7 @@ func TestEvaluateTrade(t *testing.T) {
 		{"ambiguous outside the rosters", "dynasty", []string{"gibbs"}, []string{"smith"}, "Joe Smith (WR no NFL team, free agent)"},
 		{"a pick I don't hold", "dynasty", []string{"2027 1st third"}, []string{"tight end"}, "no 2027 1st held by Mine"},
 		{"a draft FantasyCalc doesn't value", "dynasty", []string{"2031 1st"}, []string{"tight end"}, "2027, 2028 only"},
+		{"a slot FantasyCalc doesn't value", "dynasty", []string{"2028 1st late"}, []string{"tight end"}, "no late value"},
 		{"picks in redraft", "redraft", []string{"chase", "2027 1st"}, []string{"gibbs"}, "only valued in dynasty"},
 	}
 	for _, tt := range errs {
