@@ -178,7 +178,8 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 
 	t := trade{league: l, players: players, seen: make(map[string]bool)}
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() (err error) { t.market, err = s.values(gctx, settings); return err })
+	var source string
+	g.Go(func() (err error) { t.market, source, err = s.market(gctx, settings); return err })
 	g.Go(func() (err error) { t.rosters, err = s.api.Rosters(gctx, l.LeagueID); return err })
 	g.Go(func() (err error) { t.users, err = s.api.LeagueUsers(gctx, l.LeagueID); return err })
 	if l.Kind() == "dynasty" {
@@ -317,6 +318,9 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 	}
 	if k := l.Kind(); k == "keeper" || k == "guillotine" {
 		out.Notes = append(out.Notes, k+" league: valued with redraft values")
+	}
+	if source != "" {
+		out.Notes = append(out.Notes, source)
 	}
 	return out, nil
 }

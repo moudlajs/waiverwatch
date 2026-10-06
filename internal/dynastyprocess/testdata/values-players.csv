@@ -1,0 +1,5 @@
+"player","pos","team","age","draft_year","ecr_1qb","ecr_2qb","ecr_pos","value_1qb","value_2qb","scrape_date","fp_id"
+"Alpha Receiver","WR","CIN",26.6,2021,1.2,6.3,1.2,10208,9055,"2026-10-02","101"
+"Bravo Back","RB","ATL",23.1,2023,2.5,7.1,1.1,9626,8800,"2026-10-02","102"
+"Charlie Passer","QB","BUF",30.4,2018,20.1,1.5,1.3,6100,10900,"2026-10-02","103"
+"No Sleeper Id","TE","FA",29,2017,300,300,40,10,10,"2026-10-02","104"

@@ -172,12 +172,14 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 		users   []sleeper.LeagueUser
 	)
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() (err error) { market, err = s.values(gctx, settings); return err })
+	var source string
+	g.Go(func() (err error) { market, source, err = s.market(gctx, settings); return err })
 	g.Go(func() (err error) { rosters, err = s.api.Rosters(gctx, l.LeagueID); return err })
 	g.Go(func() (err error) { users, err = s.api.LeagueUsers(gctx, l.LeagueID); return err })
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
+	addNote(&out.Note, source)
 	mine, ok := MyRoster(rosters, userID)
 	if !ok {
 		return out, fmt.Errorf("no roster owned by user %s in league %s", userID, l.LeagueID)
@@ -220,7 +222,7 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 	out.Ranking, ranks = valueRanking(rosters, users, market, mine.RosterID)
 	out.Rank = ranks[r.RosterID]
 	if len(r.Players) == 0 && l.Kind() == "guillotine" {
-		out.Note = "eliminated: guillotine teams are emptied when they are cut"
+		addNote(&out.Note, "eliminated: guillotine teams are emptied when they are cut")
 	}
 	return out, nil
 }
