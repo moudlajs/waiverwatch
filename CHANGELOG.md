@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/moudlajs/waiverwatch/compare/v0.14.0...v0.15.0) (2026-10-06)
+
+
+### Features
+
+* **mcp:** list_leagues tells Claude which tools exist ([#92](https://github.com/moudlajs/waiverwatch/issues/92)) ([5cebaf1](https://github.com/moudlajs/waiverwatch/commit/5cebaf13e5233d20e942e5785ee0bc46d5480dcd))
+
 ## [0.14.0](https://github.com/moudlajs/waiverwatch/compare/v0.13.0...v0.14.0) (2026-10-06)
 
 
