@@ -11,7 +11,7 @@ import (
 // league mates asking about the same league share one fetch. The cache lives
 // in memory and is lost when the server scales to zero, which is fine.
 const (
-	ttlShared  = 5 * time.Minute  // NFL state, trending adds: the same for everyone
+	ttlShared  = 5 * time.Minute  // NFL state, trending adds, projections: the same for everyone
 	ttlSlow    = 10 * time.Minute // username lookups, a user's leagues, draft lists
 	ttlLive    = time.Minute      // rosters, members, matchups: live, but a minute old is fine
 	ttlHistory = 24 * time.Hour   // earlier seasons' leagues, completed drafts' picks

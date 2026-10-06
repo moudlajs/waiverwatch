@@ -17,25 +17,26 @@ import (
 // fixtures maps request paths to files in testdata/. The files are real
 // Sleeper responses with names and IDs replaced.
 var fixtures = map[string]string{
-	"/user/testuser":             "user.json",
-	"/user/100/leagues/nfl/2026": "leagues.json",
-	"/league/L1/rosters":         "rosters.json",
-	"/league/L1/users":           "users.json",
-	"/league/L1/matchups/3":      "matchups.json",
-	"/league/L1":                 "league.json",
-	"/league/L1/drafts":          "drafts.json",
-	"/draft/D1/picks":            "picks.json",
-	"/league/L1/traded_picks":    "traded_picks.json",
-	"/state/nfl":                 "state.json",
-	"/players/nfl":               "players.json",
-	"/players/nfl/trending/add":  "trending.json",
-	"/user/ghost":                "", // Sleeper's answer for unknown users: 200 + null
-	"/league/missing/rosters":    "", // same for unknown leagues
-	"/league/broken/rosters":     "broken",
-	"/league/down/rosters":       "500",
-	"/league/slow/rosters":       "slow",
-	"/user/100/leagues/nfl/1999": "[]",
-	"/league/gone/matchups/1":    "404",
+	"/user/testuser":                  "user.json",
+	"/user/100/leagues/nfl/2026":      "leagues.json",
+	"/league/L1/rosters":              "rosters.json",
+	"/league/L1/users":                "users.json",
+	"/league/L1/matchups/3":           "matchups.json",
+	"/league/L1":                      "league.json",
+	"/league/L1/drafts":               "drafts.json",
+	"/draft/D1/picks":                 "picks.json",
+	"/league/L1/traded_picks":         "traded_picks.json",
+	"/projections/nfl/regular/2026/5": "projections.json",
+	"/state/nfl":                      "state.json",
+	"/players/nfl":                    "players.json",
+	"/players/nfl/trending/add":       "trending.json",
+	"/user/ghost":                     "", // Sleeper's answer for unknown users: 200 + null
+	"/league/missing/rosters":         "", // same for unknown leagues
+	"/league/broken/rosters":          "broken",
+	"/league/down/rosters":            "500",
+	"/league/slow/rosters":            "slow",
+	"/user/100/leagues/nfl/1999":      "[]",
+	"/league/gone/matchups/1":         "404",
 }
 
 func newTestClient(t *testing.T) *Client {
@@ -225,6 +226,19 @@ func TestClientDecodes(t *testing.T) {
 		}
 		if p.Metadata.FirstName+" "+p.Metadata.LastName != "Jeremiyah Love" || p.Metadata.Position != "RB" || p.IsKeeper {
 			t.Errorf("pick metadata = %+v keeper=%v", p.Metadata, p.IsKeeper)
+		}
+	})
+
+	t.Run("projections", func(t *testing.T) {
+		ps, err := c.Projections(ctx, "regular", "2026", 5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if g := ps["9221"]; g["pts_ppr"] != 25.31 || g["pts_half_ppr"] != 22.81 || g["pts_std"] != 20.31 {
+			t.Errorf("Gibbs = %v", g)
+		}
+		if _, ok := ps["4046"]["pts_ppr"]; ok { // on bye: stats without points
+			t.Errorf("Mahomes = %v, want no points", ps["4046"])
 		}
 	})
 
