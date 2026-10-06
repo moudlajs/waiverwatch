@@ -111,7 +111,8 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 		}
 	}
 	if position != "" && len(needs) == 0 {
-		return out, fmt.Errorf("this league doesn't start a %s", position)
+		out.Note = fmt.Sprintf("this league doesn't start a %s", position)
+		return out, nil
 	}
 
 	// Spares: at positions with backups, the healthy players beyond the

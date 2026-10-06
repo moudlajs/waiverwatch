@@ -95,7 +95,7 @@ func TestTradeTargets(t *testing.T) {
 		if len(d.Spares) != 1 || d.Spares[0].Name != "Q Two" || len(d.Targets) != 0 || !strings.Contains(d.Note, "within reach") {
 			t.Errorf("got %+v", d)
 		}
-		if r, err = svc.TradeTargets(ctx, "dynasty", "K", 5); err != nil || !strings.Contains(r.Leagues[0].Error, "doesn't start a K") {
+		if r, err = svc.TradeTargets(ctx, "dynasty", "K", 5); err != nil || !strings.Contains(r.Leagues[0].Note, "doesn't start a K") || r.Leagues[0].Error != "" {
 			t.Errorf("K: %+v, err %v", r.Leagues[0], err)
 		}
 	})
