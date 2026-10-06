@@ -5,8 +5,8 @@ fantasy football. Ask Claude about all your leagues at once, from your laptop or
 your phone:
 
 - *"How am I doing this week?"* across every league
-- *"Who's thin at RB in my dynasty league?"*
 - *"Which trending waiver pickups are still available in my leagues?"*
+- *"Is Gibbs for Ja'Marr Chase and a 2027 1st fair in my dynasty league?"*
 
 The Sleeper app shows one league at a time. Fantasy needs reaction: an injury
 on Sunday gives you minutes to hit the waiver wire, wherever you are.
@@ -30,28 +30,69 @@ need a Claude plan that allows custom connectors.
    **Sign in**. It then syncs to the Claude app on your phone; switch it on
    per chat under **+ → Connectors**.
 
-**After an update** (new tools), Claude may not see them in your chats yet:
-it keeps its own copy of the tool list. Disconnect and reconnect waiverwatch
-under Connectors, then start a new chat. If you ask about something a new
-tool covers in an old chat, Claude should tell you to do this.
+## What you can ask
 
-Then just ask:
+Every question covers all your leagues unless you name one ("…in my dynasty
+league"); Claude matches league names loosely.
 
-- *"How are my matchups this week?"*
+**Game day**
+
+- *"How are my matchups this week?"* Live and projected scores, starter by
+  starter, for you and your opponent. Survival (guillotine) leagues show your
+  rank and how far you are above last place.
 - *"Who's hurt on my teams, and who can I pick up instead?"*
-- *"Who should I pick up at RB?"* or *"…in my dynasty league?"*
-- *"What's trending on waivers, and where is he still available?"*
 - *"Compare me with my opponent in my 12-team league."*
+
+**Waivers**
+
+- *"Who should I pick up at RB?"* The best free agents you can actually start
+  in each league, with your waiver priority or FAAB left.
+- *"What's trending on waivers, and where is he still available?"*
 - *"Where am I thin? Any position without a backup?"*
-- *"Where did I draft Kenneth Walker?"*
+
+**Trades** (values from [FantasyCalc](https://fantasycalc.com), built from real
+fantasy trades and fitted to each league: dynasty or redraft, superflex or
+1QB, league size, PPR)
+
+- *"What's my roster worth in my dynasty league, and where do I rank?"*
+- *"Is Gibbs for Chase and a 2027 1st fair?"* Both sides valued, adjusted so
+  two good players don't automatically beat one great one, with who it leans
+  to and your depth before and after. Draft picks are checked against who
+  actually holds them; next year's picks are valued early, mid or late from
+  the original team's record.
+- *"Who should I trade for?"* Your thin positions, the spare players you can
+  afford to give up, and players on other teams they can buy.
+
+**History**
+
+- *"Where did I draft Kenneth Walker?"* Dynasty leagues include the startup
+  draft and past rookie drafts.
+
+The [tools](#tools) section lists exactly what each one returns.
+
+## Good to know
+
+**After an update** with new tools, Claude may not see them in your chats
+yet: it keeps its own copy of the tool list. Disconnect and reconnect
+waiverwatch under Connectors, then start a new chat. In an old chat, Claude
+should notice a missing tool and tell you to do this.
+
+**Numbers are estimates.** Projections and trade values use standard, half
+or full PPR; custom scoring like TE premium or 6-point passing touchdowns
+isn't applied. Projections are for the whole game, not what's left of it.
+If FantasyCalc is down, values come from
+[DynastyProcess](https://github.com/dynastyprocess/data)'s open dynasty
+values instead, and the answer says so.
 
 **Privacy.** There is no password: waiverwatch only reads public Sleeper
 data for the username you enter, the same data anyone can see in the
-Sleeper app. waiverwatch stores nothing about you. To count usage it logs,
-per request, which tool ran and whether it worked, with an anonymous ID
-that changes every day (it can't be turned back into your username, and
-days can't be linked). Google's standard request logs keep IP addresses,
-paths and status codes. Logs are kept 30 days; usernames are never logged.
+Sleeper app. waiverwatch stores nothing about you. Trade values are fetched
+per league format (dynasty or not, QB count, size, PPR), never with your
+username or league. To count usage it logs, per request, which tool ran and
+whether it worked, with an anonymous ID that changes every day (it can't be
+turned back into your username, and days can't be linked). Google's standard
+request logs keep IP addresses, paths and status codes. Logs are kept 30
+days; usernames are never logged.
 
 **Limits.** 30 requests a minute per person, and a shared budget toward
 Sleeper. If Claude reports "slow down" or "call budget", wait a minute.
@@ -59,10 +100,9 @@ It's a free hobby project: it may be slow or down sometimes.
 
 ## Status
 
-Tools: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`,
-`draft_results`, `evaluate_trade`, `injury_report`, `player_values`, `position_depth`,
-`trade_targets`, `trending_players`, `waiver_targets`. See the
-[milestones](https://github.com/moudlajs/waiverwatch/milestones) for the plan.
+Built and run by one person; see the
+[milestones](https://github.com/moudlajs/waiverwatch/milestones) for the plan
+and the [changelog](./CHANGELOG.md) for what changed.
 
 ## Principles
 
@@ -117,6 +157,8 @@ Restart Claude and ask *"How are my fantasy leagues looking?"*
 
 To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 
+## Tools
+
 | Tool | Returns |
 |---|---|
 | `list_leagues` | every league this season: type, size, your team, record, points, standing |
@@ -127,7 +169,7 @@ To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 | `position_depth` | per league: starting slots (flex-aware) vs healthy players and backups; every thin spot across leagues |
 | `injury_report` | your injured players across all leagues, where they start for you, and a free replacement in each of those leagues |
 | `player_values` | trade values (FantasyCalc, from real trades) fitted to each league's format: named players and who has them, or a whole roster with its total and the league's team value ranking |
-| `evaluate_trade` | "is this trade fair?": both sides valued for that league (players and dynasty picks), 2-for-1 adjusted, who wins and by how much |
+| `evaluate_trade` | "is this trade fair?": both sides valued for that league (players, and dynasty picks checked against who holds them), 2-for-1 adjusted, who it leans to and by how much, your depth before and after |
 | `trade_targets` | per league: your thin positions, the spare players you can afford to trade, and players on other teams they can buy, each with the cheapest offer |
 | `trending_players` | the most-added players on Sleeper, with the leagues where you can still claim each one |
 | `waiver_targets` | per league: the best free agents you can actually start there, your waiver priority or FAAB left |
@@ -138,4 +180,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Licence
 
-[MIT](./LICENSE). Not affiliated with Sleeper.
+[MIT](./LICENSE). Not affiliated with Sleeper, FantasyCalc or DynastyProcess.
