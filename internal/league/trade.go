@@ -345,7 +345,7 @@ func (t *trade) pick(q pickQuery, holders []int, side string) (TradeAsset, error
 	}
 	rounds := t.league.Settings.DraftRounds
 	if rounds == 0 {
-		rounds = 4
+		rounds = 4 // not set: FantasyCalc values rounds 1-4
 	}
 	var cands []draftPick
 	for _, p := range leaguePicks(t.rosters, t.traded, []string{q.season}, rounds) {
@@ -394,7 +394,9 @@ func (t *trade) pick(q pickQuery, holders []int, side string) (TradeAsset, error
 	}
 	v, rated := pickValue(t.market, p.season, p.round, slot)
 	name := label
-	if slot != "" && v.Name != label {
+	if v.Name == label {
+		projected = "" // no value for that slot: valued as a generic pick of its round
+	} else if slot != "" {
 		name += " (" + slot + ")"
 	}
 	return TradeAsset{

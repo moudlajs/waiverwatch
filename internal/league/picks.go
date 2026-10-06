@@ -55,6 +55,8 @@ type draftPick struct {
 
 // leaguePicks lists every pick in the given future drafts: each team's own
 // picks for rounds 1..rounds, moved to their current holder by trades.
+// Sleeper lists each traded pick once, with its current holder, however many
+// times it changed hands (checked 2026-10-06).
 func leaguePicks(rosters []sleeper.Roster, traded []sleeper.TradedPick, seasons []string, rounds int) []draftPick {
 	var out []draftPick
 	for _, season := range seasons {
@@ -114,6 +116,8 @@ func projectSlot(rosters []sleeper.Roster, origin int) string {
 	}
 	rank, n := Standing(rosters, origin, false), len(rosters)
 	switch {
+	case rank == 0:
+		return "" // not in this league
 	case rank*3 <= n:
 		return "late"
 	case rank*3 > 2*n:

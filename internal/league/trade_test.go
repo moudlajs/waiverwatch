@@ -122,6 +122,9 @@ func TestProjectSlot(t *testing.T) {
 			t.Errorf("roster %d: %q, want %q", id, got, want)
 		}
 	}
+	if got := projectSlot(rosters, 99); got != "" {
+		t.Errorf("unknown team: %q, want none", got)
+	}
 	if got := projectSlot([]sleeper.Roster{rec(1, 0, 0), rec(2, 0, 0)}, 1); got != "" {
 		t.Errorf("before any games: %q, want none", got)
 	}
@@ -238,8 +241,8 @@ func TestEvaluateTrade(t *testing.T) {
 			t.Fatal(err)
 		}
 		p := r.Give[1]
-		// Mid has no FantasyCalc value of its own here: the generic 1st.
-		if r.Partner != "Rival FC, Third" || p.Position != "PICK" || p.Team != "Mine" || p.OriginalTeam != "Mine" || p.Projected != "mid" || p.Value != 3000 || p.Name != "2027 1st" {
+		// Mid has no FantasyCalc value of its own here: a generic 1st, no projection claimed.
+		if r.Partner != "Rival FC, Third" || p.Position != "PICK" || p.Team != "Mine" || p.OriginalTeam != "Mine" || p.Projected != "" || p.Value != 3000 || p.Name != "2027 1st" {
 			t.Errorf("got %+v", r)
 		}
 		if !slices.ContainsFunc(r.Notes, func(n string) bool { return strings.Contains(n, "1 more player") }) {
