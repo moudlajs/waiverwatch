@@ -23,21 +23,24 @@ const (
 
 // TradeReport values a proposed trade in one league.
 type TradeReport struct {
-	Source       string       `json:"source"`
-	LeagueID     string       `json:"league_id"`
-	League       string       `json:"league"`
-	Kind         string       `json:"kind"`
-	Market       string       `json:"market" jsonschema:"the FantasyCalc market these values come from"`
-	Partner      string       `json:"partner,omitempty" jsonschema:"the team the players I get are on; several when they come from more than one"`
-	Give         []TradeAsset `json:"give"`
-	Get          []TradeAsset `json:"get"`
-	GiveValue    int          `json:"give_value" jsonschema:"summed value of what I give"`
-	GetValue     int          `json:"get_value" jsonschema:"summed value of what I get"`
-	GiveAdjusted int          `json:"give_adjusted" jsonschema:"give side after the consolidation adjustment"`
-	GetAdjusted  int          `json:"get_adjusted" jsonschema:"get side after the consolidation adjustment"`
-	Margin       int          `json:"margin" jsonschema:"get_adjusted minus give_adjusted: positive means I win the trade"`
-	Verdict      string       `json:"verdict"`
-	Notes        []string     `json:"notes,omitempty"`
+	Source       string        `json:"source"`
+	LeagueID     string        `json:"league_id"`
+	League       string        `json:"league"`
+	Kind         string        `json:"kind"`
+	Market       string        `json:"market" jsonschema:"the FantasyCalc market these values come from"`
+	Partner      string        `json:"partner,omitempty" jsonschema:"the team the players and picks I get come from; several when more than one"`
+	Give         []TradeAsset  `json:"give"`
+	Get          []TradeAsset  `json:"get"`
+	GiveValue    int           `json:"give_value" jsonschema:"summed value of what I give"`
+	GetValue     int           `json:"get_value" jsonschema:"summed value of what I get"`
+	GiveAdjusted int           `json:"give_adjusted" jsonschema:"give side after the consolidation adjustment"`
+	GetAdjusted  int           `json:"get_adjusted" jsonschema:"get side after the consolidation adjustment"`
+	Margin       int           `json:"margin" jsonschema:"get_adjusted minus give_adjusted: positive means I win the trade"`
+	MarginPct    float64       `json:"margin_pct" jsonschema:"margin as a percentage of the bigger adjusted side"`
+	Leans        string        `json:"leans" jsonschema:"who the trade favors: me, partner or even"`
+	Verdict      string        `json:"verdict" jsonschema:"fair (within 5%), slight (within 15%) or clear edge"`
+	Depth        []DepthChange `json:"depth,omitempty" jsonschema:"my depth before and after at the positions the trade touches"`
+	Notes        []string      `json:"notes,omitempty"`
 }
 
 // TradeAsset is a player or dynasty draft pick in a trade.
@@ -46,10 +49,22 @@ type TradeAsset struct {
 	Name     string `json:"name"`
 	Position string `json:"position,omitempty" jsonschema:"PICK for draft picks"`
 	NFLTeam  string `json:"nfl_team,omitempty"`
-	Team     string `json:"team,omitempty" jsonschema:"the fantasy team he is on now; empty for a free agent or a pick"`
-	Value    int    `json:"value"`
-	Adjusted int    `json:"adjusted" jsonschema:"what he counts for after the consolidation adjustment"`
-	Unrated  bool   `json:"unrated,omitempty" jsonschema:"FantasyCalc doesn't rate him; counted as 0"`
+	Age      int    `json:"age,omitempty"`
+	Injury   string `json:"injury,omitempty" jsonschema:"e.g. Questionable, Out, IR"`
+	Team     string `json:"team,omitempty" jsonschema:"the fantasy team he (or the pick) is on now; empty for a free agent"`
+	// Picks only.
+	OriginalTeam string `json:"original_team,omitempty" jsonschema:"picks: the team whose pick it originally was; its record sets where it lands"`
+	Projected    string `json:"projected,omitempty" jsonschema:"picks in the next draft: early, mid or late, projected from the original team's standing now"`
+	Value        int    `json:"value"`
+	Adjusted     int    `json:"adjusted" jsonschema:"what he counts for after the consolidation adjustment"`
+	Unrated      bool   `json:"unrated,omitempty" jsonschema:"FantasyCalc doesn't rate him; counted as 0"`
+}
+
+// DepthChange is one position of my depth chart before and after a trade.
+type DepthChange struct {
+	Position string `json:"position"`
+	Before   string `json:"before" jsonschema:"ok, thin or short, with healthy players and backups"`
+	After    string `json:"after"`
 }
 
 // EvaluateTrade values giving give for get in the league matching
@@ -86,12 +101,12 @@ func (s *Service) EvaluateTrade(ctx context.Context, leagueQuery string, give, g
 }
 
 // leaguesWithMine narrows leagues to the single one where every player in
-// give is on my roster. Names that match no NFL player are taken for draft
-// picks and don't narrow anything; a give of picks alone needs a league.
+// give is on my roster. Picks don't narrow anything; a give of picks alone
+// needs a league.
 func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League, userID string, give []string, players map[string]sleeper.Player) ([]sleeper.League, error) {
 	var named []string
 	for _, n := range give {
-		if len(findPlayers(players, n)) > 0 {
+		if _, isPick := parsePick(n); !isPick {
 			named = append(named, n)
 		}
 	}
@@ -113,7 +128,7 @@ func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League,
 		}
 		for _, n := range named {
 			// Ambiguous still counts: he is here, and evaluating says which ones match.
-			if _, err := onRoster(mine.Players, n, players); err != nil && !errors.Is(err, errAmbiguous) {
+			if len(rosterMatches(mine.Players, n, players)) == 0 {
 				return
 			}
 		}
@@ -139,96 +154,137 @@ func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League,
 	case 1:
 		return kept, nil
 	case 0:
-		return nil, fmt.Errorf("no league where I have all of %s; name the league (mine: %s)", strings.Join(give, ", "), strings.Join(names, "; "))
+		return nil, fmt.Errorf("no league where I have all of %s; name the league (mine: %s)", strings.Join(named, ", "), strings.Join(names, "; "))
 	default:
-		return nil, fmt.Errorf("%s: on my roster in more than one league; name one of: %s", strings.Join(give, ", "), strings.Join(found, "; "))
+		return nil, fmt.Errorf("%s: on my roster in more than one league; name one of: %s", strings.Join(named, ", "), strings.Join(found, "; "))
 	}
+}
+
+// trade is the league state one evaluation works from.
+type trade struct {
+	league  sleeper.League
+	market  map[string]fantasycalc.Value
+	rosters []sleeper.Roster
+	users   []sleeper.LeagueUser
+	players map[string]sleeper.Player
+	traded  []sleeper.TradedPick
+	mine    sleeper.Roster
+	seen    map[string]bool
 }
 
 func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string, give, get []string, players map[string]sleeper.Player) (TradeReport, error) {
 	settings := ValueSettings(l).Normalise()
 	out := TradeReport{Source: ValueSource, LeagueID: l.LeagueID, League: l.Name, Kind: l.Kind(), Market: settings.String()}
 
-	var (
-		market  map[string]fantasycalc.Value
-		rosters []sleeper.Roster
-		users   []sleeper.LeagueUser
-	)
+	t := trade{league: l, players: players, seen: make(map[string]bool)}
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() (err error) { market, err = s.values(gctx, settings); return err })
-	g.Go(func() (err error) { rosters, err = s.api.Rosters(gctx, l.LeagueID); return err })
-	g.Go(func() (err error) { users, err = s.api.LeagueUsers(gctx, l.LeagueID); return err })
+	g.Go(func() (err error) { t.market, err = s.values(gctx, settings); return err })
+	g.Go(func() (err error) { t.rosters, err = s.api.Rosters(gctx, l.LeagueID); return err })
+	g.Go(func() (err error) { t.users, err = s.api.LeagueUsers(gctx, l.LeagueID); return err })
+	if l.Kind() == "dynasty" {
+		g.Go(func() (err error) { t.traded, err = s.api.TradedPicks(gctx, l.LeagueID); return err })
+	}
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
-	mine, ok := MyRoster(rosters, userID)
-	if !ok {
+	var ok bool
+	if t.mine, ok = MyRoster(t.rosters, userID); !ok {
 		return out, fmt.Errorf("no roster owned by user %s in league %s", userID, l.LeagueID)
 	}
+
+	// Players first: the players I get name the partner, whose roster then
+	// settles ambiguous names and whose picks are the ones on offer.
+	out.Give, out.Get = make([]TradeAsset, len(give)), make([]TradeAsset, len(get))
+	var picks []func() error
+	for i, n := range give {
+		if q, isPick := parsePick(n); isPick {
+			picks = append(picks, func() (err error) { out.Give[i], err = t.pick(q, []int{t.mine.RosterID}, "give"); return err })
+			continue
+		}
+		ids := rosterMatches(t.mine.Players, n, players)
+		switch len(ids) {
+		case 0:
+			return out, fmt.Errorf("give: %q is not on my roster in %s", n, l.Name)
+		case 1:
+		default:
+			return out, t.ambiguous("give", n, ids)
+		}
+		var err error
+		if out.Give[i], err = t.player(ids[0]); err != nil {
+			return out, err
+		}
+	}
+
 	var others []string
-	for _, r := range rosters {
-		if r.RosterID != mine.RosterID {
+	for _, r := range t.rosters {
+		if r.RosterID != t.mine.RosterID {
 			others = append(others, r.Players...)
 		}
 	}
-	teamOf := func(id string) string {
-		for _, r := range rosters {
-			if slices.Contains(r.Players, id) {
-				return TeamName(users, r.OwnerID)
+	var deferred []int
+	for i, n := range get {
+		if q, isPick := parsePick(n); isPick {
+			picks = append(picks, func() (err error) { out.Get[i], err = t.pick(q, t.partners(out.Get), "get"); return err })
+			continue
+		}
+		ids := rosterMatches(others, n, players)
+		if len(ids) == 0 {
+			if mine := rosterMatches(t.mine.Players, n, players); len(mine) == 1 {
+				return out, fmt.Errorf("get: %s is already on my roster", Lookup(players, mine[0]).Name())
+			}
+			for _, p := range findPlayers(players, n) { // free agents
+				ids = append(ids, p.PlayerID)
 			}
 		}
-		return ""
-	}
-
-	seen := make(map[string]bool)
-	var picks bool
-	resolve := func(names, pool []string, side string) ([]TradeAsset, error) {
-		var assets []TradeAsset
-		for _, n := range names {
-			a, err := asset(n, pool, players, market)
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", side, err)
+		switch len(ids) {
+		case 0:
+			return out, fmt.Errorf("get: no player or pick matches %q", n)
+		case 1:
+			var err error
+			if out.Get[i], err = t.player(ids[0]); err != nil {
+				return out, err
 			}
-			if seen[a.PlayerID] {
-				return nil, fmt.Errorf("%s is named twice", a.Name)
-			}
-			seen[a.PlayerID] = true
-			if a.Position == "PICK" {
-				picks = true
-			} else {
-				a.Team = teamOf(a.PlayerID)
-			}
-			assets = append(assets, a)
+		default:
+			deferred = append(deferred, i)
 		}
-		return assets, nil
 	}
-	var err error
-	if out.Give, err = resolve(give, mine.Players, "give"); err != nil {
-		return out, err
+	for _, i := range deferred {
+		if partners := t.partners(out.Get); len(partners) == 1 {
+			if ids := rosterMatches(t.roster(partners[0]).Players, get[i], players); len(ids) == 1 {
+				var err error
+				if out.Get[i], err = t.player(ids[0]); err != nil {
+					return out, err
+				}
+				continue
+			}
+		}
+		all := rosterMatches(others, get[i], players)
+		if len(all) == 0 {
+			for _, p := range findPlayers(players, get[i]) { // free agents
+				all = append(all, p.PlayerID)
+			}
+		}
+		return out, t.ambiguous("get", get[i], all)
 	}
-	if out.Get, err = resolve(get, others, "get"); err != nil {
-		return out, err
+	if len(picks) > 0 && l.Kind() != "dynasty" {
+		return out, errors.New("draft picks are only valued in dynasty leagues")
 	}
-	for _, a := range out.Get {
-		if slices.Contains(mine.Players, a.PlayerID) {
-			return out, fmt.Errorf("%s is already on my roster", a.Name)
+	for _, resolve := range picks {
+		if err := resolve(); err != nil {
+			return out, err
 		}
 	}
 
 	adjust(out.Give, out.Get)
-	var partners []string
 	for _, a := range out.Give {
 		out.GiveValue += a.Value
 		out.GiveAdjusted += a.Adjusted
-		if a.Position != "PICK" && !slices.Contains(mine.Players, a.PlayerID) {
-			out.Notes = append(out.Notes, fmt.Sprintf("%s is not on my roster", a.Name))
-		}
 	}
+	var partners []string
 	for _, a := range out.Get {
 		out.GetValue += a.Value
 		out.GetAdjusted += a.Adjusted
 		switch {
-		case a.Position == "PICK":
 		case a.Team == "":
 			out.Notes = append(out.Notes, fmt.Sprintf("%s is a free agent here: no trade needed", a.Name))
 		case !slices.Contains(partners, a.Team):
@@ -237,7 +293,19 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 	}
 	out.Partner = strings.Join(partners, ", ")
 	out.Margin = out.GetAdjusted - out.GiveAdjusted
+	if bigger := max(out.GiveAdjusted, out.GetAdjusted); bigger > 0 {
+		out.MarginPct = math.Round(float64(out.Margin)/float64(bigger)*1000) / 10
+	}
+	switch {
+	case out.Margin > 0:
+		out.Leans = "me"
+	case out.Margin < 0:
+		out.Leans = "partner"
+	default:
+		out.Leans = "even"
+	}
 	out.Verdict = verdict(out.GiveAdjusted, out.GetAdjusted)
+	out.Depth = t.depthChange(out.Give, out.Get)
 
 	if extra := countPlayers(out.Get) - countPlayers(out.Give); extra > 0 {
 		out.Notes = append(out.Notes, fmt.Sprintf("I get %d more player(s) than I give: I need %d open roster spot(s) or must drop someone", extra, extra))
@@ -247,39 +315,202 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 			out.Notes = append(out.Notes, fmt.Sprintf("FantasyCalc doesn't rate %s; counted as 0", a.Name))
 		}
 	}
-	if picks {
-		out.Notes = append(out.Notes, "who owns each draft pick is not checked")
-	}
 	if k := l.Kind(); k == "keeper" || k == "guillotine" {
 		out.Notes = append(out.Notes, k+" league: valued with redraft values")
 	}
 	return out, nil
 }
 
-// asset resolves a name to a trade asset: a player on pool (a roster) first,
-// else any NFL player, else (dynasty) a draft pick from the market.
-func asset(name string, pool []string, players map[string]sleeper.Player, market map[string]fantasycalc.Value) (TradeAsset, error) {
-	id, err := onRoster(pool, name, players)
-	if errors.Is(err, errAmbiguous) {
-		return TradeAsset{}, err
+// player makes a trade asset of a player, once per trade.
+func (t *trade) player(id string) (TradeAsset, error) {
+	pv := playerValue(Lookup(t.players, id), t.market)
+	if t.seen[id] {
+		return TradeAsset{}, fmt.Errorf("%s is named twice", pv.Name)
 	}
-	if err != nil {
-		if found := findPlayers(players, name); len(found) > 1 {
-			var names []string
-			for _, p := range found {
-				names = append(names, fmt.Sprintf("%s (%s %s)", p.Name(), p.Position, cmp.Or(p.Team, "FA")))
-			}
-			return TradeAsset{}, fmt.Errorf("%q %w: %s", name, errAmbiguous, strings.Join(names, ", "))
-		} else if len(found) == 1 {
-			id = found[0].PlayerID
-		} else if pick, ok := findPick(market, name); ok {
-			return TradeAsset{PlayerID: pick.SleeperID, Name: pick.Name, Position: "PICK", Value: pick.Value}, nil
-		} else {
-			return TradeAsset{}, fmt.Errorf("no player or pick matches %q", name)
+	t.seen[id] = true
+	a := TradeAsset{PlayerID: id, Name: pv.Name, Position: pv.Position, NFLTeam: pv.NFLTeam, Age: t.players[id].Age, Injury: t.players[id].InjuryStatus, Value: pv.Value, Unrated: pv.Unrated}
+	if r := t.holderOf(id); r != nil {
+		a.Team = t.team(r.RosterID)
+	}
+	return a, nil
+}
+
+// pick finds the one pick matching q held by one of holders, and values it:
+// by the named slot, else (next draft only) the slot its original team's
+// standing projects, else as a generic pick of its round.
+func (t *trade) pick(q pickQuery, holders []int, side string) (TradeAsset, error) {
+	seasons := pickSeasons(t.market)
+	if !slices.Contains(seasons, q.season) {
+		return TradeAsset{}, fmt.Errorf("%s: FantasyCalc values picks for %s only", side, strings.Join(seasons, ", "))
+	}
+	rounds := t.league.Settings.DraftRounds
+	if rounds == 0 {
+		rounds = 4
+	}
+	var cands []draftPick
+	for _, p := range leaguePicks(t.rosters, t.traded, []string{q.season}, rounds) {
+		if p.round == q.round && slices.Contains(holders, p.holder) {
+			cands = append(cands, p)
 		}
 	}
-	pv := playerValue(Lookup(players, id), market)
-	return TradeAsset{PlayerID: id, Name: pv.Name, Position: pv.Position, NFLTeam: pv.NFLTeam, Value: pv.Value, Unrated: pv.Unrated}, nil
+	if q.team != "" {
+		// A team names whose pick it was; failing that, who holds it.
+		byOrigin := slices.DeleteFunc(slices.Clone(cands), func(p draftPick) bool { return !strings.Contains(foldName(t.team(p.origin)), q.team) })
+		if len(byOrigin) == 0 {
+			byOrigin = slices.DeleteFunc(cands, func(p draftPick) bool { return !strings.Contains(foldName(t.team(p.holder)), q.team) })
+		}
+		cands = byOrigin
+	}
+	label := q.season + " " + ordinal(q.round)
+	switch len(cands) {
+	case 0:
+		var who []string
+		for _, h := range holders {
+			who = append(who, t.team(h))
+		}
+		if len(who) > 3 {
+			who = []string{"any other team"}
+		}
+		return TradeAsset{}, fmt.Errorf("%s: no %s held by %s%s", side, label, strings.Join(who, " or "), matching(q.team))
+	case 1:
+	default:
+		var names []string
+		for _, p := range cands {
+			names = append(names, describePick(p, t.team))
+		}
+		return TradeAsset{}, fmt.Errorf("%s: %q %w: %s; add the original team, e.g. \"%s %s\"", side, label, errAmbiguous, strings.Join(names, "; "), label, t.team(cands[0].origin))
+	}
+	p := cands[0]
+	id := fmt.Sprintf("pick-%s-%d-%d", p.season, p.round, p.origin)
+	if t.seen[id] {
+		return TradeAsset{}, fmt.Errorf("%s is named twice", describePick(p, t.team))
+	}
+	t.seen[id] = true
+
+	slot, projected := q.slot, ""
+	if slot == "" && q.season == seasons[0] {
+		slot = projectSlot(t.rosters, p.origin)
+		projected = slot
+	}
+	v, rated := pickValue(t.market, p.season, p.round, slot)
+	name := label
+	if slot != "" && v.Name != label {
+		name += " (" + slot + ")"
+	}
+	return TradeAsset{
+		PlayerID: id, Name: name, Position: "PICK", Team: t.team(p.holder), OriginalTeam: t.team(p.origin),
+		Projected: projected, Value: v.Value, Unrated: !rated,
+	}, nil
+}
+
+func matching(team string) string {
+	if team == "" {
+		return ""
+	}
+	return fmt.Sprintf(" matching %q", team)
+}
+
+// partners are the roster IDs the players resolved on the get side come
+// from; with none yet, every other team.
+func (t *trade) partners(get []TradeAsset) []int {
+	var ids []int
+	for _, a := range get {
+		if a.PlayerID == "" || a.Position == "PICK" {
+			continue
+		}
+		if r := t.holderOf(a.PlayerID); r != nil && !slices.Contains(ids, r.RosterID) {
+			ids = append(ids, r.RosterID)
+		}
+	}
+	if len(ids) > 0 {
+		return ids
+	}
+	for _, r := range t.rosters {
+		if r.RosterID != t.mine.RosterID {
+			ids = append(ids, r.RosterID)
+		}
+	}
+	return ids
+}
+
+func (t *trade) holderOf(playerID string) *sleeper.Roster {
+	for i := range t.rosters {
+		if slices.Contains(t.rosters[i].Players, playerID) {
+			return &t.rosters[i]
+		}
+	}
+	return nil
+}
+
+func (t *trade) roster(rosterID int) sleeper.Roster {
+	for _, r := range t.rosters {
+		if r.RosterID == rosterID {
+			return r
+		}
+	}
+	return sleeper.Roster{}
+}
+
+func (t *trade) team(rosterID int) string {
+	return TeamName(t.users, t.roster(rosterID).OwnerID)
+}
+
+// ambiguous lists every player a name matches, with position, NFL team and
+// fantasy team, so the caller can pick one without another lookup.
+func (t *trade) ambiguous(side, query string, ids []string) error {
+	var names []string
+	for _, id := range ids {
+		p := Lookup(t.players, id)
+		team := "free agent"
+		if r := t.holderOf(id); r != nil {
+			team = t.team(r.RosterID)
+		}
+		names = append(names, fmt.Sprintf("%s (%s %s, %s)", p.Name(), p.Position, cmp.Or(p.Team, "no NFL team"), team))
+	}
+	return fmt.Errorf("%s: %q %w: %s", side, query, errAmbiguous, strings.Join(names, "; "))
+}
+
+// depthChange is my depth before and after the trade at the positions it
+// touches.
+func (t *trade) depthChange(give, get []TradeAsset) []DepthChange {
+	var out, in []string
+	var touched []string
+	for _, a := range give {
+		if a.Position != "PICK" {
+			out = append(out, a.PlayerID)
+			touched = append(touched, a.Position)
+		}
+	}
+	for _, a := range get {
+		if a.Position != "PICK" {
+			in = append(in, a.PlayerID)
+			touched = append(touched, a.Position)
+		}
+	}
+	if len(touched) == 0 {
+		return nil
+	}
+	keep := func(ids []string) []string {
+		return slices.DeleteFunc(slices.Clone(ids), func(id string) bool { return slices.Contains(out, id) })
+	}
+	after := t.mine
+	after.Players = append(keep(t.mine.Players), in...)
+	after.Reserve, after.Taxi = keep(t.mine.Reserve), keep(t.mine.Taxi)
+
+	before, _, _ := depthChart(t.league.RosterPositions, t.mine, t.players)
+	now, _, _ := depthChart(t.league.RosterPositions, after, t.players)
+	var changes []DepthChange
+	for i, pd := range before {
+		if !slices.Contains(touched, pd.Position) {
+			continue
+		}
+		changes = append(changes, DepthChange{
+			Position: pd.Position,
+			Before:   fmt.Sprintf("%s (%d healthy, %d backups)", pd.Status, pd.Healthy, pd.Backups),
+			After:    fmt.Sprintf("%s (%d healthy, %d backups)", now[i].Status, now[i].Healthy, now[i].Backups),
+		})
+	}
+	return changes
 }
 
 // countPlayers counts the assets that take a roster spot (not draft picks).
@@ -293,15 +524,12 @@ func countPlayers(assets []TradeAsset) int {
 	return n
 }
 
-var errAmbiguous = errors.New("matches more than one player")
+var errAmbiguous = errors.New("matches more than one")
 
-// onRoster finds the one player on roster whose name matches query: an
-// exact name first, else a single partial match.
-func onRoster(roster []string, query string, players map[string]sleeper.Player) (string, error) {
+// rosterMatches returns the players on roster whose name matches query: the
+// exact names if any, else every partial match.
+func rosterMatches(roster []string, query string, players map[string]sleeper.Player) []string {
 	q := foldName(query)
-	if q == "" {
-		return "", errors.New("empty name")
-	}
 	var exact, partial []string
 	for _, id := range roster {
 		switch n := foldName(Lookup(players, id).Name()); {
@@ -311,41 +539,10 @@ func onRoster(roster []string, query string, players map[string]sleeper.Player) 
 			partial = append(partial, id)
 		}
 	}
-	switch {
-	case len(exact) == 1:
-		return exact[0], nil
-	case len(exact) == 0 && len(partial) == 1:
-		return partial[0], nil
-	case len(exact)+len(partial) == 0:
-		return "", fmt.Errorf("%q is not on the roster", query)
+	if len(exact) > 0 {
+		return exact
 	}
-	var names []string
-	for _, id := range slices.Concat(exact, partial) {
-		names = append(names, Lookup(players, id).Name())
-	}
-	return "", fmt.Errorf("%q %w: %s", query, errAmbiguous, strings.Join(names, ", "))
-}
-
-// findPick finds a dynasty draft pick in the market by name ("2027 1st",
-// "2027 1st early"): an exact name first, else the most valuable partial
-// match.
-func findPick(market map[string]fantasycalc.Value, query string) (fantasycalc.Value, bool) {
-	q := foldName(query)
-	var best fantasycalc.Value
-	found := false
-	for _, v := range market {
-		if v.Position != "PICK" {
-			continue
-		}
-		n := foldName(v.Name)
-		if n == q {
-			return v, true
-		}
-		if strings.Contains(n, q) && (!found || v.Value > best.Value) {
-			best, found = v, true
-		}
-	}
-	return best, found
+	return partial
 }
 
 // adjust sets each asset's Adjusted value. Two good players are not worth

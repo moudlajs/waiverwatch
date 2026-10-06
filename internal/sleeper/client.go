@@ -146,6 +146,16 @@ func (c *Client) Matchups(ctx context.Context, leagueID string, week int) ([]Mat
 	return ms, nil
 }
 
+// TradedPicks returns a league's draft picks that have changed hands, for
+// past and future drafts.
+func (c *Client) TradedPicks(ctx context.Context, leagueID string) ([]TradedPick, error) {
+	var ps []TradedPick
+	if err := c.get(ctx, "/league/"+url.PathEscape(leagueID)+"/traded_picks", ttlLive, &ps); err != nil {
+		return nil, fmt.Errorf("fetching traded picks for league %s: %w", leagueID, err)
+	}
+	return ps, nil
+}
+
 // State returns the current NFL season and week.
 func (c *Client) State(ctx context.Context) (State, error) {
 	var s State

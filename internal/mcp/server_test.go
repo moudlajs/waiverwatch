@@ -27,8 +27,9 @@ func connect(t *testing.T, username string) *sdk.ClientSession {
 		"/user/100/leagues/nfl/2026": []sleeper.League{
 			{LeagueID: "L1", Name: "Dynasty", TotalRosters: 1, RosterPositions: []string{"QB", "DEF"}, Settings: sleeper.LeagueSettings{Type: 2}},
 		},
-		"/league/L1/rosters": []sleeper.Roster{{RosterID: 1, OwnerID: "100", Players: []string{"x"}, Settings: sleeper.RosterSettings{Wins: 3}}},
-		"/league/L1/users":   []sleeper.LeagueUser{{UserID: "100", DisplayName: "me"}},
+		"/league/L1/rosters":      []sleeper.Roster{{RosterID: 1, OwnerID: "100", Players: []string{"x"}, Settings: sleeper.RosterSettings{Wins: 3}}},
+		"/league/L1/traded_picks": []sleeper.TradedPick{},
+		"/league/L1/users":        []sleeper.LeagueUser{{UserID: "100", DisplayName: "me"}},
 		"/league/L1/matchups/3": []sleeper.Matchup{
 			{RosterID: 1, MatchupID: 1, Points: 42.5, Starters: []string{"4046"}, StartersPoints: []float64{42.5}},
 		},
@@ -300,7 +301,7 @@ func TestPlayerValues(t *testing.T) {
 
 func TestEvaluateTrade(t *testing.T) {
 	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{
-		Name: "evaluate_trade", Arguments: map[string]any{"give": []string{"mahomes"}, "get": []string{"seahawks"}},
+		Name: "evaluate_trade", Arguments: map[string]any{"give": []string{"x"}, "get": []string{"mahomes"}}, // x: on my roster, unknown to the dictionary
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -313,7 +314,7 @@ func TestEvaluateTrade(t *testing.T) {
 	if err := json.Unmarshal(raw, &r); err != nil {
 		t.Fatal(err)
 	}
-	if r.GiveValue != 7000 || r.Get[0].Name != "Seattle Seahawks" || !r.Get[0].Unrated {
+	if r.GetValue != 7000 || r.Get[0].Name != "Patrick Mahomes" || !r.Give[0].Unrated || r.Leans != "me" {
 		t.Errorf("unexpected report %+v", r)
 	}
 }

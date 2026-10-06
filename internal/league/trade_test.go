@@ -70,75 +70,109 @@ func TestVerdict(t *testing.T) {
 	}
 }
 
-func TestOnRoster(t *testing.T) {
+func TestRosterMatches(t *testing.T) {
 	players := map[string]sleeper.Player{
 		"1": {FullName: "Josh Allen"},
 		"2": {FullName: "Josh Downs"},
 		"3": {FullName: "Allen Lazard"},
 	}
 	roster := []string{"1", "2", "3"}
-	tests := []struct {
-		query, want string
-		wantErr     error
-	}{
-		{query: "josh allen", want: "1"},
-		{query: "downs", want: "2"},
-		{query: "allen", wantErr: errAmbiguous}, // Josh Allen and Allen Lazard
-		{query: "josh", wantErr: errAmbiguous},
-		{query: "chase", wantErr: errors.New("not on the roster")},
-	}
-	for _, tt := range tests {
-		t.Run(tt.query, func(t *testing.T) {
-			got, err := onRoster(roster, tt.query, players)
-			switch {
-			case tt.wantErr == nil && (err != nil || got != tt.want):
-				t.Errorf("got %q, %v; want %q", got, err, tt.want)
-			case errors.Is(tt.wantErr, errAmbiguous) && !errors.Is(err, errAmbiguous):
-				t.Errorf("err = %v, want ambiguous", err)
-			case tt.wantErr != nil && err == nil:
-				t.Errorf("got %q, want an error", got)
-			}
-		})
-	}
-}
-
-func TestFindPick(t *testing.T) {
-	market := map[string]fantasycalc.Value{
-		"a": {SleeperID: "a", Name: "2027 1st (Early)", Position: "PICK", Value: 4881},
-		"b": {SleeperID: "b", Name: "2027 1st", Position: "PICK", Value: 2973},
-		"c": {SleeperID: "c", Name: "2027 2nd", Position: "PICK", Value: 1200},
-		"p": {SleeperID: "p", Name: "2027 1st Round Bust", Position: "WR", Value: 9},
-	}
-	for query, want := range map[string]string{"2027 1st": "b", "2027 1st early": "a", "2027 2": "c", "2028 1st": ""} {
-		got, ok := findPick(market, query)
-		if (want == "" && ok) || (want != "" && got.SleeperID != want) {
-			t.Errorf("findPick(%q) = %+v, %v; want %q", query, got, ok, want)
+	for query, want := range map[string]string{
+		"josh allen": "1",   // exact beats Allen Lazard
+		"downs":      "2",   // single partial
+		"allen":      "1,3", // both partial
+		"josh":       "1,2",
+		"chase":      "",
+	} {
+		if got := strings.Join(rosterMatches(roster, query, players), ","); got != want {
+			t.Errorf("rosterMatches(%q) = %q, want %q", query, got, want)
 		}
 	}
 }
 
+func TestParsePick(t *testing.T) {
+	tests := []struct {
+		in   string
+		want pickQuery
+		ok   bool
+	}{
+		{"2027 1st", pickQuery{season: "2027", round: 1}, true},
+		{"2027 1st (Early)", pickQuery{season: "2027", round: 1, slot: "early"}, true},
+		{"2028 round 2", pickQuery{season: "2028", round: 2}, true},
+		{"2027 2nd round from CHGO", pickQuery{season: "2027", round: 2, team: "chgo"}, true},
+		{"2027 1st Rival FC's own", pickQuery{season: "2027", round: 1, team: "rival fcs"}, true},
+		{"Ja'Marr Chase", pickQuery{}, false},
+		{"2027", pickQuery{}, false},
+	}
+	for _, tt := range tests {
+		got, ok := parsePick(tt.in)
+		if ok != tt.ok || got != tt.want {
+			t.Errorf("parsePick(%q) = %+v, %v; want %+v, %v", tt.in, got, ok, tt.want, tt.ok)
+		}
+	}
+}
+
+func TestProjectSlot(t *testing.T) {
+	rec := func(id, wins, losses int) sleeper.Roster {
+		return sleeper.Roster{RosterID: id, Settings: sleeper.RosterSettings{Wins: wins, Losses: losses}}
+	}
+	rosters := []sleeper.Roster{rec(1, 5, 0), rec(2, 4, 1), rec(3, 3, 2), rec(4, 2, 3), rec(5, 1, 4), rec(6, 0, 5)}
+	for id, want := range map[int]string{1: "late", 2: "late", 3: "mid", 4: "mid", 5: "early", 6: "early"} {
+		if got := projectSlot(rosters, id); got != want {
+			t.Errorf("roster %d: %q, want %q", id, got, want)
+		}
+	}
+	if got := projectSlot([]sleeper.Roster{rec(1, 0, 0), rec(2, 0, 0)}, 1); got != "" {
+		t.Errorf("before any games: %q, want none", got)
+	}
+}
+
+func TestLeaguePicks(t *testing.T) {
+	rosters := []sleeper.Roster{{RosterID: 1}, {RosterID: 2}}
+	traded := []sleeper.TradedPick{
+		{Season: "2027", Round: 1, RosterID: 2, OwnerID: 1},
+		{Season: "2026", Round: 1, RosterID: 1, OwnerID: 2}, // a past draft: not listed
+	}
+	got := leaguePicks(rosters, traded, []string{"2027"}, 2)
+	want := []draftPick{
+		{season: "2027", round: 1, origin: 1, holder: 1},
+		{season: "2027", round: 1, origin: 2, holder: 1}, // traded to me
+		{season: "2027", round: 2, origin: 1, holder: 1},
+		{season: "2027", round: 2, origin: 2, holder: 2},
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %+v\nwant %+v", got, want)
+	}
+}
+
 func TestEvaluateTrade(t *testing.T) {
+	record := func(w, l int) sleeper.RosterSettings { return sleeper.RosterSettings{Wins: w, Losses: l} }
 	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
 		"/state/nfl": sleeper.State{Season: "2026", Week: 5},
 		"/user/me":   sleeper.User{UserID: "100"},
 		"/user/100/leagues/nfl/2026": []sleeper.League{
-			{LeagueID: "D", Name: "Dynasty", TotalRosters: 12, RosterPositions: []string{"QB"}, Settings: sleeper.LeagueSettings{Type: 2}, Scoring: sleeper.Scoring{Rec: 1}},
+			{LeagueID: "D", Name: "Dynasty", TotalRosters: 12, RosterPositions: []string{"QB", "RB", "WR", "BN"},
+				Settings: sleeper.LeagueSettings{Type: 2, DraftRounds: 2}, Scoring: sleeper.Scoring{Rec: 1}},
 			{LeagueID: "R", Name: "Redraft", TotalRosters: 12, RosterPositions: []string{"QB"}, Scoring: sleeper.Scoring{Rec: 1}},
 		},
+		// Standings: Rival FC first (late picks), me second (mid), Third last (early).
 		"/league/D/rosters": []sleeper.Roster{
-			{RosterID: 1, OwnerID: "100", Players: []string{"gibbs", "k"}},
-			{RosterID: 2, OwnerID: "200", Players: []string{"chase", "wr2"}},
-			{RosterID: 3, OwnerID: "300", Players: []string{"te"}},
+			{RosterID: 1, OwnerID: "100", Players: []string{"gibbs", "k"}, Settings: record(3, 2)},
+			{RosterID: 2, OwnerID: "200", Players: []string{"chase", "wr2"}, Settings: record(5, 0)},
+			{RosterID: 3, OwnerID: "300", Players: []string{"te", "cb"}, Settings: record(0, 5)},
 		},
 		"/league/D/users": []sleeper.LeagueUser{user("100", "me", "Mine"), user("200", "rival", "Rival FC"), user("300", "third", "Third")},
+		// Third's 2027 1st now belongs to Rival FC.
+		"/league/D/traded_picks": []sleeper.TradedPick{{Season: "2027", Round: 1, RosterID: 3, OwnerID: 2, PreviousOwnerID: 3}},
 		"/league/R/rosters": []sleeper.Roster{
 			{RosterID: 1, OwnerID: "100", Players: []string{"chase"}},
 			{RosterID: 2, OwnerID: "200", Players: []string{"gibbs"}},
 		},
 		"/league/R/users": []sleeper.LeagueUser{user("100", "me", ""), user("200", "rival", "")},
 		"/players/nfl": map[string]sleeper.Player{
-			"gibbs": {PlayerID: "gibbs", FullName: "Jahmyr Gibbs", Position: "RB", Team: "DET", Active: true},
-			"chase": {PlayerID: "chase", FullName: "Ja'Marr Chase", Position: "WR", Team: "CIN", Active: true},
+			"gibbs": {PlayerID: "gibbs", FullName: "Jahmyr Gibbs", Position: "RB", Team: "DET", Active: true, Age: 24},
+			"chase": {PlayerID: "chase", FullName: "Ja'Marr Chase", Position: "WR", Team: "CIN", Active: true, InjuryStatus: "Questionable"},
+			"cb":    {PlayerID: "cb", FullName: "Chase Brown", Position: "RB", Team: "CIN", Active: true},
 			"wr2":   {PlayerID: "wr2", FullName: "Second Receiver", Position: "WR", Active: true},
 			"te":    {PlayerID: "te", FullName: "Tight End", Position: "TE", Active: true},
 			"fa":    {PlayerID: "fa", FullName: "Free Agent", Position: "RB", Active: true},
@@ -148,9 +182,15 @@ func TestEvaluateTrade(t *testing.T) {
 		},
 	}))
 	values := func(_ context.Context, s fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
-		m := map[string]fantasycalc.Value{"gibbs": {Value: 10000}, "chase": {Value: 8000}, "wr2": {Value: 4000}, "te": {Value: 3000}, "fa": {Value: 500}}
+		m := map[string]fantasycalc.Value{"gibbs": {Value: 10000}, "chase": {Value: 8000}, "wr2": {Value: 4000}, "te": {Value: 3000}, "fa": {Value: 500}, "cb": {Value: 3500}}
 		if s.Dynasty {
-			m["FP_2027_1"] = fantasycalc.Value{SleeperID: "FP_2027_1", Name: "2027 1st", Position: "PICK", Value: 3000}
+			for _, p := range []fantasycalc.Value{
+				{Name: "2027 1st (Early)", Value: 5000}, {Name: "2027 1st", Value: 3000}, {Name: "2027 1st (Late)", Value: 2000},
+				{Name: "2028 1st", Value: 2500},
+			} {
+				p.Position, p.SleeperID = "PICK", p.Name
+				m[p.Name] = p
+			}
 		}
 		return m, nil
 	}
@@ -162,37 +202,75 @@ func TestEvaluateTrade(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if r.League != "Dynasty" || r.Partner != "Rival FC" || r.Market != "dynasty 1QB 12-team PPR" {
-			t.Errorf("league %q partner %q market %q", r.League, r.Partner, r.Market)
+		if r.League != "Dynasty" || r.Partner != "Rival FC" || r.Market != "dynasty 1QB 12-team PPR" || r.Give[0].Age != 24 || r.Get[0].Injury != "Questionable" {
+			t.Errorf("league %q partner %q market %q give %+v", r.League, r.Partner, r.Market, r.Give)
 		}
-		if r.GiveValue != 10000 || r.GetValue != 12000 || r.GiveAdjusted != 10000 || r.GetAdjusted != 10530 || r.Margin != 530 || r.Verdict != "I win slightly (5%)" {
+		if r.GiveValue != 10000 || r.GetValue != 12000 || r.GiveAdjusted != 10000 || r.GetAdjusted != 10530 || r.Margin != 530 ||
+			r.MarginPct != 5 || r.Leans != "me" || r.Verdict != "I win slightly (5%)" {
 			t.Errorf("got %+v", r)
 		}
 		if !slices.ContainsFunc(r.Notes, func(n string) bool { return strings.Contains(n, "1 more player") }) {
 			t.Errorf("want a roster spot note, got %v", r.Notes)
 		}
+		want := []DepthChange{
+			{Position: "RB", Before: "thin (1 healthy, 0 backups)", After: "short (0 healthy, 0 backups)"},
+			{Position: "WR", Before: "short (0 healthy, 0 backups)", After: "ok (2 healthy, 1 backups)"},
+		}
+		if !slices.Equal(r.Depth, want) {
+			t.Errorf("depth %+v\nwant %+v", r.Depth, want)
+		}
 	})
 
-	t.Run("players from two teams and a pick", func(t *testing.T) {
-		r, err := svc.EvaluateTrade(ctx, "dynasty", []string{"gibbs", "2027 1st"}, []string{"chase", "tight end"})
+	t.Run("an ambiguous name is settled by the partner's roster", func(t *testing.T) {
+		r, err := svc.EvaluateTrade(ctx, "dynasty", []string{"gibbs"}, []string{"second receiver", "chase"})
+		if err != nil || r.Get[1].Name != "Ja'Marr Chase" {
+			t.Errorf("got %+v, err %v", r.Get, err)
+		}
+		_, err = svc.EvaluateTrade(ctx, "dynasty", []string{"gibbs"}, []string{"chase"})
+		if err == nil || !strings.Contains(err.Error(), "Chase Brown (RB CIN, Third)") || !strings.Contains(err.Error(), "Ja'Marr Chase (WR CIN, Rival FC)") {
+			t.Errorf("err = %v, want both candidates with their teams", err)
+		}
+	})
+
+	t.Run("my own pick, projected from my standing", func(t *testing.T) {
+		r, err := svc.EvaluateTrade(ctx, "dynasty", []string{"gibbs", "2027 1st"}, []string{"ja'marr chase", "tight end"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if r.Partner != "Rival FC, Third" || r.Give[1].Position != "PICK" || r.Give[1].Value != 3000 {
+		p := r.Give[1]
+		// Mid has no FantasyCalc value of its own here: the generic 1st.
+		if r.Partner != "Rival FC, Third" || p.Position != "PICK" || p.Team != "Mine" || p.OriginalTeam != "Mine" || p.Projected != "mid" || p.Value != 3000 || p.Name != "2027 1st" {
 			t.Errorf("got %+v", r)
 		}
 		if !slices.ContainsFunc(r.Notes, func(n string) bool { return strings.Contains(n, "1 more player") }) {
 			t.Errorf("2 players for 1 player and a pick needs a roster spot, got %v", r.Notes) // picks take none
 		}
-		if !slices.ContainsFunc(r.Notes, func(n string) bool { return strings.Contains(n, "draft pick") }) {
-			t.Errorf("want a pick ownership note, got %v", r.Notes)
+	})
+
+	t.Run("the partner's picks", func(t *testing.T) {
+		_, err := svc.EvaluateTrade(ctx, "dynasty", []string{"gibbs"}, []string{"ja'marr chase", "2027 1st"})
+		if err == nil || !strings.Contains(err.Error(), "2027 1st (Third's, held by Rival FC)") {
+			t.Errorf("err = %v, want both of Rival FC's 1sts listed", err)
+		}
+		r, err := svc.EvaluateTrade(ctx, "dynasty", []string{"gibbs"}, []string{"ja'marr chase", "2027 1st third"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if p := r.Get[1]; p.Team != "Rival FC" || p.OriginalTeam != "Third" || p.Projected != "early" || p.Value != 5000 || p.Name != "2027 1st (early)" {
+			t.Errorf("got %+v", p)
+		}
+		if r, err = svc.EvaluateTrade(ctx, "dynasty", []string{"gibbs"}, []string{"ja'marr chase", "2027 1st rival"}); err != nil || r.Get[1].Value != 2000 {
+			t.Errorf("Rival FC's own (late): %+v, err %v", r.Get, err)
 		}
 	})
 
-	t.Run("a pick on the give side doesn't stop finding the league", func(t *testing.T) {
-		r, err := svc.EvaluateTrade(ctx, "", []string{"jahmyr", "2027 1st"}, []string{"tight end"})
-		if err != nil || r.League != "Dynasty" || r.Give[1].Position != "PICK" {
-			t.Errorf("got %+v, err %v", r, err)
+	t.Run("a named slot and a later draft", func(t *testing.T) {
+		r, err := svc.EvaluateTrade(ctx, "dynasty", []string{"2027 1st late", "2028 1st"}, []string{"tight end"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if g := r.Give; g[0].Value != 2000 || g[0].Projected != "" || g[1].Value != 2500 || g[1].Projected != "" || r.Partner != "Third" {
+			t.Errorf("got %+v", r)
 		}
 	})
 
@@ -215,14 +293,18 @@ func TestEvaluateTrade(t *testing.T) {
 		{"in more than one league", "", []string{"chase"}, []string{"gibbs"}, ""}, // chase is mine only in Redraft
 		{"in no league", "", []string{"zzz"}, []string{"tight end"}, "name the league"},
 		{"mine in two leagues", "", []string{"j"}, []string{"tight end"}, "more than one league"}, // Jahmyr in Dynasty, Ja'Marr in Redraft
+		{"not mine to give", "dynasty", []string{"tight end"}, []string{"chase"}, "not on my roster"},
 		{"already mine", "dynasty", []string{"gibbs"}, []string{"kicker guy"}, "already on my roster"},
-		{"named twice", "dynasty", []string{"gibbs"}, []string{"chase", "ja'marr chase"}, "twice"},
+		{"named twice", "dynasty", []string{"gibbs"}, []string{"second receiver", "second"}, "twice"},
 		{"nobody", "dynasty", []string{"gibbs"}, []string{"zzz"}, "no player or pick"},
 		{"empty side", "dynasty", []string{"gibbs"}, nil, "each side"},
 		{"picks alone", "", []string{"2027 1st"}, []string{"chase"}, "name the league"},
 		{"empty name", "dynasty", []string{"gibbs"}, []string{" "}, "empty"},
-		{"two of mine match", "", []string{"jahmyr", "y"}, []string{"chase"}, "matches more than one"}, // Dynasty: Jahmyr Gibbs and Kicker Guy both contain "y"
-		{"ambiguous outside the rosters", "dynasty", []string{"gibbs"}, []string{"smith"}, "Joe Smith"},
+		{"two of mine match", "", []string{"jahmyr", "y"}, []string{"second receiver"}, "matches more than one"}, // Dynasty: Jahmyr Gibbs and Kicker Guy both contain "y"
+		{"ambiguous outside the rosters", "dynasty", []string{"gibbs"}, []string{"smith"}, "Joe Smith (WR no NFL team, free agent)"},
+		{"a pick I don't hold", "dynasty", []string{"2027 1st third"}, []string{"tight end"}, "no 2027 1st held by Mine"},
+		{"a draft FantasyCalc doesn't value", "dynasty", []string{"2031 1st"}, []string{"tight end"}, "2027, 2028 only"},
+		{"picks in redraft", "redraft", []string{"chase", "2027 1st"}, []string{"gibbs"}, "only valued in dynasty"},
 	}
 	for _, tt := range errs {
 		t.Run(tt.name, func(t *testing.T) {
