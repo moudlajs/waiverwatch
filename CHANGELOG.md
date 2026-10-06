@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/moudlajs/waiverwatch/compare/v0.18.0...v0.19.0) (2026-10-06)
+
+
+### Features
+
+* **mcp:** projected points in matchups ([#100](https://github.com/moudlajs/waiverwatch/issues/100)) ([e5d50db](https://github.com/moudlajs/waiverwatch/commit/e5d50dba7a115b878ba63e3f9620c89ef36e65d6))
+
 ## [0.18.0](https://github.com/moudlajs/waiverwatch/compare/v0.17.0...v0.18.0) (2026-10-06)
 
 
