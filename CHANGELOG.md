@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/moudlajs/waiverwatch/compare/v0.11.0...v0.12.0) (2026-10-06)
+
+
+### Features
+
+* **mcp:** player_values tool from FantasyCalc ([#83](https://github.com/moudlajs/waiverwatch/issues/83)) ([faaa143](https://github.com/moudlajs/waiverwatch/commit/faaa14330bae504941c797a20e9a85da6f83d0d7))
+
 ## [0.11.0](https://github.com/moudlajs/waiverwatch/compare/v0.10.0...v0.11.0) (2026-09-27)
 
 
