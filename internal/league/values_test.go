@@ -3,6 +3,7 @@ package league
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -115,6 +116,10 @@ func TestValues(t *testing.T) {
 		if d.Market != "dynasty superflex 10-team PPR" || d.Team != "Mine" || d.Total != 15000 || r.Source == "" {
 			t.Errorf("got %+v", d)
 		}
+		wantRanking := []TeamValue{{Rank: 1, Team: "Mine", Total: 15000, Mine: true}, {Rank: 2, Team: "Rival FC", Total: 3000}}
+		if d.Rank != 1 || !slices.Equal(d.Ranking, wantRanking) {
+			t.Errorf("rank %d, ranking %+v", d.Rank, d.Ranking)
+		}
 		if len(d.Players) != 3 || d.Players[0].Name != "Q Back" || d.Players[0].Tier != 1 || d.Players[2].Name != "K Foot" || !d.Players[2].Unrated || d.Players[0].Unrated {
 			t.Errorf("want players by value, unrated kicker last: %+v", d.Players)
 		}
@@ -125,7 +130,7 @@ func TestValues(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(r.Leagues) != 1 || r.Leagues[0].Owner != "rival" || r.Leagues[0].Total != 3000 {
+		if len(r.Leagues) != 1 || r.Leagues[0].Owner != "rival" || r.Leagues[0].Total != 3000 || r.Leagues[0].Rank != 2 {
 			t.Errorf("got %+v", r.Leagues)
 		}
 	})
@@ -178,4 +183,24 @@ func TestValues(t *testing.T) {
 			t.Errorf("err = %v", err)
 		}
 	})
+}
+
+func TestValueRanking(t *testing.T) {
+	rosters := []sleeper.Roster{
+		{RosterID: 1, OwnerID: "a", Players: []string{"x"}},
+		{RosterID: 2, OwnerID: "b", Players: []string{"y", "z"}},
+		{RosterID: 3, OwnerID: "c", Players: []string{"z", "z"}},
+		{RosterID: 4, OwnerID: "d"}, // cut from a guillotine league
+	}
+	users := []sleeper.LeagueUser{user("a", "A", ""), user("b", "B", ""), user("c", "C", ""), user("d", "D", "")}
+	market := map[string]fantasycalc.Value{"x": {Value: 100}, "y": {Value: 300}, "z": {Value: 200}}
+	got := valueRanking(rosters, users, market, 3)
+	want := []TeamValue{{1, "B", 500, false}, {2, "C", 400, true}, {3, "A", 100, false}, {4, "D", 0, false}}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %+v\nwant %+v", got, want)
+	}
+	market["x"] = fantasycalc.Value{Value: 400}
+	if got := valueRanking(rosters, users, market, 1); got[1].Rank != 2 || got[2].Rank != 2 || got[3].Rank != 4 { // A and C tie at 400
+		t.Errorf("ties: %+v", got)
+	}
 }

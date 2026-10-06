@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/moudlajs/waiverwatch/internal/fantasycalc"
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 	"github.com/moudlajs/waiverwatch/internal/sleeper/sleepertest"
 	"github.com/moudlajs/waiverwatch/internal/store"
@@ -105,6 +106,32 @@ func TestCompare(t *testing.T) {
 		}
 		if len(c.Leagues) != 2 || c.Leagues[0].League != "Head" || c.Leagues[1].League != "Guillotine" || c.Leagues[1].Them.Owner != "rival" {
 			t.Errorf("leagues = %+v", c.Leagues)
+		}
+	})
+
+	t.Run("with trade values", func(t *testing.T) {
+		market := map[string]fantasycalc.Value{"qb1": {Value: 6000}, "qb2": {Value: 4000}}
+		valued := NewService(api, NewDirectory(store.NewMemory(), api.Players), func(context.Context, fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
+			return market, nil
+		}, "me")
+		c, err := valued.Compare(ctx, "head", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		h := c.Leagues[0]
+		want := SideValues{Market: "redraft 1QB 8-team standard", Mine: 6000, Theirs: 4000, MineStarters: 6000, TheirsStarters: 4000}
+		if h.Value == nil || *h.Value != want {
+			t.Fatalf("value = %+v, want %+v", h.Value, want)
+		}
+		if qb := h.Positions[0]; qb.MineValue != 6000 || qb.TheirsValue != 4000 || qb.Mine[0].Value != 6000 {
+			t.Errorf("QB = %+v", qb)
+		}
+
+		down := NewService(api, NewDirectory(store.NewMemory(), api.Players), func(context.Context, fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
+			return nil, fantasycalc.ErrUnavailable
+		}, "me")
+		if c, err = down.Compare(ctx, "head", ""); err != nil || c.Leagues[0].Value != nil || !strings.Contains(c.Leagues[0].Note, "FantasyCalc") || c.Leagues[0].Them == nil {
+			t.Errorf("values down: %+v, err %v; want the comparison with a note", c.Leagues[0], err)
 		}
 	})
 

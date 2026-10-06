@@ -24,6 +24,7 @@ type Comparison struct {
 	Kind      string            `json:"kind"`
 	Me        *TeamRecord       `json:"me,omitempty"`
 	Them      *TeamRecord       `json:"them,omitempty"`
+	Value     *SideValues       `json:"value,omitempty" jsonschema:"FantasyCalc trade values of both rosters; missing when values couldn't be loaded"`
 	Positions []PositionCompare `json:"positions,omitempty"`
 	Note      string            `json:"note,omitempty"`
 	Error     string            `json:"error,omitempty" jsonschema:"set when this league could not be loaded or the owner was not found; the others are still valid"`
@@ -37,6 +38,15 @@ type TeamRecord struct {
 	PointsFor float64 `json:"points_for"`
 }
 
+// SideValues totals both rosters' trade values.
+type SideValues struct {
+	Market         string `json:"market" jsonschema:"the FantasyCalc market these values come from"`
+	Mine           int    `json:"mine" jsonschema:"my whole roster"`
+	Theirs         int    `json:"theirs"`
+	MineStarters   int    `json:"mine_starters" jsonschema:"my current starters only"`
+	TheirsStarters int    `json:"theirs_starters"`
+}
+
 // PositionCompare is both teams' players at one position: starters first
 // (with their lineup slot), then bench, then IR (slot "IR"). Taxi squads are
 // left out.
@@ -44,6 +54,9 @@ type PositionCompare struct {
 	Position string         `json:"position"`
 	Mine     []RosterPlayer `json:"mine"`
 	Theirs   []RosterPlayer `json:"theirs"`
+	// Trade values at this position, when values could be loaded.
+	MineValue   int `json:"mine_value,omitempty"`
+	TheirsValue int `json:"theirs_value,omitempty"`
 }
 
 // Compare puts my roster next to another team's in each league matching
@@ -146,6 +159,32 @@ func (s *Service) compare(ctx context.Context, l sleeper.League, userID, owner s
 
 	out.Me, out.Them = teamRecord(mine, users), teamRecord(them, users)
 	out.Positions = sideBySide(mine, them, l.RosterPositions, players)
+	if s.values != nil {
+		settings := ValueSettings(l).Normalise()
+		market, err := s.values(ctx, settings)
+		if err != nil {
+			out.Note = "no trade values: " + err.Error() // the comparison itself still stands
+			return out, nil
+		}
+		out.Value = &SideValues{
+			Market:         settings.String(),
+			Mine:           rosterValue(mine.Players, market),
+			Theirs:         rosterValue(them.Players, market),
+			MineStarters:   rosterValue(mine.Starters, market),
+			TheirsStarters: rosterValue(them.Starters, market),
+		}
+		for i := range out.Positions {
+			pc := &out.Positions[i]
+			for j := range pc.Mine {
+				pc.Mine[j].Value = market[pc.Mine[j].PlayerID].Value
+				pc.MineValue += pc.Mine[j].Value
+			}
+			for j := range pc.Theirs {
+				pc.Theirs[j].Value = market[pc.Theirs[j].PlayerID].Value
+				pc.TheirsValue += pc.Theirs[j].Value
+			}
+		}
+	}
 	return out, nil
 }
 

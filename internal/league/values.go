@@ -42,9 +42,19 @@ type ValueBoard struct {
 	Team     string        `json:"team,omitempty" jsonschema:"roster values: whose roster"`
 	Owner    string        `json:"owner,omitempty"`
 	Total    int           `json:"total,omitempty" jsonschema:"roster values: the roster's summed value"`
+	Rank     int           `json:"rank,omitempty" jsonschema:"roster values: this roster's rank by total value in the league, 1 is the most valuable"`
+	Ranking  []TeamValue   `json:"ranking,omitempty" jsonschema:"roster values: every team in the league by total value"`
 	Players  []PlayerValue `json:"players"`
 	Note     string        `json:"note,omitempty"`
 	Error    string        `json:"error,omitempty" jsonschema:"set when this league could not be loaded or the owner was not found; the others are still valid"`
+}
+
+// TeamValue is one team's summed roster value.
+type TeamValue struct {
+	Rank  int    `json:"rank" jsonschema:"1 is the most valuable roster; tied teams share a rank"`
+	Team  string `json:"team"`
+	Total int    `json:"total"`
+	Mine  bool   `json:"mine,omitempty"`
 }
 
 // PlayerValue is one player's trade value in a league's market.
@@ -206,6 +216,12 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 		out.Players = append(out.Players, pv)
 	}
 	slices.SortStableFunc(out.Players, func(a, b PlayerValue) int { return cmp.Compare(b.Value, a.Value) })
+	out.Ranking = valueRanking(rosters, users, market, mine.RosterID)
+	for _, tv := range out.Ranking {
+		if tv.Team == out.Team {
+			out.Rank = tv.Rank
+		}
+	}
 	if len(r.Players) == 0 && l.Kind() == "guillotine" {
 		out.Note = "eliminated: guillotine teams are emptied when they are cut"
 	}
@@ -281,4 +297,30 @@ func foldName(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// rosterValue sums the values of the given players.
+func rosterValue(ids []string, market map[string]fantasycalc.Value) int {
+	total := 0
+	for _, id := range ids {
+		total += market[id].Value
+	}
+	return total
+}
+
+// valueRanking orders a league's teams by summed roster value, most valuable
+// first; tied teams share a rank.
+func valueRanking(rosters []sleeper.Roster, users []sleeper.LeagueUser, market map[string]fantasycalc.Value, mineID int) []TeamValue {
+	out := make([]TeamValue, 0, len(rosters))
+	for _, r := range rosters {
+		out = append(out, TeamValue{Team: TeamName(users, r.OwnerID), Total: rosterValue(r.Players, market), Mine: r.RosterID == mineID})
+	}
+	slices.SortStableFunc(out, func(a, b TeamValue) int { return cmp.Compare(b.Total, a.Total) })
+	for i := range out {
+		out[i].Rank = i + 1
+		if i > 0 && out[i].Total == out[i-1].Total {
+			out[i].Rank = out[i-1].Rank
+		}
+	}
+	return out
 }

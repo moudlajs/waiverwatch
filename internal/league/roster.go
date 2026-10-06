@@ -41,6 +41,7 @@ type RosterPlayer struct {
 	NFLTeam    string `json:"nfl_team,omitempty"`
 	Injury     string `json:"injury,omitempty"`
 	InjuryPart string `json:"injury_part,omitempty"`
+	Value      int    `json:"value,omitempty" jsonschema:"compare_rosters: FantasyCalc trade value"`
 }
 
 // Rosters returns the rosters matching leagueQuery (name fragment or ID;
