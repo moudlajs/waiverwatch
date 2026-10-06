@@ -30,6 +30,11 @@ need a Claude plan that allows custom connectors.
    **Sign in**. It then syncs to the Claude app on your phone; switch it on
    per chat under **+ → Connectors**.
 
+**After an update** (new tools), Claude may not see them in your chats yet:
+it keeps its own copy of the tool list. Disconnect and reconnect waiverwatch
+under Connectors, then start a new chat. If you ask about something a new
+tool covers in an old chat, Claude should tell you to do this.
+
 Then just ask:
 
 - *"How are my matchups this week?"*
