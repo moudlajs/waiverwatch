@@ -212,13 +212,14 @@ func TestEvaluateTrade(t *testing.T) {
 	}{
 		{"in more than one league", "", []string{"chase"}, []string{"gibbs"}, ""}, // chase is mine only in Redraft
 		{"in no league", "", []string{"zzz"}, []string{"tight end"}, "name the league"},
-		{"mine in two leagues", "", []string{"j"}, []string{"tight end"}, "more than one league"}, // Jahmyr in Dynasty, Ja'Marr in Redraft // no league has a single "j"
+		{"mine in two leagues", "", []string{"j"}, []string{"tight end"}, "more than one league"}, // Jahmyr in Dynasty, Ja'Marr in Redraft
 		{"already mine", "dynasty", []string{"gibbs"}, []string{"kicker guy"}, "already on my roster"},
 		{"named twice", "dynasty", []string{"gibbs"}, []string{"chase", "ja'marr chase"}, "twice"},
 		{"nobody", "dynasty", []string{"gibbs"}, []string{"zzz"}, "no player or pick"},
 		{"empty side", "dynasty", []string{"gibbs"}, nil, "each side"},
 		{"picks alone", "", []string{"2027 1st"}, []string{"chase"}, "name the league"},
 		{"empty name", "dynasty", []string{"gibbs"}, []string{" "}, "empty"},
+		{"two of mine match", "", []string{"jahmyr", "e"}, []string{"chase"}, "matches more than one"}, // Dynasty: Jahmyr Gibbs and Kicker Guy both contain "e"
 		{"ambiguous outside the rosters", "dynasty", []string{"gibbs"}, []string{"smith"}, "Joe Smith"},
 	}
 	for _, tt := range errs {

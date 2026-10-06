@@ -112,7 +112,8 @@ func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League,
 			return // not in this league's rosters: nothing of mine to trade
 		}
 		for _, n := range named {
-			if _, err := onRoster(mine.Players, n, players); err != nil {
+			// Ambiguous still counts: he is here, and evaluating says which ones match.
+			if _, err := onRoster(mine.Players, n, players); err != nil && !errors.Is(err, errAmbiguous) {
 				return
 			}
 		}
