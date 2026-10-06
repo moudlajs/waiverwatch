@@ -27,6 +27,10 @@ const DefaultBaseURL = "https://api.fantasycalc.com"
 // days, not minutes; a few hours old is fine.
 const MaxAge = 3 * time.Hour
 
+// retryWait is how long a stale copy is served without asking again after a
+// failed refresh, so an outage doesn't cost every call a timeout.
+const retryWait = time.Minute
+
 // maxBody caps a response; a full dynasty list is ~330 KB.
 const maxBody = 8 << 20
 
@@ -102,8 +106,9 @@ type Client struct {
 }
 
 type snapshot struct {
-	byID    map[string]Value
-	fetched time.Time
+	byID       map[string]Value
+	fetched    time.Time
+	retryAfter time.Time // after a failed refresh: don't ask again before this
 }
 
 // New returns a client for baseURL, normally DefaultBaseURL. Tests pass an
@@ -123,7 +128,7 @@ func New(baseURL string) *Client {
 func (c *Client) Values(ctx context.Context, s Settings) (map[string]Value, error) {
 	s = s.Normalise()
 	cur, ok := c.cached(s)
-	if ok && c.now().Sub(cur.fetched) < MaxAge {
+	if ok && (c.now().Sub(cur.fetched) < MaxAge || c.now().Before(cur.retryAfter)) {
 		return cur.byID, nil
 	}
 
@@ -146,6 +151,12 @@ func (c *Client) Values(ctx context.Context, s Settings) (map[string]Value, erro
 	case r := <-ch:
 		if r.Err != nil {
 			if ok {
+				c.mu.Lock()
+				if snap := c.cache[s]; snap.fetched.Equal(cur.fetched) { // not refreshed meanwhile
+					snap.retryAfter = c.now().Add(retryWait)
+					c.cache[s] = snap
+				}
+				c.mu.Unlock()
 				slog.WarnContext(ctx, "fantasycalc refresh failed, using stale values",
 					"age", c.now().Sub(cur.fetched).Round(time.Minute), "err", r.Err)
 				return cur.byID, nil

@@ -157,7 +157,7 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 type ValuesInput struct {
 	Players []string `json:"players,omitempty" jsonschema:"player names (or parts, e.g. Gibbs); omit to value a whole roster"`
 	League  string   `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
-	Owner   string   `json:"owner,omitempty" jsonschema:"without players: team name or owner display name whose roster to value; omit for mine"`
+	Owner   string   `json:"owner,omitempty" jsonschema:"only without players: team name or owner display name whose roster to value; omit for mine"`
 }
 
 // DepthInput is position_depth's arguments.

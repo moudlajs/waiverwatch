@@ -130,4 +130,15 @@ func TestValuesErrors(t *testing.T) {
 	if err != nil || got["9221"].Value != 10735 || calls.Load() != before+1 {
 		t.Errorf("stale fallback: err %v, got %d values, %d new calls", err, len(got), calls.Load()-before)
 	}
+
+	// Right after a failed refresh the stale copy is served without asking.
+	if _, err := c.Values(ctx, redraft); err != nil || calls.Load() != before+1 {
+		t.Errorf("within retryWait: err %v, %d new calls, want 1", err, calls.Load()-before)
+	}
+	// After it, FantasyCalc is asked again.
+	c.now = func() time.Time { return now.Add(MaxAge + time.Minute + retryWait + time.Second) }
+	status.Store(0)
+	if _, err := c.Values(ctx, redraft); err != nil || calls.Load() != before+2 {
+		t.Errorf("after retryWait: err %v, %d new calls, want 2", err, calls.Load()-before)
+	}
 }

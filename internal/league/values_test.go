@@ -115,7 +115,7 @@ func TestValues(t *testing.T) {
 		if d.Market != "dynasty superflex 10-team PPR" || d.Team != "Mine" || d.Total != 15000 || r.Source == "" {
 			t.Errorf("got %+v", d)
 		}
-		if len(d.Players) != 3 || d.Players[0].Name != "Q Back" || d.Players[0].Tier != 1 || d.Players[2].Name != "K Foot" || d.Players[2].Value != 0 {
+		if len(d.Players) != 3 || d.Players[0].Name != "Q Back" || d.Players[0].Tier != 1 || d.Players[2].Name != "K Foot" || !d.Players[2].Unrated || d.Players[0].Unrated {
 			t.Errorf("want players by value, unrated kicker last: %+v", d.Players)
 		}
 	})
@@ -144,6 +144,12 @@ func TestValues(t *testing.T) {
 		}
 		if red.Value != 5000 || !red.Mine || r.Leagues[1].Market != "redraft 1QB 14-team PPR" {
 			t.Errorf("redraft: %+v in %q", red, r.Leagues[1].Market)
+		}
+	})
+
+	t.Run("players and an owner", func(t *testing.T) {
+		if _, err := svc.Values(ctx, "", "rival", []string{"r back"}); err == nil {
+			t.Error("want an error")
 		}
 	})
 

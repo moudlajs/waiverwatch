@@ -55,7 +55,8 @@ type PlayerValue struct {
 	NFLTeam      string `json:"nfl_team,omitempty"`
 	Team         string `json:"team,omitempty" jsonschema:"named players: the fantasy team he is on in this league; empty for a free agent"`
 	Mine         bool   `json:"mine,omitempty" jsonschema:"named players: he is on my team"`
-	Value        int    `json:"value" jsonschema:"trade value, up to ~11000; 0 when FantasyCalc doesn't rate him (kickers, defenses, deep bench)"`
+	Value        int    `json:"value" jsonschema:"trade value, up to ~11000; 0 when unrated"`
+	Unrated      bool   `json:"unrated,omitempty" jsonschema:"FantasyCalc doesn't rate him (kickers, defenses, deep bench): no market value, not proven worthless"`
 	OverallRank  int    `json:"overall_rank,omitempty"`
 	PositionRank int    `json:"position_rank,omitempty"`
 	Tier         int    `json:"tier,omitempty" jsonschema:"1 is the top tier"`
@@ -87,6 +88,9 @@ func ValueSettings(l sleeper.League) fantasycalc.Settings {
 func (s *Service) Values(ctx context.Context, leagueQuery, owner string, names []string) (ValueReport, error) {
 	if s.values == nil {
 		return ValueReport{}, errors.New("trade values are not set up on this server")
+	}
+	if owner != "" && len(names) > 0 {
+		return ValueReport{}, errors.New("name players or an owner, not both: named players are shown on whichever team has them")
 	}
 	_, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -209,9 +213,9 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 }
 
 func playerValue(p sleeper.Player, market map[string]fantasycalc.Value) PlayerValue {
-	v := market[p.PlayerID]
+	v, rated := market[p.PlayerID]
 	return PlayerValue{
-		PlayerID: p.PlayerID, Name: p.Name(), Position: p.Position, NFLTeam: p.Team,
+		PlayerID: p.PlayerID, Name: p.Name(), Position: p.Position, NFLTeam: p.Team, Unrated: !rated,
 		Value: v.Value, OverallRank: v.OverallRank, PositionRank: v.PositionRank, Tier: v.Tier, Trend30Day: v.Trend30Day,
 	}
 }
