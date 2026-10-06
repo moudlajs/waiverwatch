@@ -316,8 +316,8 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 			out.Notes = append(out.Notes, fmt.Sprintf("FantasyCalc doesn't rate %s; counted as 0", a.Name))
 		}
 	}
-	if k := l.Kind(); k == "keeper" || k == "guillotine" {
-		out.Notes = append(out.Notes, k+" league: valued with redraft values")
+	if n := redraftNote(l, source); n != "" {
+		out.Notes = append(out.Notes, n)
 	}
 	if source != "" {
 		out.Notes = append(out.Notes, source)
@@ -344,6 +344,9 @@ func (t *trade) player(id string) (TradeAsset, error) {
 // standing projects, else as a generic pick of its round.
 func (t *trade) pick(q pickQuery, holders []int, side string) (TradeAsset, error) {
 	seasons := pickSeasons(t.market)
+	if len(seasons) == 0 {
+		return TradeAsset{}, fmt.Errorf("%s: draft picks can't be valued right now: FantasyCalc is down and the backup source has no pick values", side)
+	}
 	if !slices.Contains(seasons, q.season) {
 		return TradeAsset{}, fmt.Errorf("%s: FantasyCalc values picks for %s only", side, strings.Join(seasons, ", "))
 	}

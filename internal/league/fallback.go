@@ -3,10 +3,12 @@ package league
 import (
 	"cmp"
 	"context"
+	"log/slog"
 	"slices"
 
 	"github.com/moudlajs/waiverwatch/internal/dynastyprocess"
 	"github.com/moudlajs/waiverwatch/internal/fantasycalc"
+	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
 // fallbackNote goes on every answer valued by the backup source.
@@ -25,13 +27,24 @@ func (s *Service) WithFallback(fallback FetchValues) *Service {
 // returned: it is the source people know.
 func (s *Service) market(ctx context.Context, settings fantasycalc.Settings) (map[string]fantasycalc.Value, string, error) {
 	m, err := s.values(ctx, settings)
-	if err == nil || s.fallback == nil {
+	if err == nil || s.fallback == nil || ctx.Err() != nil {
 		return m, "", err
 	}
-	if fm, ferr := s.fallback(ctx, settings); ferr == nil {
+	fm, ferr := s.fallback(ctx, settings)
+	if ferr == nil {
 		return fm, fallbackNote, nil
 	}
+	slog.WarnContext(ctx, "both trade value sources failed", "fantasycalc", err, "backup", ferr)
 	return nil, "", err
+}
+
+// redraftNote says that keeper and guillotine leagues get redraft values,
+// unless the backup's dynasty values are in use (its own note covers that).
+func redraftNote(l sleeper.League, source string) string {
+	if k := l.Kind(); source == "" && (k == "keeper" || k == "guillotine") {
+		return k + " league: valued with redraft values"
+	}
+	return ""
 }
 
 // DynastyProcessValues adapts DynastyProcess's values to FetchValues: 1QB or

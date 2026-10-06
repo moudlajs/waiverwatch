@@ -162,9 +162,6 @@ func (s *Service) Values(ctx context.Context, leagueQuery, owner string, names [
 func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, owner string, wanted []sleeper.Player, players map[string]sleeper.Player) (ValueBoard, error) {
 	settings := ValueSettings(l).Normalise()
 	out := ValueBoard{LeagueID: l.LeagueID, League: l.Name, Kind: l.Kind(), Market: settings.String(), Players: []PlayerValue{}}
-	if k := l.Kind(); k == "keeper" || k == "guillotine" {
-		out.Note = k + " league: valued with redraft values"
-	}
 
 	var (
 		market  map[string]fantasycalc.Value
@@ -179,6 +176,7 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
+	addNote(&out.Note, redraftNote(l, source))
 	addNote(&out.Note, source)
 	mine, ok := MyRoster(rosters, userID)
 	if !ok {

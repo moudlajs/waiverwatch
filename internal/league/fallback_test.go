@@ -65,6 +65,22 @@ func TestFallback(t *testing.T) {
 		t.Errorf("evaluate_trade: %+v, err %v", tr, err)
 	}
 
+	if _, err := svc.EvaluateTrade(ctx, "", []string{"q b", "2027 1st"}, []string{"w r"}); err == nil || !strings.Contains(err.Error(), "picks can't be valued right now") {
+		t.Errorf("a pick on the backup: err = %v", err)
+	}
+
+	// A cancelled request doesn't go on to the backup.
+	asked := false
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	_, _, err = NewService(api, nil, down, "me").WithFallback(func(context.Context, fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
+		asked = true
+		return nil, nil
+	}).market(cancelled, fantasycalc.Settings{})
+	if asked || err == nil {
+		t.Errorf("cancelled: backup asked %v, err %v", asked, err)
+	}
+
 	// Both down: FantasyCalc's error, the one people know.
 	bothDown := NewService(api, NewDirectory(store.NewMemory(), api.Players), down, "me").
 		WithFallback(func(context.Context, fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
