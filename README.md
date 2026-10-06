@@ -55,7 +55,7 @@ It's a free hobby project: it may be slow or down sometimes.
 ## Status
 
 Tools: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`,
-`draft_results`, `injury_report`, `player_values`, `position_depth`,
+`draft_results`, `evaluate_trade`, `injury_report`, `player_values`, `position_depth`,
 `trending_players`, `waiver_targets`. See the
 [milestones](https://github.com/moudlajs/waiverwatch/milestones) for the plan.
 
@@ -122,6 +122,7 @@ To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 | `position_depth` | per league: starting slots (flex-aware) vs healthy players and backups; every thin spot across leagues |
 | `injury_report` | your injured players across all leagues, where they start for you, and a free replacement in each of those leagues |
 | `player_values` | trade values (FantasyCalc, from real trades) fitted to each league's format: named players and who has them, or a whole roster with its total |
+| `evaluate_trade` | "is this trade fair?": both sides valued for that league (players and dynasty picks), 2-for-1 adjusted, who wins and by how much |
 | `trending_players` | the most-added players on Sleeper, with the leagues where you can still claim each one |
 | `waiver_targets` | per league: the best free agents you can actually start there, your waiver priority or FAAB left |
 
