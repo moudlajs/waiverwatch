@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"golang.org/x/sync/errgroup"
 
@@ -163,7 +164,7 @@ func (s *Service) compare(ctx context.Context, l sleeper.League, userID, owner s
 		settings := ValueSettings(l).Normalise()
 		market, err := s.values(ctx, settings)
 		if err != nil {
-			out.Note = "no trade values: " + err.Error() // the comparison itself still stands
+			out.Note = strings.TrimPrefix(out.Note+"; no trade values: "+err.Error(), "; ") // the comparison itself still stands
 			return out, nil
 		}
 		out.Value = &SideValues{

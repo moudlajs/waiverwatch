@@ -216,12 +216,9 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 		out.Players = append(out.Players, pv)
 	}
 	slices.SortStableFunc(out.Players, func(a, b PlayerValue) int { return cmp.Compare(b.Value, a.Value) })
-	out.Ranking = valueRanking(rosters, users, market, mine.RosterID)
-	for _, tv := range out.Ranking {
-		if tv.Team == out.Team {
-			out.Rank = tv.Rank
-		}
-	}
+	var ranks map[int]int
+	out.Ranking, ranks = valueRanking(rosters, users, market, mine.RosterID)
+	out.Rank = ranks[r.RosterID]
 	if len(r.Players) == 0 && l.Kind() == "guillotine" {
 		out.Note = "eliminated: guillotine teams are emptied when they are cut"
 	}
@@ -309,18 +306,21 @@ func rosterValue(ids []string, market map[string]fantasycalc.Value) int {
 }
 
 // valueRanking orders a league's teams by summed roster value, most valuable
-// first; tied teams share a rank.
-func valueRanking(rosters []sleeper.Roster, users []sleeper.LeagueUser, market map[string]fantasycalc.Value, mineID int) []TeamValue {
-	out := make([]TeamValue, 0, len(rosters))
-	for _, r := range rosters {
-		out = append(out, TeamValue{Team: TeamName(users, r.OwnerID), Total: rosterValue(r.Players, market), Mine: r.RosterID == mineID})
-	}
-	slices.SortStableFunc(out, func(a, b TeamValue) int { return cmp.Compare(b.Total, a.Total) })
-	for i := range out {
-		out[i].Rank = i + 1
-		if i > 0 && out[i].Total == out[i-1].Total {
-			out[i].Rank = out[i-1].Rank
+// first; tied teams share a rank. ranks maps roster IDs to their rank (team
+// names can be empty or shared).
+func valueRanking(rosters []sleeper.Roster, users []sleeper.LeagueUser, market map[string]fantasycalc.Value, mineID int) (out []TeamValue, ranks map[int]int) {
+	sorted := slices.Clone(rosters)
+	slices.SortStableFunc(sorted, func(a, b sleeper.Roster) int {
+		return cmp.Compare(rosterValue(b.Players, market), rosterValue(a.Players, market))
+	})
+	ranks = make(map[int]int, len(sorted))
+	for i, r := range sorted {
+		tv := TeamValue{Rank: i + 1, Team: TeamName(users, r.OwnerID), Total: rosterValue(r.Players, market), Mine: r.RosterID == mineID}
+		if i > 0 && tv.Total == out[i-1].Total {
+			tv.Rank = out[i-1].Rank
 		}
+		ranks[r.RosterID] = tv.Rank
+		out = append(out, tv)
 	}
-	return out
+	return out, ranks
 }
