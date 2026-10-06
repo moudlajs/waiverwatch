@@ -170,7 +170,9 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		Description: "Who should I trade for? Per league: my thin positions (no healthy backup, or can't fill the lineup), " +
 			"my spare players (healthy depth beyond what my lineup needs, where I can afford to lose it), and players on " +
 			"other teams at the thin positions that my spares can buy, each with the cheapest offer (one or two spares). " +
-			"Name a position to look there even if it isn't thin. Check a deal with evaluate_trade before proposing it.",
+			"Thin means a position's own slots; flex depth isn't counted (see position_depth). Other teams' taxi players " +
+			"count as targets. Name a position to look there even if it isn't thin. Check a deal with evaluate_trade " +
+			"before proposing it.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
 	}, limited(g, func(ctx context.Context, in TargetsInput) (league.TargetReport, error) {
 		limit := in.Limit
