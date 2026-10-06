@@ -35,6 +35,7 @@ type LeagueSettings struct {
 	PlayoffWeekStart int `json:"playoff_week_start"`
 	WaiverType       int `json:"waiver_type"`   // 0 rolling priority, 1 reverse standings, 2 FAAB
 	WaiverBudget     int `json:"waiver_budget"` // FAAB budget per team
+	DraftRounds      int `json:"draft_rounds"`  // rounds in each (rookie) draft
 }
 
 // Kind names the league format from settings.type.
@@ -137,6 +138,7 @@ type Player struct {
 	InjuryStatus   string `json:"injury_status"` // Questionable, Doubtful, Out, IR, PUP, Sus, NA...
 	InjuryBodyPart string `json:"injury_body_part"`
 	SearchRank     int    `json:"search_rank"` // Sleeper's overall rank, 1 is best; 0 when unranked
+	Age            int    `json:"age"`         // 0 when unknown (and for team defenses)
 }
 
 // Name is the display name, e.g. "Patrick Mahomes" or "Seattle Seahawks".
@@ -175,4 +177,15 @@ type Pick struct {
 		Team      string `json:"team"`
 		Amount    string `json:"amount"` // auction drafts: the price paid
 	} `json:"metadata"`
+}
+
+// TradedPick is a draft pick that changed hands. RosterID is the team whose
+// pick it originally was, OwnerID the roster holding it now. Picks never
+// traded are not listed: they belong to their original team.
+type TradedPick struct {
+	Season          string `json:"season"`
+	Round           int    `json:"round"`
+	RosterID        int    `json:"roster_id"`
+	OwnerID         int    `json:"owner_id"`
+	PreviousOwnerID int    `json:"previous_owner_id"`
 }

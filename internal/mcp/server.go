@@ -153,10 +153,12 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 	sdk.AddTool(s, &sdk.Tool{
 		Name: "evaluate_trade",
 		Description: "Is this trade fair? Values what I give and what I get (players, and dynasty draft picks like " +
-			"\"2027 1st\") with FantasyCalc values for that league's format, and says who wins and by how much. " +
-			"Two good players are not worth one great one: each side's best piece counts in full and lesser pieces " +
-			"are discounted, so 2-for-1 deals are judged fairly. Without a league, it uses the one league where I " +
-			"have everything I give.",
+			"\"2027 1st\") with FantasyCalc values for that league's format: who it leans to, by how much, and my depth " +
+			"before and after. Two good players are not worth one great one: each side's best piece counts in full and " +
+			"lesser pieces are discounted. Picks are checked against who holds them (traded picks included) and next " +
+			"year's are valued early/mid/late from their original team's standing; add a team to pick one (\"2027 1st " +
+			"CHGO\") or a slot to override (\"2027 1st late\"). Ambiguous names come back with every candidate and " +
+			"their teams. Without a league, it uses the one league where I have every player I give.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
 	}, limited(g, func(ctx context.Context, in TradeInput) (league.TradeReport, error) {
 		return svc.EvaluateTrade(ctx, in.League, in.Give, in.Get)
@@ -167,7 +169,7 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 
 // TradeInput is evaluate_trade's arguments.
 type TradeInput struct {
-	Give   []string `json:"give" jsonschema:"players (or picks, e.g. 2027 1st) I give, by name or part of it"`
+	Give   []string `json:"give" jsonschema:"players I give (name or part of it, must be on my roster) and picks (2027 1st, 2028 2nd CHGO)"`
 	Get    []string `json:"get" jsonschema:"players (or picks) I get"`
 	League string   `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit to use the one league where I have everything I give"`
 }

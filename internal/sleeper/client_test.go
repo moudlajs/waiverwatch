@@ -25,6 +25,7 @@ var fixtures = map[string]string{
 	"/league/L1":                 "league.json",
 	"/league/L1/drafts":          "drafts.json",
 	"/draft/D1/picks":            "picks.json",
+	"/league/L1/traded_picks":    "traded_picks.json",
 	"/state/nfl":                 "state.json",
 	"/players/nfl":               "players.json",
 	"/players/nfl/trending/add":  "trending.json",
@@ -182,7 +183,7 @@ func TestClientDecodes(t *testing.T) {
 			t.Fatalf("got %d players, want 3", len(ps))
 		}
 		qb := ps["4046"]
-		if qb.Name() != "Patrick Mahomes" || qb.Position != "QB" || qb.Team != "KC" || !qb.Active {
+		if qb.Name() != "Patrick Mahomes" || qb.Position != "QB" || qb.Team != "KC" || !qb.Active || qb.Age != 31 {
 			t.Errorf("unexpected player %+v", qb)
 		}
 		if qb.InjuryStatus != "Questionable" || qb.InjuryBodyPart != "Ankle" {
@@ -224,6 +225,16 @@ func TestClientDecodes(t *testing.T) {
 		}
 		if p.Metadata.FirstName+" "+p.Metadata.LastName != "Jeremiyah Love" || p.Metadata.Position != "RB" || p.IsKeeper {
 			t.Errorf("pick metadata = %+v keeper=%v", p.Metadata, p.IsKeeper)
+		}
+	})
+
+	t.Run("traded picks", func(t *testing.T) {
+		ps, err := c.TradedPicks(ctx, "L1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ps) != 3 || ps[0] != (TradedPick{Season: "2026", Round: 1, RosterID: 1, OwnerID: 2, PreviousOwnerID: 6}) {
+			t.Errorf("unexpected traded picks %+v", ps)
 		}
 	})
 

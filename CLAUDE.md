@@ -102,6 +102,7 @@ GET /players/nfl/trending/add              -> most-added players
 GET /league/{league_id}                    -> one league (previous_league_id)
 GET /league/{league_id}/drafts             -> drafts
 GET /draft/{draft_id}/picks                -> picks (picked_by, round, pick_no)
+GET /league/{league_id}/traded_picks       -> picks that changed hands
 ```
 
 - Starters fill `league.roster_positions` in order; `BN` slots follow.
@@ -124,6 +125,10 @@ GET /draft/{draft_id}/picks                -> picks (picked_by, round, pick_no)
   follow `previous_league_id`. Redraft leagues' previous seasons are other
   drafts entirely and aren't followed. `picked_by` is the user who picked;
   `roster_id` only identifies a team within one season's league.
+- `traded_picks` lists only traded picks, past drafts included: `roster_id`
+  is the pick's original team, `owner_id` the roster holding it now. Every
+  other pick belongs to its original team; `settings.draft_rounds` gives the
+  rounds.
 - Matchups carry actual points only (`points`, `starters_points`,
   `players_points`), no projections (checked 2026-09-25, see #17). There is
   no per-game status either, so "yet to play" can't be told from 0 points.
