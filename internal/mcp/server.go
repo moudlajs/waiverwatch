@@ -35,11 +35,12 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 	sdk.AddTool(s, &sdk.Tool{
 		Name: "list_leagues",
 		Description: "List every Sleeper league the user is in this season, with league type, size, " +
-			"the user's team name, record, points for/against and standing. Also returns the current NFL season and week.",
+			"the user's team name, record, points for/against and standing. Also returns the current NFL season and " +
+			"week, and this server's version and tools.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
-	}, limited(g, func(ctx context.Context, _ struct{}) (league.Overview, error) {
+	}, limited(g, func(ctx context.Context, _ struct{}) (LeaguesOutput, error) {
 		ov, err := svc.Overview(ctx)
-		return ov, err
+		return LeaguesOutput{Overview: ov, Server: ServerInfo{Version: version, Tools: toolNames, Note: reconnectNote}}, err
 	}))
 
 	sdk.AddTool(s, &sdk.Tool{
@@ -165,6 +166,33 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 	}))
 
 	return s
+}
+
+// toolNames are every tool NewServer registers; a test keeps it in step.
+var toolNames = []string{
+	"list_leagues", "get_matchups", "trending_players", "waiver_targets", "get_roster", "injury_report",
+	"compare_rosters", "draft_results", "position_depth", "player_values", "evaluate_trade",
+}
+
+// Claude keeps a stored copy of a connector's tool list until the connector
+// is reconnected, so a chat may lack tools a release added. Tool results are
+// always live: this lets Claude notice.
+const reconnectNote = "If any of these tools are missing from your tool list, waiverwatch was updated after this " +
+	"connector's tools were loaded: tell the user to reconnect the waiverwatch connector (claude.ai Settings > " +
+	"Connectors) and start a new chat. Don't improvise what a missing tool would return."
+
+// LeaguesOutput is list_leagues' answer: the overview plus what this server
+// offers.
+type LeaguesOutput struct {
+	league.Overview
+	Server ServerInfo `json:"server"`
+}
+
+// ServerInfo describes the running waiverwatch.
+type ServerInfo struct {
+	Version string   `json:"version"`
+	Tools   []string `json:"tools" jsonschema:"every tool this server has"`
+	Note    string   `json:"note"`
 }
 
 // TradeInput is evaluate_trade's arguments.

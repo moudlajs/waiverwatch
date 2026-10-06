@@ -66,8 +66,14 @@ func TestListLeagues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got, want := len(tools.Tools), len(toolNames); got != want {
+		t.Errorf("%d tools registered, toolNames lists %d", got, want)
+	}
 	var names []string
 	for _, tl := range tools.Tools {
+		if !slices.Contains(toolNames, tl.Name) {
+			t.Errorf("%s is missing from toolNames", tl.Name)
+		}
 		if tl.OutputSchema == nil {
 			t.Errorf("%s has no output schema", tl.Name)
 		}
@@ -95,6 +101,13 @@ func TestListLeagues(t *testing.T) {
 	}
 	if ov.Week != 3 || len(ov.Leagues) != 1 || ov.Leagues[0].Wins != 3 || ov.Leagues[0].Kind != "dynasty" {
 		t.Errorf("unexpected overview %+v", ov)
+	}
+	var out LeaguesOutput
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Server.Version != "test" || len(out.Server.Tools) != len(toolNames) || !strings.Contains(out.Server.Note, "reconnect") {
+		t.Errorf("server info = %+v", out.Server)
 	}
 	if len(res.Content) == 0 {
 		t.Error("want a text fallback for clients without structured content")
