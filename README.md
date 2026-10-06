@@ -80,7 +80,7 @@ Tools: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`,
 | Language | Go |
 | Interface | MCP ([Go SDK](https://github.com/modelcontextprotocol/go-sdk)): stdio locally, Streamable HTTP when hosted |
 | Host | Google Cloud Run (free tier, scales to zero) |
-| Data | `api.sleeper.app`: public, free, no key; trade values from `api.fantasycalc.com`, same |
+| Data | `api.sleeper.app`: public, free, no key; trade values from `api.fantasycalc.com`, same; DynastyProcess's open values as a backup |
 
 ## Run it locally (developers)
 

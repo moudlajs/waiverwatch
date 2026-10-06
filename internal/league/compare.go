@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"golang.org/x/sync/errgroup"
 
@@ -41,7 +40,7 @@ type TeamRecord struct {
 
 // SideValues totals both rosters' trade values.
 type SideValues struct {
-	Market         string `json:"market" jsonschema:"the FantasyCalc market these values come from"`
+	Market         string `json:"market" jsonschema:"where these values come from: the FantasyCalc market, or the backup source"`
 	Mine           int    `json:"mine" jsonschema:"my whole roster, taxi squad included (per-position totals leave taxi out)"`
 	Theirs         int    `json:"theirs"`
 	MineStarters   int    `json:"mine_starters" jsonschema:"my current starters only"`
@@ -162,13 +161,14 @@ func (s *Service) compare(ctx context.Context, l sleeper.League, userID, owner s
 	out.Positions = sideBySide(mine, them, l.RosterPositions, players)
 	if s.values != nil {
 		settings := ValueSettings(l).Normalise()
-		market, err := s.values(ctx, settings)
+		market, note, err := s.market(ctx, settings)
 		if err != nil {
-			out.Note = strings.TrimPrefix(out.Note+"; no trade values: "+err.Error(), "; ") // the comparison itself still stands
+			addNote(&out.Note, "no trade values: "+err.Error()) // the comparison itself still stands
 			return out, nil
 		}
+		addNote(&out.Note, note)
 		out.Value = &SideValues{
-			Market:         settings.String(),
+			Market:         marketLabel(settings, note),
 			Mine:           rosterValue(mine.Players, market),
 			Theirs:         rosterValue(them.Players, market),
 			MineStarters:   rosterValue(mine.Starters, market),

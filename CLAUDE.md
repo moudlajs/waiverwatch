@@ -31,6 +31,7 @@ Target layout (grow into it, don't create empty packages):
 main.go              wiring only
 internal/sleeper/    API client: HTTP + JSON, nothing else
 internal/fantasycalc/ trade values client: HTTP + JSON, nothing else
+internal/dynastyprocess/ backup trade values: HTTP + CSV, nothing else
 internal/league/     domain logic: knows football, not HTTP or MCP
 internal/store/      Store interface + in-memory impl
 internal/mcp/        tools + transport: knows MCP, never calls Sleeper
@@ -148,6 +149,12 @@ Trade values, public, no key, undocumented. One endpoint:
   2; 2 QBs when `QB` + `SUPER_FLEX` slots ≥ 2; PPR from `scoring_settings.rec`.
 - ~150 KB redraft, ~330 KB dynasty. Cached per market for 3 h; on a failed
   refresh the stale copy is served.
+- **Backup:** when FantasyCalc fails, `Service.market` falls back to
+  DynastyProcess (`github.com/dynastyprocess/data`: `values-players.csv`
+  joined to Sleeper via `db_playerids.csv` on `fp_id` = `fantasypros_id`;
+  missing IDs are `NA`). Dynasty values only, 1QB or superflex, no picks; the
+  answer says so in a note. Their repo is GPL-3, so test fixtures are made
+  up in their format, never copied.
 
 ## Go conventions
 

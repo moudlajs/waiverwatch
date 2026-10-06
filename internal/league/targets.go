@@ -82,18 +82,21 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 		users   []sleeper.LeagueUser
 	)
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() (err error) { market, err = s.values(gctx, settings); return err })
+	var source string
+	g.Go(func() (err error) { market, source, err = s.market(gctx, settings); return err })
 	g.Go(func() (err error) { rosters, err = s.api.Rosters(gctx, l.LeagueID); return err })
 	g.Go(func() (err error) { users, err = s.api.LeagueUsers(gctx, l.LeagueID); return err })
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
+	out.Market = marketLabel(settings, source)
+	addNote(&out.Note, source)
 	mine, ok := MyRoster(rosters, userID)
 	if !ok {
 		return out, fmt.Errorf("no roster owned by user %s in league %s", userID, l.LeagueID)
 	}
 	if len(mine.Players) == 0 {
-		out.Note = "eliminated from this league"
+		addNote(&out.Note, "eliminated from this league")
 		return out, nil
 	}
 
@@ -111,7 +114,7 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 		}
 	}
 	if position != "" && len(needs) == 0 {
-		out.Note = fmt.Sprintf("this league doesn't start a %s", position)
+		addNote(&out.Note, fmt.Sprintf("this league doesn't start a %s", position))
 		return out, nil
 	}
 
@@ -139,10 +142,10 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 	slices.SortStableFunc(out.Spares, func(a, b PlayerValue) int { return cmp.Compare(b.Value, a.Value) })
 	switch {
 	case len(needs) == 0:
-		out.Note = "no thin spots: every position has a healthy backup (name a position to look anyway)"
+		addNote(&out.Note, "no thin spots: every position has a healthy backup (name a position to look anyway)")
 		return out, nil
 	case len(out.Spares) == 0:
-		out.Note = "no spare players with trade value: anything I trade away opens a hole elsewhere"
+		addNote(&out.Note, "no spare players with trade value: anything I trade away opens a hole elsewhere")
 		return out, nil
 	}
 
@@ -168,7 +171,7 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 	slices.SortStableFunc(out.Targets, func(a, b TradeTarget) int { return cmp.Compare(b.Value, a.Value) })
 	out.Targets = out.Targets[:min(len(out.Targets), limit)]
 	if len(out.Targets) == 0 {
-		out.Note = "nobody at the needed positions is within reach of my spares"
+		addNote(&out.Note, "nobody at the needed positions is within reach of my spares")
 	}
 	return out, nil
 }

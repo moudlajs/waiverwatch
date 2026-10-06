@@ -22,6 +22,7 @@ type Service struct {
 	api         *sleeper.Client
 	players     *Directory
 	values      FetchValues
+	fallback    FetchValues // nil: no backup value source
 	defaultUser string
 }
 

@@ -27,7 +27,7 @@ type TradeReport struct {
 	LeagueID     string        `json:"league_id"`
 	League       string        `json:"league"`
 	Kind         string        `json:"kind"`
-	Market       string        `json:"market" jsonschema:"the FantasyCalc market these values come from"`
+	Market       string        `json:"market" jsonschema:"where these values come from: the FantasyCalc market, or the backup source"`
 	Partner      string        `json:"partner,omitempty" jsonschema:"the team the players and picks I get come from; several when more than one"`
 	Give         []TradeAsset  `json:"give"`
 	Get          []TradeAsset  `json:"get"`
@@ -168,6 +168,7 @@ type trade struct {
 	users   []sleeper.LeagueUser
 	players map[string]sleeper.Player
 	traded  []sleeper.TradedPick
+	source  string // set when the backup source's values are in use
 	mine    sleeper.Roster
 	seen    map[string]bool
 }
@@ -178,7 +179,8 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 
 	t := trade{league: l, players: players, seen: make(map[string]bool)}
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() (err error) { t.market, err = s.values(gctx, settings); return err })
+	var source string
+	g.Go(func() (err error) { t.market, source, err = s.market(gctx, settings); return err })
 	g.Go(func() (err error) { t.rosters, err = s.api.Rosters(gctx, l.LeagueID); return err })
 	g.Go(func() (err error) { t.users, err = s.api.LeagueUsers(gctx, l.LeagueID); return err })
 	if l.Kind() == "dynasty" {
@@ -187,6 +189,7 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
+	out.Market, t.source = marketLabel(settings, source), source
 	var ok bool
 	if t.mine, ok = MyRoster(t.rosters, userID); !ok {
 		return out, fmt.Errorf("no roster owned by user %s in league %s", userID, l.LeagueID)
@@ -315,8 +318,11 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 			out.Notes = append(out.Notes, fmt.Sprintf("FantasyCalc doesn't rate %s; counted as 0", a.Name))
 		}
 	}
-	if k := l.Kind(); k == "keeper" || k == "guillotine" {
-		out.Notes = append(out.Notes, k+" league: valued with redraft values")
+	if n := redraftNote(l, source); n != "" {
+		out.Notes = append(out.Notes, n)
+	}
+	if source != "" {
+		out.Notes = append(out.Notes, source)
 	}
 	return out, nil
 }
@@ -340,6 +346,12 @@ func (t *trade) player(id string) (TradeAsset, error) {
 // standing projects, else as a generic pick of its round.
 func (t *trade) pick(q pickQuery, holders []int, side string) (TradeAsset, error) {
 	seasons := pickSeasons(t.market)
+	if len(seasons) == 0 {
+		if t.source != "" {
+			return TradeAsset{}, fmt.Errorf("%s: draft picks can't be valued right now: FantasyCalc is down and the backup source has no pick values", side)
+		}
+		return TradeAsset{}, fmt.Errorf("%s: this market has no draft pick values", side)
+	}
 	if !slices.Contains(seasons, q.season) {
 		return TradeAsset{}, fmt.Errorf("%s: FantasyCalc values picks for %s only", side, strings.Join(seasons, ", "))
 	}

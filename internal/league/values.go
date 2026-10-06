@@ -38,7 +38,7 @@ type ValueBoard struct {
 	LeagueID string        `json:"league_id"`
 	League   string        `json:"league"`
 	Kind     string        `json:"kind"`
-	Market   string        `json:"market" jsonschema:"the FantasyCalc market these values come from, e.g. dynasty superflex 10-team PPR"`
+	Market   string        `json:"market" jsonschema:"where these values come from: the FantasyCalc market (e.g. dynasty superflex 10-team PPR), or the backup source"`
 	Team     string        `json:"team,omitempty" jsonschema:"roster values: whose roster"`
 	Owner    string        `json:"owner,omitempty"`
 	Total    int           `json:"total,omitempty" jsonschema:"roster values: the roster's summed value"`
@@ -162,9 +162,6 @@ func (s *Service) Values(ctx context.Context, leagueQuery, owner string, names [
 func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, owner string, wanted []sleeper.Player, players map[string]sleeper.Player) (ValueBoard, error) {
 	settings := ValueSettings(l).Normalise()
 	out := ValueBoard{LeagueID: l.LeagueID, League: l.Name, Kind: l.Kind(), Market: settings.String(), Players: []PlayerValue{}}
-	if k := l.Kind(); k == "keeper" || k == "guillotine" {
-		out.Note = k + " league: valued with redraft values"
-	}
 
 	var (
 		market  map[string]fantasycalc.Value
@@ -172,12 +169,16 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 		users   []sleeper.LeagueUser
 	)
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() (err error) { market, err = s.values(gctx, settings); return err })
+	var source string
+	g.Go(func() (err error) { market, source, err = s.market(gctx, settings); return err })
 	g.Go(func() (err error) { rosters, err = s.api.Rosters(gctx, l.LeagueID); return err })
 	g.Go(func() (err error) { users, err = s.api.LeagueUsers(gctx, l.LeagueID); return err })
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
+	out.Market = marketLabel(settings, source)
+	addNote(&out.Note, redraftNote(l, source))
+	addNote(&out.Note, source)
 	mine, ok := MyRoster(rosters, userID)
 	if !ok {
 		return out, fmt.Errorf("no roster owned by user %s in league %s", userID, l.LeagueID)
@@ -220,7 +221,7 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 	out.Ranking, ranks = valueRanking(rosters, users, market, mine.RosterID)
 	out.Rank = ranks[r.RosterID]
 	if len(r.Players) == 0 && l.Kind() == "guillotine" {
-		out.Note = "eliminated: guillotine teams are emptied when they are cut"
+		addNote(&out.Note, "eliminated: guillotine teams are emptied when they are cut")
 	}
 	return out, nil
 }
