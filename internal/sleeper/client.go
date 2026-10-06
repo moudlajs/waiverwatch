@@ -156,6 +156,19 @@ func (c *Client) TradedPicks(ctx context.Context, leagueID string) ([]TradedPick
 	return ps, nil
 }
 
+// Projections returns Sleeper's projected stats for one week, keyed by
+// player ID (team defenses by team abbreviation). Each player's stats include
+// the projected fantasy points pts_std, pts_half_ppr and pts_ppr. seasonType
+// is State.SeasonType: pre, regular or post. Undocumented, like the rest.
+func (c *Client) Projections(ctx context.Context, seasonType, season string, week int) (map[string]map[string]float64, error) {
+	var ps map[string]map[string]float64
+	path := fmt.Sprintf("/projections/nfl/%s/%s/%d", url.PathEscape(seasonType), url.PathEscape(season), week)
+	if err := c.get(ctx, path, ttlShared, &ps); err != nil {
+		return nil, fmt.Errorf("fetching week %d projections: %w", week, err)
+	}
+	return ps, nil
+}
+
 // State returns the current NFL season and week.
 func (c *Client) State(ctx context.Context) (State, error) {
 	var s State

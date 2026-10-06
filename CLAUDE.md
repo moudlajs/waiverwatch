@@ -104,6 +104,7 @@ GET /league/{league_id}                    -> one league (previous_league_id)
 GET /league/{league_id}/drafts             -> drafts
 GET /draft/{draft_id}/picks                -> picks (picked_by, round, pick_no)
 GET /league/{league_id}/traded_picks       -> picks that changed hands
+GET /projections/nfl/{season_type}/{season}/{week} -> projected stats by player
 ```
 
 - Starters fill `league.roster_positions` in order; `BN` slots follow.
@@ -131,8 +132,11 @@ GET /league/{league_id}/traded_picks       -> picks that changed hands
   other pick belongs to its original team; `settings.draft_rounds` gives the
   rounds.
 - Matchups carry actual points only (`points`, `starters_points`,
-  `players_points`), no projections (checked 2026-09-25, see #17). There is
-  no per-game status either, so "yet to play" can't be told from 0 points.
+  `players_points`). Projections come from `/projections/nfl/...` (#17;
+  ~600 KB, player ID → stats incl. `pts_std`, `pts_half_ppr`, `pts_ppr`;
+  players on bye have no `pts_*`). We pick by `scoring_settings.rec`; custom
+  bonuses aren't applied. They are whole-game, not remaining: there is no
+  per-game status, so "yet to play" can't be told from 0 points.
 
 ## FantasyCalc API
 

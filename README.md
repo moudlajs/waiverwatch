@@ -120,7 +120,7 @@ To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 | Tool | Returns |
 |---|---|
 | `list_leagues` | every league this season: type, size, your team, record, points, standing |
-| `get_matchups` | this week (or any week) in every league: live score, your and your opponent's starters with injuries; guillotine rank and margin over last place |
+| `get_matchups` | this week (or any week) in every league: live and projected score, your and your opponent's starters with injuries and projections; guillotine rank and margin over last place |
 | `get_roster` | a team's starters (by slot), bench, IR and taxi with injuries: yours, or any owner by name |
 | `compare_rosters` | your roster next to this week's opponent (or any owner), position by position, with records and trade values (totals, starters, per position) |
 | `draft_results` | your picks in every league (dynasty: startup and rookie drafts too); "where did I draft X?" |
