@@ -17,18 +17,20 @@ const fanOut = 8
 
 // Service answers questions about a Sleeper user's leagues. Data comes from
 // sleeper.Client, which keeps live data at most a minute (see its cache);
-// the player dictionary comes from Directory.
+// the player dictionary comes from Directory, trade values from values.
 type Service struct {
 	api         *sleeper.Client
 	players     *Directory
+	values      FetchValues
 	defaultUser string
 }
 
 // NewService returns a Service. Calls answer for the user set on their
 // context with WithUser, else for defaultUser (the local, single-user case);
-// defaultUser may be empty when every call carries a user.
-func NewService(api *sleeper.Client, players *Directory, defaultUser string) *Service {
-	return &Service{api: api, players: players, defaultUser: defaultUser}
+// defaultUser may be empty when every call carries a user. values may be nil
+// when trade values aren't needed (tests).
+func NewService(api *sleeper.Client, players *Directory, values FetchValues, defaultUser string) *Service {
+	return &Service{api: api, players: players, values: values, defaultUser: defaultUser}
 }
 
 type userKey struct{}

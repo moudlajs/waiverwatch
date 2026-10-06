@@ -23,6 +23,7 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/moudlajs/waiverwatch/internal/auth"
+	"github.com/moudlajs/waiverwatch/internal/fantasycalc"
 	"github.com/moudlajs/waiverwatch/internal/league"
 	"github.com/moudlajs/waiverwatch/internal/mcp"
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
@@ -55,7 +56,8 @@ func run(ctx context.Context, username, port string) error {
 	players := league.NewDirectory(store.NewMemory(), api.Players)
 	// Hosted: the signing key also keys the anonymous usage IDs. Local: none.
 	usageKey := []byte(os.Getenv("WAIVERWATCH_SIGNING_KEY"))
-	server := mcp.NewServer(league.NewService(api, players, username), version(), usageKey)
+	values := fantasycalc.New(fantasycalc.DefaultBaseURL)
+	server := mcp.NewServer(league.NewService(api, players, values.Values, username), version(), usageKey)
 
 	if port == "" {
 		if username == "" {

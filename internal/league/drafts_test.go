@@ -97,7 +97,7 @@ func TestDrafts(t *testing.T) {
 			"star":   {FullName: "Star Player", Position: "QB"},
 		},
 	}))
-	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), "me")
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
 	ctx := context.Background()
 
 	t.Run("all my picks", func(t *testing.T) {

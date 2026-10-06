@@ -72,7 +72,7 @@ func TestCompare(t *testing.T) {
 			"qb1": {FullName: "Qb Mine", Position: "QB"}, "qb2": {FullName: "Qb Theirs", Position: "QB"},
 		},
 	}))
-	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), "me")
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
 	ctx := context.Background()
 
 	t.Run("this week's opponents", func(t *testing.T) {

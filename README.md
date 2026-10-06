@@ -55,8 +55,8 @@ It's a free hobby project: it may be slow or down sometimes.
 ## Status
 
 Tools: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`,
-`draft_results`, `injury_report`, `position_depth`, `trending_players`,
-`waiver_targets`. See the
+`draft_results`, `injury_report`, `player_values`, `position_depth`,
+`trending_players`, `waiver_targets`. See the
 [milestones](https://github.com/moudlajs/waiverwatch/milestones) for the plan.
 
 ## Principles
@@ -75,7 +75,7 @@ Tools: `list_leagues`, `get_matchups`, `get_roster`, `compare_rosters`,
 | Language | Go |
 | Interface | MCP ([Go SDK](https://github.com/modelcontextprotocol/go-sdk)): stdio locally, Streamable HTTP when hosted |
 | Host | Google Cloud Run (free tier, scales to zero) |
-| Data | `api.sleeper.app`: public, free, no key |
+| Data | `api.sleeper.app`: public, free, no key; trade values from `api.fantasycalc.com`, same |
 
 ## Run it locally (developers)
 
@@ -121,6 +121,7 @@ To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 | `draft_results` | your picks in every league (dynasty: startup and rookie drafts too); "where did I draft X?" |
 | `position_depth` | per league: starting slots (flex-aware) vs healthy players and backups; every thin spot across leagues |
 | `injury_report` | your injured players across all leagues, where they start for you, and a free replacement in each of those leagues |
+| `player_values` | trade values (FantasyCalc, from real trades) fitted to each league's format: named players and who has them, or a whole roster with its total |
 | `trending_players` | the most-added players on Sleeper, with the leagues where you can still claim each one |
 | `waiver_targets` | per league: the best free agents you can actually start there, your waiver priority or FAAB left |
 

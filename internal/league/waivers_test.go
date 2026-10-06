@@ -137,7 +137,7 @@ func TestWaiverTargets(t *testing.T) {
 			"k1":  {FullName: "Kick One", Position: "K", Team: "TB", Active: true, SearchRank: 150},
 		},
 	}))
-	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), "me")
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
 	ctx := context.Background()
 
 	t.Run("all positions, all leagues", func(t *testing.T) {

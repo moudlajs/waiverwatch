@@ -9,6 +9,7 @@ import (
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/moudlajs/waiverwatch/internal/fantasycalc"
 	"github.com/moudlajs/waiverwatch/internal/league"
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 	"github.com/moudlajs/waiverwatch/internal/sleeper/sleepertest"
@@ -39,7 +40,10 @@ func connect(t *testing.T, username string) *sdk.ClientSession {
 
 	ctx := context.Background()
 	serverT, clientT := sdk.NewInMemoryTransports()
-	ss, err := NewServer(league.NewService(api, league.NewDirectory(store.NewMemory(), api.Players), username), "test", nil).Connect(ctx, serverT, nil)
+	values := func(context.Context, fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
+		return map[string]fantasycalc.Value{"4046": {SleeperID: "4046", Value: 7000, OverallRank: 20}}, nil
+	}
+	ss, err := NewServer(league.NewService(api, league.NewDirectory(store.NewMemory(), api.Players), values, username), "test", nil).Connect(ctx, serverT, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +73,7 @@ func TestListLeagues(t *testing.T) {
 		names = append(names, tl.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"compare_rosters", "draft_results", "get_matchups", "get_roster", "injury_report", "list_leagues", "position_depth", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
+	if want := []string{"compare_rosters", "draft_results", "get_matchups", "get_roster", "injury_report", "list_leagues", "player_values", "position_depth", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
 		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
@@ -269,6 +273,27 @@ func TestPositionDepth(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(r.Leagues) != 1 || r.ThinSpots == nil {
+		t.Errorf("unexpected report %+v", r)
+	}
+}
+
+func TestPlayerValues(t *testing.T) {
+	res, err := connect(t, "me").CallTool(context.Background(), &sdk.CallToolParams{
+		Name: "player_values", Arguments: map[string]any{"players": []string{"mahomes"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	raw, _ := json.Marshal(res.StructuredContent)
+	var r league.ValueReport
+	if err := json.Unmarshal(raw, &r); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Leagues) != 1 || r.Leagues[0].Market != "dynasty 1QB 8-team standard" || len(r.Leagues[0].Players) != 1 ||
+		r.Leagues[0].Players[0].Value != 7000 {
 		t.Errorf("unexpected report %+v", r)
 	}
 }
