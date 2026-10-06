@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/moudlajs/waiverwatch/compare/v0.15.0...v0.16.0) (2026-10-06)
+
+
+### Features
+
+* **mcp:** roster value totals and team value ranking ([#94](https://github.com/moudlajs/waiverwatch/issues/94)) ([8da3810](https://github.com/moudlajs/waiverwatch/commit/8da381033a9a233f788604daa8ce51c98ea2e43a))
+
 ## [0.15.0](https://github.com/moudlajs/waiverwatch/compare/v0.14.0...v0.15.0) (2026-10-06)
 
 
