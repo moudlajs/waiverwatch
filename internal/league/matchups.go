@@ -69,18 +69,29 @@ func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 	if week == 0 {
 		week = state.Week
 	}
-	players, err := s.players.Players(ctx)
-	if err != nil {
-		return Week{}, err
-	}
 	out := Week{Season: state.Season, Week: week, Leagues: make([]Game, len(leagues))}
+	// Off-season (or unknown): ask for the regular season's week; failing
+	// that, the answer just carries a note.
 	seasonType := state.SeasonType
 	if seasonType == "" || seasonType == "off" {
 		seasonType = "regular"
 	}
-	proj, err := s.api.Projections(ctx, seasonType, state.Season, week)
+	var (
+		proj    map[string]map[string]float64
+		projErr error
+		fetched = make(chan struct{})
+	)
+	go func() { // alongside the player dictionary: both can be cold
+		defer close(fetched)
+		proj, projErr = s.api.Projections(ctx, seasonType, state.Season, week)
+	}()
+	players, err := s.players.Players(ctx)
+	<-fetched
 	if err != nil {
-		out.Note = "no projections: " + err.Error() // live points still stand
+		return Week{}, err
+	}
+	if projErr != nil {
+		out.Note = "no projections: " + projErr.Error() // live points still stand
 	}
 
 	eachLeague(leagues, func(i int, l sleeper.League) {

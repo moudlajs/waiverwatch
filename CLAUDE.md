@@ -45,7 +45,7 @@ fine, it's the transport).
 
 - **Fresh within a minute.** `sleeper.Client` keeps raw responses in a
   shared in-memory cache (lost on scale-to-zero, fine): rosters, members and
-  matchups 60 s; NFL state and trending 5 min; username lookups, a user's
+  matchups 60 s; NFL state, trending and projections 5 min; username lookups, a user's
   leagues and draft lists 10 min; earlier seasons' leagues and completed
   drafts' picks 24 h. Shared across users, so league mates share fetches;
   concurrent misses share one request (singleflight); errors are never
