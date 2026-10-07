@@ -2,6 +2,7 @@ package league
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -30,6 +31,18 @@ func TestProjectionCache(t *testing.T) {
 	}
 	if _, _, ok := c.complete("regular/2026/6", blank, players, at); ok {
 		t.Error("another week must not borrow week 5's projections")
+	}
+
+	// A small slate: two teams playing need 24 players, not 150.
+	slate := map[string]map[string]float64{"KC": {"pts_ppr": 7}, "BUF": {"pts_ppr": 6}}
+	small := map[string]sleeper.Player{"KC": {Position: "DEF"}, "BUF": {Position: "DEF"}}
+	for i := range 24 {
+		id := fmt.Sprintf("p%d", i)
+		slate[id] = map[string]float64{"pts_ppr": 5}
+		small[id] = sleeper.Player{Position: "WR"}
+	}
+	if _, _, ok := (&projectionCache{}).complete("post/2026/21", slate, small, at); !ok {
+		t.Error("a two-team slate with 24 projected players is complete")
 	}
 }
 
