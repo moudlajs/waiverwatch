@@ -211,7 +211,7 @@ func boolRank(b bool) int {
 // offerFor builds an offer worth want from spares: from the spares at
 // positions the other team needs first (that offer gets accepted), else the
 // cheapest from all of them. mutual reports whether it includes a needed
-// position.
+// position and is worth what he is: an underpaying offer isn't a fit.
 func offerFor(spares []PlayerValue, theyNeed []string, want int) (names []string, value int, mutual bool) {
 	needed := func(sp PlayerValue) bool { return slices.Contains(theyNeed, sp.Position) }
 	if fits := slices.DeleteFunc(slices.Clone(spares), func(sp PlayerValue) bool { return !needed(sp) }); len(fits) > 0 {
@@ -220,7 +220,7 @@ func offerFor(spares []PlayerValue, theyNeed []string, want int) (names []string
 		}
 	}
 	offer, v := cheapestOffer(spares, want)
-	return playerNames(offer), v, slices.ContainsFunc(offer, needed)
+	return playerNames(offer), v, v >= want && slices.ContainsFunc(offer, needed)
 }
 
 func playerNames(pvs []PlayerValue) []string {

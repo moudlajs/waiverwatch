@@ -167,6 +167,7 @@ func TestOfferFor(t *testing.T) {
 		// 3000 + 600×√(600/3200) = 3260 beats WR+TE (4027) as the cheapest pair, and QB is needed.
 		{"fallback pair with a needed player", []string{"QB"}, 3200, "WR Big,QB Small", true},
 		{"they need nothing I have", []string{"RB"}, 1400, "TE Mid", false},
+		{"out of reach: underpaying isn't a fit", []string{"QB"}, 9000, "WR Big,TE Mid", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
