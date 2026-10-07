@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/moudlajs/waiverwatch/compare/v0.21.1...v0.22.0) (2026-10-07)
+
+
+### Features
+
+* **mcp:** waiver targets by value and projections, with FAAB bids ([#116](https://github.com/moudlajs/waiverwatch/issues/116)) ([cee9307](https://github.com/moudlajs/waiverwatch/commit/cee9307413f3debe10c1bba9386691ab1f248d63))
+
 ## [0.21.1](https://github.com/moudlajs/waiverwatch/compare/v0.21.0...v0.21.1) (2026-10-07)
 
 
