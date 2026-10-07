@@ -183,6 +183,17 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		return svc.TradeTargets(ctx, in.League, normalisePosition(in.Position), min(limit, 20))
 	}))
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "lineup_check",
+		Description: "Is my lineup right? For this week in every league: empty slots, starters who are out (Out, Doubtful, " +
+			"IR...) or on bye, questionable starters, and the best lineup by Sleeper's projections (flex-aware) as " +
+			"start/bench changes with the projected points gained. Projections are whole-game: players whose game " +
+			"has started are locked in Sleeper, so check kickoff times before suggesting a swap.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, limited(g, func(ctx context.Context, in DepthInput) (league.LineupReport, error) {
+		return svc.LineupCheck(ctx, in.League)
+	}))
+
 	return s
 }
 
@@ -197,6 +208,7 @@ type TargetsInput struct {
 var toolNames = []string{
 	"list_leagues", "get_matchups", "trending_players", "waiver_targets", "get_roster", "injury_report",
 	"compare_rosters", "draft_results", "position_depth", "player_values", "evaluate_trade", "trade_targets",
+	"lineup_check",
 }
 
 // Claude keeps a stored copy of a connector's tool list until the connector
@@ -234,7 +246,7 @@ type ValuesInput struct {
 	Owner   string   `json:"owner,omitempty" jsonschema:"only without players: team name or owner display name whose roster to value; omit for mine"`
 }
 
-// DepthInput is position_depth's arguments.
+// DepthInput is position_depth's and lineup_check's arguments.
 type DepthInput struct {
 	League string `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
 }
