@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/moudlajs/waiverwatch/compare/v0.23.0...v0.24.0) (2026-10-07)
+
+
+### Features
+
+* **mcp:** season_outlook tool: schedule and playoff chances ([#120](https://github.com/moudlajs/waiverwatch/issues/120)) ([9af6f8f](https://github.com/moudlajs/waiverwatch/commit/9af6f8f126527a79af774f4fae9836d85c54ddcf))
+
 ## [0.23.0](https://github.com/moudlajs/waiverwatch/compare/v0.22.0...v0.23.0) (2026-10-07)
 
 
