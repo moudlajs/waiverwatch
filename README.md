@@ -90,6 +90,12 @@ fantasy trades and fitted to each league: dynasty or redraft, superflex or
   afford to give up, and players on other teams they can buy. Deals that also
   fill the other team's thin spot come first: those get accepted.
 
+**Season**
+
+- *"What are my playoff chances?"* Per league: your remaining games with the
+  chance to win each, whether the schedule is harder or easier than average,
+  expected wins and a playoff percentage from 5,000 simulated seasons.
+
 **History**
 
 - *"Where did I draft Kenneth Walker?"* Dynasty leagues include the startup
@@ -199,6 +205,7 @@ To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 | `player_values` | trade values (FantasyCalc, from real trades) fitted to each league's format: named players and who has them, or a whole roster with its total and the league's team value ranking |
 | `evaluate_trade` | "is this trade fair?": both sides valued for that league (players, and dynasty picks checked against who holds them), 2-for-1 adjusted, who it leans to and by how much, your depth before and after |
 | `trade_targets` | per league: your thin positions, the spare players you can afford to trade, and players on other teams they can buy, each with the cheapest offer |
+| `season_outlook` | per head-to-head league: remaining schedule with win chances, schedule difficulty, expected wins and playoff chance (simulated) |
 | `trending_players` | the most-added players on Sleeper, with the leagues where you can still claim each one |
 | `waiver_targets` | per league: the best free agents you can actually start there, ranked by trade value and projection, your waiver priority or FAAB left, and a suggested FAAB bid |
 
