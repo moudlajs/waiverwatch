@@ -39,7 +39,7 @@ type TargetBoard struct {
 // TradeTarget is a player to ask for and what to offer for him.
 type TradeTarget struct {
 	PlayerValue
-	Offer      []string `json:"offer" jsonschema:"the fewest, least valuable spares that match his value (one or two players)"`
+	Offer      []string `json:"offer" jsonschema:"one or two of my spares that match his value: the cheapest from positions his team needs when that works, else the cheapest overall"`
 	OfferValue int      `json:"offer_value" jsonschema:"the offer's value after the 2-for-1 adjustment evaluate_trade uses"`
 	TheyNeed   []string `json:"they_need,omitempty" jsonschema:"positions where his team is thin or short"`
 	Mutual     bool     `json:"mutual,omitempty" jsonschema:"the offer includes a player at a position his team needs: a deal that helps both sides"`
