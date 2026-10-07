@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.20.0](https://github.com/moudlajs/waiverwatch/compare/v0.19.0...v0.20.0) (2026-10-07)
+
+
+### Features
+
+* **auth:** dynamic client registration for Gemini ([#106](https://github.com/moudlajs/waiverwatch/issues/106)) ([807e6f9](https://github.com/moudlajs/waiverwatch/commit/807e6f9587478e8623e3280a7cac8f7318890737))
+
+
+### Documentation
+
+* user guide in the README ([#102](https://github.com/moudlajs/waiverwatch/issues/102)) ([7a93522](https://github.com/moudlajs/waiverwatch/commit/7a935228da16c9c092f3b332df44e7c4108ef7b3))
+
 ## [0.19.0](https://github.com/moudlajs/waiverwatch/compare/v0.18.0...v0.19.0) (2026-10-06)
 
 
