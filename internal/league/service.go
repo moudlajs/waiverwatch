@@ -23,6 +23,7 @@ type Service struct {
 	players     *Directory
 	values      FetchValues
 	fallback    FetchValues // nil: no backup value source
+	projections projectionCache
 	defaultUser string
 }
 

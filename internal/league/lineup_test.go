@@ -115,7 +115,9 @@ func TestLineupCheck(t *testing.T) {
 		// CIN has nobody projected: on bye. Standard scoring reads pts_std.
 		"/projections/nfl/regular/2026/5": map[string]map[string]float64{"q2": {"pts_ppr": 20, "pts_std": 18}},
 	}))
-	r, err := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me").LineupCheck(context.Background(), "")
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
+	svc.projections.min = 1 // a one-player feed counts as complete here
+	r, err := svc.LineupCheck(context.Background(), "")
 	if err != nil {
 		t.Fatal(err)
 	}

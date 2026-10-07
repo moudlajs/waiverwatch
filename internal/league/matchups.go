@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -92,6 +93,16 @@ func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 	}
 	if projErr != nil {
 		out.Note = "no projections: " + projErr.Error() // live points still stand
+	} else {
+		var (
+			note string
+			ok   bool
+		)
+		proj, note, ok = s.projections.complete(weekKey(seasonType, state.Season, week), proj, players, time.Now())
+		if !ok {
+			proj = nil // defenses alone would make partial totals
+		}
+		addNote(&out.Note, note)
 	}
 
 	eachLeague(leagues, func(i int, l sleeper.League) {

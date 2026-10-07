@@ -149,6 +149,7 @@ func TestMatchups(t *testing.T) {
 		"/projections/nfl/regular/2026/2": map[string]map[string]float64{"4046": {"pts_ppr": 24, "pts_std": 21}},
 	}))
 	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
+	svc.projections.min = 1 // a one-player feed counts as complete here
 
 	w, err := svc.Matchups(context.Background(), 2)
 	if err != nil {

@@ -138,7 +138,11 @@ GET /projections/nfl/{season_type}/{season}/{week} -> projected stats by player
 - Matchups carry actual points only (`points`, `starters_points`,
   `players_points`). Projections come from `/projections/nfl/...` (#17;
   ~600 KB, player ID → stats incl. `pts_std`, `pts_half_ppr`, `pts_ppr`;
-  players on bye have no `pts_*`). We pick by `scoring_settings.rec`; custom
+  players on bye have no `pts_*`). Mid-week Sleeper may blank every player's
+  points, keeping only team defenses (seen 2026-10-07, #113): a feed with
+  under 150 projected players counts as incomplete, and the last complete
+  set for that week is served instead (in memory), else a note and no
+  swaps. We pick by `scoring_settings.rec`; custom
   bonuses aren't applied. They are whole-game, not remaining: there is no
   per-game status, so "yet to play" can't be told from 0 points.
 
