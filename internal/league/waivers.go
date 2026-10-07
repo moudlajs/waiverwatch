@@ -282,13 +282,17 @@ func rankTargets(cands []Target, market map[string]fantasycalc.Value, proj map[s
 }
 
 // faabBid suggests a bid: value/100 percent of what's left (a 1,000-value
-// player gets 10%), plus 5 points for a player trending hard, at most half.
+// player gets 10%), plus 5 points for a player trending hard, at most half;
+// at least 1 while there's budget, so a valued player is never a zero bid.
 func faabBid(t Target, remaining int) int {
 	pct := t.Value / 100
 	if t.Adds >= hotAdds {
 		pct += 5
 	}
-	return max(0, remaining*min(50, pct)/100)
+	if remaining <= 0 {
+		return 0
+	}
+	return max(1, remaining*min(50, pct)/100)
 }
 
 // rankKey sorts unranked (0) players after every ranked one.

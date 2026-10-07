@@ -264,7 +264,7 @@ func TestFAABBid(t *testing.T) {
 		{1000, 0, 100, 10},
 		{9000, 0, 100, 50},    // capped at half
 		{9000, 2000, 100, 50}, // the trending bump, then the cap
-		{300, 0, 7, 0},        // 3% of 7 rounds down
+		{300, 0, 7, 1},        // 3% of 7 rounds to 0: floor of 1
 		{2000, 0, 0, 0},       // nothing left
 	} {
 		if got := faabBid(Target{Value: tt.value, Adds: tt.adds}, tt.left); got != tt.want {
