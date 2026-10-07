@@ -3,6 +3,7 @@ package league
 import (
 	"context"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -222,7 +223,7 @@ func TestRankTargets(t *testing.T) {
 	market := map[string]fantasycalc.Value{"hot": {Value: 1200}, "stash": {Value: 2500}}
 	proj := map[string]map[string]float64{"hot": {"pts_ppr": 14}, "stream": {"pts_ppr": 9}, "stash": {"pts_ppr": 2}}
 	left := 80
-	got := rankTargets(cands, market, proj, "pts_ppr", Waivers{Type: "faab", FAABRemaining: &left}, false, 3)
+	got := rankTargets(cands, market, proj, "pts_ppr", Waivers{Type: "faab", FAABRemaining: &left}, "dynasty", 3)
 
 	var names []string
 	for _, tg := range got {
@@ -237,15 +238,22 @@ func TestRankTargets(t *testing.T) {
 		t.Errorf("got %+v", got)
 	}
 
-	if got := rankTargets([]Target{{PlayerID: "hot"}}, market, proj, "pts_ppr", Waivers{Type: "rolling"}, false, 5); got[0].Bid != nil {
+	if got := rankTargets([]Target{{PlayerID: "hot"}}, market, proj, "pts_ppr", Waivers{Type: "rolling"}, "dynasty", 5); got[0].Bid != nil {
 		t.Errorf("no FAAB, no bid: %+v", got[0])
 	}
-	if got := rankTargets([]Target{{Name: "B"}, {Name: "A"}}, nil, nil, "pts_ppr", Waivers{}, false, 5); got[0].Name != "B" {
+	if got := rankTargets([]Target{{Name: "B"}, {Name: "A"}}, nil, nil, "pts_ppr", Waivers{}, "redraft", 5); got[0].Name != "B" {
 		t.Errorf("without values or projections the incoming order stands: %+v", got)
 	}
-	survive := rankTargets([]Target{{PlayerID: "stash"}, {PlayerID: "hot"}, {PlayerID: "stream"}}, market, proj, "pts_ppr", Waivers{}, true, 3)
+	survive := rankTargets([]Target{{PlayerID: "stash"}, {PlayerID: "hot"}, {PlayerID: "stream"}}, market, proj, "pts_ppr", Waivers{}, "guillotine", 3)
 	if survive[0].PlayerID != "hot" || survive[1].PlayerID != "stream" { // guillotine: this week's points first
 		t.Errorf("guillotine order = %+v", survive)
+	}
+	hurt := []Target{{PlayerID: "stash", Injury: "IR"}, {PlayerID: "hot"}}
+	if got := rankTargets(slices.Clone(hurt), market, proj, "pts_ppr", Waivers{}, "redraft", 2); got[0].PlayerID != "hot" {
+		t.Errorf("redraft: the IR player should go last: %+v", got)
+	}
+	if got := rankTargets(slices.Clone(hurt), market, proj, "pts_ppr", Waivers{}, "dynasty", 2); got[0].PlayerID != "stash" {
+		t.Errorf("dynasty: an IR stash keeps his value rank: %+v", got)
 	}
 }
 

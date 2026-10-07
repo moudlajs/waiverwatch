@@ -160,7 +160,7 @@ func (s *Service) WaiverTargets(ctx context.Context, position, leagueQuery strin
 			market = m
 			addNote(&b.Note, source)
 		}
-		b.Targets = rankTargets(b.Targets, market, proj, projectionKey(l.Scoring.Rec), b.Waivers, l.Kind() == "guillotine", limit)
+		b.Targets = rankTargets(b.Targets, market, proj, projectionKey(l.Scoring.Rec), b.Waivers, l.Kind(), limit)
 		out.Leagues[i] = b
 	}
 	return out, nil
@@ -248,19 +248,26 @@ func targets(players map[string]sleeper.Player, rostered, eligible map[string]bo
 // rankTargets values the candidates, keeps the best limit by trade value,
 // then projection, then trending adds (candidates arrive sorted by adds and
 // Sleeper's rank, which breaks the remaining ties), and suggests FAAB bids.
-// thisWeek (guillotine leagues: survive this week or be cut) puts the
-// projection before the value.
-func rankTargets(cands []Target, market map[string]fantasycalc.Value, proj map[string]map[string]float64, key string, w Waivers, thisWeek bool, limit int) []Target {
+// Guillotine leagues (survive this week or be cut) put the projection
+// before the value. Outside dynasty, where injured players are stashes,
+// players who can't play (Out, IR...) go after everyone who can.
+func rankTargets(cands []Target, market map[string]fantasycalc.Value, proj map[string]map[string]float64, key string, w Waivers, kind string, limit int) []Target {
 	for i := range cands {
 		cands[i].Value = market[cands[i].PlayerID].Value
 		cands[i].Projected = proj[cands[i].PlayerID][key]
 	}
+	out := func(t Target) int {
+		if kind != "dynasty" && slices.Contains(unavailable, t.Injury) {
+			return 1
+		}
+		return 0
+	}
 	slices.SortStableFunc(cands, func(a, b Target) int {
 		byValue, byProj := cmp.Compare(b.Value, a.Value), cmp.Compare(b.Projected, a.Projected)
-		if thisWeek {
-			return cmp.Or(byProj, byValue)
+		if kind == "guillotine" {
+			return cmp.Or(cmp.Compare(out(a), out(b)), byProj, byValue)
 		}
-		return cmp.Or(byValue, byProj)
+		return cmp.Or(cmp.Compare(out(a), out(b)), byValue, byProj)
 	})
 	cands = cands[:min(len(cands), limit)]
 	if w.FAABRemaining != nil {
