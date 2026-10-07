@@ -63,19 +63,17 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 		registerError(w, "invalid_redirect_uri", err.Error())
 		return
 	}
-	name := strings.TrimSpace(reg.ClientName)
-	if len(name) > maxClientName {
-		name = name[:maxClientName]
-	}
+	name := []rune(strings.TrimSpace(reg.ClientName))
+	name = name[:min(len(name), maxClientName)] // by character: never split one
 	now := s.now()
 	id := registeredPrefix + s.signer.sign(claims{
-		Kind: kindClient, Name: name, RedirectURIs: reg.RedirectURIs, Expires: now.Add(clientTTL).Unix(),
+		Kind: kindClient, Name: string(name), RedirectURIs: reg.RedirectURIs, Expires: now.Add(clientTTL).Unix(),
 	})
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"client_id":                  id,
 		"client_id_issued_at":        now.Unix(),
-		"client_name":                name,
+		"client_name":                string(name),
 		"redirect_uris":              reg.RedirectURIs,
 		"token_endpoint_auth_method": "none",
 		"grant_types":                []string{"authorization_code", "refresh_token"},

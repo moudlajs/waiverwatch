@@ -58,7 +58,7 @@ func TestRegisteredFlow(t *testing.T) {
 	}
 	html, _ := io.ReadAll(page.Body)
 	page.Body.Close()
-	if page.StatusCode != http.StatusOK || !strings.Contains(string(html), "An app on this computer") || !strings.Contains(string(html), "Gemini CLI MCP Client") {
+	if page.StatusCode != http.StatusOK || !strings.Contains(string(html), "An app on this computer") || !strings.Contains(string(html), "calls itself Gemini CLI MCP Client") {
 		t.Fatalf("authorize page: %d\n%s", page.StatusCode, html)
 	}
 
@@ -103,9 +103,9 @@ func TestRegisterRejects(t *testing.T) {
 		})
 	}
 
-	status, body := registerClient(t, base, map[string]any{"redirect_uris": []string{"https://gemini.google.com/oauth/callback"}})
-	if status != http.StatusCreated {
-		t.Errorf("Google's host: %d %v", status, body)
+	status, body := registerClient(t, base, map[string]any{"redirect_uris": []string{"https://gemini.google.com/oauth/callback"}, "client_name": strings.Repeat("é", 150)})
+	if status != http.StatusCreated || body["client_name"] != strings.Repeat("é", maxClientName) {
+		t.Errorf("Google's host, long name: %d %v", status, body)
 	}
 }
 

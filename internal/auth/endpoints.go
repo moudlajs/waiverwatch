@@ -44,6 +44,7 @@ func (s *Server) authorizationServer(w http.ResponseWriter, _ *http.Request) {
 // authRequest is a validated /authorize request.
 type authRequest struct {
 	ClientID, ClientHost, ClientName string
+	SelfNamed                        bool // a registered client: its name is its own claim
 	RedirectURI, State, Challenge    string
 	Scope, Resource                  string
 }
@@ -80,7 +81,8 @@ func (s *Server) parseAuthorize(ctx context.Context, v url.Values) (authRequest,
 	}
 	req.ClientName = doc.ClientName
 	if strings.HasPrefix(req.ClientID, registeredPrefix) {
-		// A registered client names itself: show where the sign-in goes back to.
+		// A registered client names itself: lead with where the sign-in goes back to.
+		req.SelfNamed = true
 		u, _ := url.Parse(req.RedirectURI)
 		req.ClientHost = u.Host
 		if isLoopback(u) {
@@ -341,7 +343,7 @@ input{background:#1c1c1c;color:#eee}button{background:#d97757;color:#111;border:
 </style></head><body><main>
 <h1>waiverwatch</h1>
 {{if .Req.ClientID}}
-<p><strong>{{.Req.ClientHost}}</strong>{{if .Req.ClientName}} ({{.Req.ClientName}}){{end}} wants to read your Sleeper fantasy leagues.</p>
+<p><strong>{{.Req.ClientHost}}</strong>{{if .Req.ClientName}} ({{if .Req.SelfNamed}}calls itself {{end}}{{.Req.ClientName}}){{end}} wants to read your Sleeper fantasy leagues.</p>
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 <form method="post" action="/authorize">
 <input type="hidden" name="response_type" value="code">
