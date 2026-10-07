@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/moudlajs/waiverwatch/compare/v0.20.0...v0.21.0) (2026-10-07)
+
+
+### Features
+
+* **mcp:** lineup_check tool ([#111](https://github.com/moudlajs/waiverwatch/issues/111)) ([9bf7ff4](https://github.com/moudlajs/waiverwatch/commit/9bf7ff490ef15a8ca14a3fc7a229b17a6a4ec337))
+
 ## [0.20.0](https://github.com/moudlajs/waiverwatch/compare/v0.19.0...v0.20.0) (2026-10-07)
 
 
