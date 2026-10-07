@@ -56,3 +56,27 @@ func TestLineupCheckBlankProjections(t *testing.T) {
 		t.Errorf("note %q, alpha %+v; want the bye and the empty slot, no swaps", r.Note, a)
 	}
 }
+
+func TestMatchupsBlankProjections(t *testing.T) {
+	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
+		"/state/nfl":                 sleeper.State{Season: "2026", Week: 5, SeasonType: "regular"},
+		"/user/me":                   sleeper.User{UserID: "100"},
+		"/user/100/leagues/nfl/2026": []sleeper.League{{LeagueID: "A", Name: "Alpha", RosterPositions: []string{"QB", "DEF"}}},
+		"/league/A/rosters":          []sleeper.Roster{{RosterID: 1, OwnerID: "100"}},
+		"/league/A/users":            []sleeper.LeagueUser{{UserID: "100", DisplayName: "me"}},
+		"/league/A/matchups/5":       []sleeper.Matchup{{RosterID: 1, Starters: []string{"q1", "KC"}}},
+		"/players/nfl": map[string]sleeper.Player{
+			"q1": {PlayerID: "q1", FullName: "Q B", Position: "QB", Team: "KC"},
+			"KC": {PlayerID: "KC", Position: "DEF", Team: "KC"},
+		},
+		"/projections/nfl/regular/2026/5": map[string]map[string]float64{"KC": {"pts_ppr": 7}, "q1": {"adp_dd_ppr": 1000}},
+	}))
+	w, err := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me").Matchups(context.Background(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	me := w.Leagues[0].Me
+	if !strings.Contains(w.Note, "missing") || me == nil || me.Projected != 0 || me.Starters[1].Projected != 0 {
+		t.Errorf("note %q, me %+v; want no partial projections", w.Note, me)
+	}
+}
