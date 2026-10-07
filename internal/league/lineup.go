@@ -84,6 +84,10 @@ func (s *Service) LineupCheck(ctx context.Context, leagueQuery string) (LineupRe
 		}
 	}
 
+	if len(wk.playing) == 0 {
+		// Off-season or a week without projections yet: everyone would look on bye.
+		return LineupReport{Week: state.Week, Leagues: []LineupCheck{}, Note: "no NFL games are projected this week, so there are no lineups to check"}, nil
+	}
 	out := LineupReport{Week: state.Week, Leagues: make([]LineupCheck, len(leagues)),
 		Note: "projections are for whole games: a player whose game has started is locked, so check kickoff times before swapping"}
 	eachLeague(leagues, func(i int, l sleeper.League) {
@@ -143,8 +147,14 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 	// The current lineup, slot by slot.
 	type seat struct{ slot, id string }
 	var seats []seat
-	for i, slot := range slots[:min(len(slots), len(r.Starters))] {
-		id := r.Starters[i]
+	for i, slot := range slots {
+		if slot == "BN" || slot == "IR" || slot == "TAXI" {
+			continue // not a starting slot
+		}
+		id := "0" // Sleeper may list fewer starters than slots: the rest are empty
+		if i < len(r.Starters) {
+			id = r.Starters[i]
+		}
 		if !known(slot) {
 			continue
 		}

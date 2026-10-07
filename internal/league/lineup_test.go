@@ -71,6 +71,14 @@ func TestCheckLineup(t *testing.T) {
 		}
 	})
 
+	t.Run("fewer starters than slots", func(t *testing.T) {
+		r := sleeper.Roster{Players: []string{"qb", "rb2"}, Starters: []string{"qb"}}
+		problems, start, _, _, _ := checkLineup([]string{"QB", "RB", "BN"}, r, players, wk, pts)
+		if !slices.Equal(problems, []string{"RB slot is empty"}) || len(start) != 1 || start[0].Name != "R Two" {
+			t.Errorf("problems %v, start %v", problems, start)
+		}
+	})
+
 	t.Run("a tiny gain isn't worth a swap", func(t *testing.T) {
 		near := map[string]float64{"wr3": 11, "rb2": 11.5}
 		r := sleeper.Roster{Players: []string{"wr3", "rb2"}, Starters: []string{"wr3"}}
@@ -108,5 +116,19 @@ func TestLineupCheck(t *testing.T) {
 	}
 	if !strings.Contains(g.Note, "eliminated") || g.Status != "ok" {
 		t.Errorf("guillotine = %+v", g)
+	}
+}
+
+func TestLineupCheckNoGames(t *testing.T) {
+	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
+		"/state/nfl":                  sleeper.State{Season: "2026", Week: 0, SeasonType: "pre"},
+		"/user/me":                    sleeper.User{UserID: "100"},
+		"/user/100/leagues/nfl/2026":  []sleeper.League{{LeagueID: "A", Name: "Alpha", RosterPositions: []string{"QB"}}},
+		"/players/nfl":                map[string]sleeper.Player{},
+		"/projections/nfl/pre/2026/0": map[string]map[string]float64{},
+	}))
+	r, err := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me").LineupCheck(context.Background(), "")
+	if err != nil || len(r.Leagues) != 0 || !strings.Contains(r.Note, "no NFL games") {
+		t.Errorf("got %+v, err %v", r, err)
 	}
 }
