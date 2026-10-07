@@ -31,7 +31,7 @@ type TargetBoard struct {
 	Market   string        `json:"market,omitempty"`
 	Needs    []string      `json:"needs" jsonschema:"positions I'm targeting, with why (thin: no backup, short: can't fill the lineup)"`
 	Spares   []PlayerValue `json:"spares" jsonschema:"my healthy players beyond what my lineup needs, at positions with depth to spare: what I can offer, most valuable first"`
-	Targets  []TradeTarget `json:"targets" jsonschema:"players on other teams at the needed positions I can afford, most valuable first"`
+	Targets  []TradeTarget `json:"targets" jsonschema:"players on other teams at the needed positions I can afford: mutual fits first (my offer fills their thin spot), then most valuable"`
 	Note     string        `json:"note,omitempty"`
 	Error    string        `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
 }
@@ -41,6 +41,8 @@ type TradeTarget struct {
 	PlayerValue
 	Offer      []string `json:"offer" jsonschema:"the fewest, least valuable spares that match his value (one or two players)"`
 	OfferValue int      `json:"offer_value" jsonschema:"the offer's value after the 2-for-1 adjustment evaluate_trade uses"`
+	TheyNeed   []string `json:"they_need,omitempty" jsonschema:"positions where his team is thin or short"`
+	Mutual     bool     `json:"mutual,omitempty" jsonschema:"the offer includes a player at a position his team needs: a deal that helps both sides"`
 }
 
 // TradeTargets finds, in each league matching leagueQuery (empty = all),
@@ -154,6 +156,7 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 		if r.RosterID == mine.RosterID {
 			continue
 		}
+		theyNeed := thinPositions(l.RosterPositions, r, players)
 		for _, id := range r.Players {
 			p := Lookup(players, id)
 			if !slices.Contains(needs, p.Position) || slices.Contains(unavailable, p.InjuryStatus) || slices.Contains(r.Reserve, id) {
@@ -164,16 +167,57 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 				continue
 			}
 			pv.Team = TeamName(users, r.OwnerID)
-			offer, value := cheapestOffer(out.Spares, pv.Value)
-			out.Targets = append(out.Targets, TradeTarget{PlayerValue: pv, Offer: offer, OfferValue: value})
+			t := TradeTarget{PlayerValue: pv, TheyNeed: theyNeed}
+			// Offer from the spares they need first: that offer gets accepted.
+			fits := slices.DeleteFunc(slices.Clone(out.Spares), func(sp PlayerValue) bool { return !slices.Contains(theyNeed, sp.Position) })
+			if len(fits) > 0 {
+				if offer, value := cheapestOffer(fits, pv.Value); value >= pv.Value {
+					t.Offer, t.OfferValue, t.Mutual = offer, value, true
+				}
+			}
+			if !t.Mutual {
+				t.Offer, t.OfferValue = cheapestOffer(out.Spares, pv.Value)
+				for _, sp := range out.Spares {
+					t.Mutual = t.Mutual || (slices.Contains(t.Offer, sp.Name) && slices.Contains(theyNeed, sp.Position))
+				}
+			}
+			out.Targets = append(out.Targets, t)
 		}
 	}
-	slices.SortStableFunc(out.Targets, func(a, b TradeTarget) int { return cmp.Compare(b.Value, a.Value) })
+	sortTradeTargets(out.Targets)
 	out.Targets = out.Targets[:min(len(out.Targets), limit)]
 	if len(out.Targets) == 0 {
 		addNote(&out.Note, "nobody at the needed positions is within reach of my spares")
 	}
 	return out, nil
+}
+
+// thinPositions is where a roster is thin or short, kickers and defenses
+// aside (streamed, not traded for).
+func thinPositions(slots []string, r sleeper.Roster, players map[string]sleeper.Player) []string {
+	var out []string
+	depth, _, _ := depthChart(slots, r, players)
+	for _, pd := range depth {
+		if pd.Status != depthOK && pd.Position != "K" && pd.Position != "DEF" {
+			out = append(out, pd.Position)
+		}
+	}
+	return out
+}
+
+// sortTradeTargets puts mutual fits first, then the most valuable.
+func sortTradeTargets(ts []TradeTarget) {
+	slices.SortStableFunc(ts, func(a, b TradeTarget) int {
+		return cmp.Or(cmp.Compare(boolRank(a.Mutual), boolRank(b.Mutual)), cmp.Compare(b.Value, a.Value))
+	})
+}
+
+// boolRank sorts true before false.
+func boolRank(b bool) int {
+	if b {
+		return 0
+	}
+	return 1
 }
 
 // offerValue is what a package of players is worth after the 2-for-1

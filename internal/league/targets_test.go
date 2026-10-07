@@ -80,6 +80,10 @@ func TestTradeTargets(t *testing.T) {
 				t.Errorf("target %d = %+v, want %+v", i, g, want[i])
 			}
 		}
+		// Rival FC has no QB and one WR: my W/Q spares fill that, so the deal helps both.
+		if a := d.Targets[0]; !a.Mutual || !slices.Equal(a.TheyNeed, []string{"QB", "WR"}) {
+			t.Errorf("R A: mutual %v, they need %v", a.Mutual, a.TheyNeed)
+		}
 		if !strings.Contains(s.Note, "no thin spots") || len(s.Targets) != 0 {
 			t.Errorf("settled league = %+v", s)
 		}
@@ -125,5 +129,22 @@ func TestCheapestOffer(t *testing.T) {
 		if strings.Join(offer, ",") != tt.offer || (tt.wantValue != 0 && v != tt.wantValue) {
 			t.Errorf("want %d: offer %v (%d), expected %s (%d)", tt.want, offer, v, tt.offer, tt.wantValue)
 		}
+	}
+}
+
+func TestSortTradeTargets(t *testing.T) {
+	ts := []TradeTarget{
+		{PlayerValue: PlayerValue{Name: "Pricey", Value: 5000}},
+		{PlayerValue: PlayerValue{Name: "Fits cheap", Value: 1000}, Mutual: true},
+		{PlayerValue: PlayerValue{Name: "Fits", Value: 2000}, Mutual: true},
+		{PlayerValue: PlayerValue{Name: "Cheap", Value: 500}},
+	}
+	sortTradeTargets(ts)
+	var got []string
+	for _, tt := range ts {
+		got = append(got, tt.Name)
+	}
+	if !slices.Equal(got, []string{"Fits", "Fits cheap", "Pricey", "Cheap"}) {
+		t.Errorf("order = %v", got)
 	}
 }
