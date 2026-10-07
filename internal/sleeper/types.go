@@ -33,9 +33,11 @@ type Scoring struct {
 type LeagueSettings struct {
 	Type             int `json:"type"` // see Kind
 	PlayoffWeekStart int `json:"playoff_week_start"`
-	WaiverType       int `json:"waiver_type"`   // 0 rolling priority, 1 reverse standings, 2 FAAB
-	WaiverBudget     int `json:"waiver_budget"` // FAAB budget per team
-	DraftRounds      int `json:"draft_rounds"`  // rounds in each (rookie) draft
+	PlayoffTeams     int `json:"playoff_teams"`
+	MedianMatch      int `json:"league_average_match"` // 1: each week also a game against the league median
+	WaiverType       int `json:"waiver_type"`          // 0 rolling priority, 1 reverse standings, 2 FAAB
+	WaiverBudget     int `json:"waiver_budget"`        // FAAB budget per team
+	DraftRounds      int `json:"draft_rounds"`         // rounds in each (rookie) draft
 }
 
 // Kind names the league format from settings.type.

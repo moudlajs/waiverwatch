@@ -197,6 +197,17 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		return svc.LineupCheck(ctx, in.League)
 	}))
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "season_outlook",
+		Description: "How does my season look? Per head-to-head league: record and standing, my remaining regular-season " +
+			"games (opponent, their record and points per game, my chance to win each), whether that schedule is harder " +
+			"or easier than average, expected final wins, and my playoff chance from 5,000 simulated seasons. Simple " +
+			"model (points per game so far); divisions and custom tiebreakers are ignored.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, limited(g, func(ctx context.Context, in DepthInput) (league.OutlookReport, error) {
+		return svc.SeasonOutlook(ctx, in.League)
+	}))
+
 	return s
 }
 
@@ -211,7 +222,7 @@ type TargetsInput struct {
 var toolNames = []string{
 	"list_leagues", "get_matchups", "trending_players", "waiver_targets", "get_roster", "injury_report",
 	"compare_rosters", "draft_results", "position_depth", "player_values", "evaluate_trade", "trade_targets",
-	"lineup_check",
+	"lineup_check", "season_outlook",
 }
 
 // Claude keeps a stored copy of a connector's tool list until the connector
@@ -249,7 +260,7 @@ type ValuesInput struct {
 	Owner   string   `json:"owner,omitempty" jsonschema:"only without players: team name or owner display name whose roster to value; omit for mine"`
 }
 
-// DepthInput is position_depth's and lineup_check's arguments.
+// DepthInput is position_depth's, lineup_check's and season_outlook's arguments.
 type DepthInput struct {
 	League string `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
 }
