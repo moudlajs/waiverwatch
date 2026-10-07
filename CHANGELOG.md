@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/moudlajs/waiverwatch/compare/v0.21.0...v0.21.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* cope with Sleeper blanking player projections mid-week ([#114](https://github.com/moudlajs/waiverwatch/issues/114)) ([79bc3a6](https://github.com/moudlajs/waiverwatch/commit/79bc3a6c61402a3efe90f2473bfffd0b35951634))
+
 ## [0.21.0](https://github.com/moudlajs/waiverwatch/compare/v0.20.0...v0.21.0) (2026-10-07)
 
 
