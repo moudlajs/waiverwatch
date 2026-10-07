@@ -7,6 +7,7 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/moudlajs/waiverwatch/internal/fantasycalc"
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
@@ -107,6 +108,18 @@ func (s *Service) WaiverTargets(ctx context.Context, position, leagueQuery strin
 	proj, err := s.api.Projections(ctx, seasonType, state.Season, state.Week)
 	if err != nil {
 		notes = append(notes, "no projections: "+err.Error())
+	} else {
+		var (
+			note string
+			ok   bool
+		)
+		proj, note, ok = s.projections.complete(weekKey(seasonType, state.Season, state.Week), proj, players, time.Now())
+		if !ok {
+			proj = nil // ranked by value and trending alone
+		}
+		if note != "" {
+			notes = append(notes, note)
+		}
 	}
 
 	pools := s.pools(ctx, leagues, user.UserID)

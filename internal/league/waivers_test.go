@@ -189,6 +189,7 @@ func TestWaiverTargets(t *testing.T) {
 		valued := NewService(api, NewDirectory(store.NewMemory(), api.Players), func(context.Context, fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
 			return map[string]fantasycalc.Value{"k1": {Value: 400}}, nil
 		}, "me")
+		valued.projections.min = 1 // a two-player feed counts as complete here
 		r, err := valued.WaiverTargets(ctx, "", "", 5)
 		if err != nil {
 			t.Fatal(err)

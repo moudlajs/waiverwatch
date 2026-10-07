@@ -69,8 +69,10 @@ league"); Claude matches league names loosely.
 
 **Waivers**
 
-- *"Who should I pick up at RB?"* The best free agents you can actually start
-  in each league, with your waiver priority or FAAB left.
+- *"Who should I pick up at RB, and how much should I bid?"* The best free
+  agents you can actually start in each league, ranked by rest-of-season
+  value and this week's projection (survival leagues: this week first), with
+  your waiver priority, or your FAAB left and a suggested bid.
 - *"What's trending on waivers, and where is he still available?"*
 - *"Where am I thin? Any position without a backup?"*
 
@@ -197,7 +199,7 @@ To host your own, see [CONTRIBUTING.md](./CONTRIBUTING.md#deploying).
 | `evaluate_trade` | "is this trade fair?": both sides valued for that league (players, and dynasty picks checked against who holds them), 2-for-1 adjusted, who it leans to and by how much, your depth before and after |
 | `trade_targets` | per league: your thin positions, the spare players you can afford to trade, and players on other teams they can buy, each with the cheapest offer |
 | `trending_players` | the most-added players on Sleeper, with the leagues where you can still claim each one |
-| `waiver_targets` | per league: the best free agents you can actually start there, your waiver priority or FAAB left |
+| `waiver_targets` | per league: the best free agents you can actually start there, ranked by trade value and projection, your waiver priority or FAAB left, and a suggested FAAB bid |
 
 ## Contributing
 

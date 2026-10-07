@@ -38,7 +38,7 @@ type projSnapshot struct {
 func (c *projectionCache) complete(key string, feed map[string]map[string]float64, players map[string]sleeper.Player, now time.Time) (proj map[string]map[string]float64, note string, ok bool) {
 	n, teams := 0, 0
 	for id, stats := range feed {
-		if _, has := stats["pts_ppr"]; has {
+		if hasPoints(stats) {
 			if players[id].Position == "DEF" {
 				teams++
 			} else {
@@ -64,6 +64,17 @@ func (c *projectionCache) complete(key string, feed map[string]map[string]float6
 			snap.fetched.UTC().Format("Mon 15:04")), true
 	}
 	return feed, "Sleeper's player projections for this week are missing right now (it refreshes them during the week); try again later", false
+}
+
+// hasPoints reports whether projected stats include fantasy points (players
+// on bye, and every player in a blank feed, have stats without them).
+func hasPoints(stats map[string]float64) bool {
+	for _, k := range []string{"pts_ppr", "pts_half_ppr", "pts_std"} {
+		if _, ok := stats[k]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func weekKey(seasonType, season string, week int) string {
