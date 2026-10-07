@@ -30,7 +30,8 @@ func TestSimulate(t *testing.T) {
 	rosters := []sleeper.Roster{team(1, 3, 1, 150), team(2, 2, 2, 110), team(3, 2, 2, 105), team(4, 1, 3, 70)}
 	weeks := [][]sleeper.Matchup{pairs(1, 4, 2, 3), pairs(1, 2, 3, 4), pairs(1, 3, 2, 4)}
 
-	r := simulate(rosters, weeks, 2, false, 42)
+	ctx := context.Background()
+	r, _ := simulate(ctx, rosters, weeks, 2, false, 42)
 	if r.playoffs[1] < 95 || r.playoffs[4] > 5 {
 		t.Errorf("playoffs = %v: the 150-ppg team is in, the 70-ppg team out", r.playoffs)
 	}
@@ -41,14 +42,20 @@ func TestSimulate(t *testing.T) {
 	if total := r.wins[1] + r.wins[2] + r.wins[3] + r.wins[4]; total < 13.9 || total > 14.1 {
 		t.Errorf("expected wins add to %v, want 14", total)
 	}
-	if again := simulate(rosters, weeks, 2, false, 42); again.playoffs[2] != r.playoffs[2] {
+	if again, _ := simulate(ctx, rosters, weeks, 2, false, 42); again.playoffs[2] != r.playoffs[2] {
 		t.Error("the same seed must give the same answer")
 	}
 
 	// A median game adds exactly half the league's teams' worth of wins per week.
-	m := simulate(rosters, weeks, 2, true, 42)
+	m, _ := simulate(ctx, rosters, weeks, 2, true, 42)
 	if total := m.wins[1] + m.wins[2] + m.wins[3] + m.wins[4]; total < 19.9 || total > 20.1 {
 		t.Errorf("with the median game, expected wins add to %v, want 20", total)
+	}
+
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := simulate(cancelled, rosters, weeks, 2, false, 42); err == nil {
+		t.Error("a cancelled request should stop the simulation")
 	}
 }
 

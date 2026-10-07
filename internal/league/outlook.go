@@ -16,9 +16,13 @@ import (
 
 // Season simulation.
 const (
-	simulations = 5000
-	spreadShare = 0.2  // a team's weekly score varies by about a fifth of its average
-	minSpread   = 15.0 // points: even steady teams swing this much
+	// outlookLeagues caps leagues worked on at once: each fetches every
+	// remaining week's matchups, which adds up fast against the Sleeper call
+	// budget, and a season outlook isn't a waiver-day hurry.
+	outlookLeagues = 2
+	simulations    = 5000
+	spreadShare    = 0.2  // a team's weekly score varies by about a fifth of its average
+	minSpread      = 15.0 // points: even steady teams swing this much
 )
 
 // OutlookReport is my season outlook in each league.
@@ -65,13 +69,22 @@ func (s *Service) SeasonOutlook(ctx context.Context, leagueQuery string) (Outloo
 	out := OutlookReport{Week: state.Week, Leagues: make([]Outlook, len(leagues)),
 		Method: fmt.Sprintf("%d simulated seasons: each team scores around its points per game so far (spread about %.0f%%), "+
 			"standings by wins then points; divisions and custom tiebreakers are ignored", simulations, spreadShare*100)}
-	eachLeague(leagues, func(i int, l sleeper.League) {
-		o, err := s.outlook(ctx, l, user.UserID, state.Week)
-		if err != nil {
-			o.Error = err.Error()
-		}
-		out.Leagues[i] = o
-	})
+	var g errgroup.Group
+	g.SetLimit(outlookLeagues)
+	for i, l := range leagues {
+		g.Go(func() error {
+			o, err := s.outlook(ctx, l, user.UserID, state.Week)
+			if err != nil {
+				o.Error = err.Error()
+			}
+			out.Leagues[i] = o
+			return nil
+		})
+	}
+	_ = g.Wait() // errors are per league, above
+	if err := ctx.Err(); err != nil {
+		return OutlookReport{}, err
+	}
 	return out, nil
 }
 
@@ -114,7 +127,10 @@ func (s *Service) outlook(ctx context.Context, l sleeper.League, userID string, 
 	out.Standing = Standing(rosters, mine.RosterID, false)
 
 	median := l.Settings.MedianMatch == 1
-	sim := simulate(rosters, games, l.Settings.PlayoffTeams, median, seed(l.LeagueID))
+	sim, err := simulate(ctx, rosters, games, l.Settings.PlayoffTeams, median, seed(l.LeagueID))
+	if err != nil {
+		return out, err
+	}
 	chance, wins := sim.playoffs[mine.RosterID], sim.wins[mine.RosterID]
 	out.PlayoffChance, out.ExpectedWins = &chance, &wins
 	if len(weeks) == 0 {
@@ -196,7 +212,7 @@ type simResult struct {
 // playoffTeams by wins, then points, make the playoffs. With median, each
 // team also plays the week's median score. Ties are half a win now and
 // can't happen in simulated games.
-func simulate(rosters []sleeper.Roster, weeks [][]sleeper.Matchup, playoffTeams int, median bool, seedValue uint64) simResult {
+func simulate(ctx context.Context, rosters []sleeper.Roster, weeks [][]sleeper.Matchup, playoffTeams int, median bool, seedValue uint64) (simResult, error) {
 	rng := rand.New(rand.NewPCG(seedValue, seedValue^0x9e3779b97f4a7c15)) //nolint:gosec // a repeatable simulation, not a secret
 	mean := make(map[int]float64, len(rosters))
 	var league float64
@@ -217,14 +233,21 @@ func simulate(rosters []sleeper.Roster, weeks [][]sleeper.Matchup, playoffTeams 
 		wins, pts float64
 	}
 	teams := make([]team, len(rosters))
+	pos := make(map[int]int, len(rosters)) // roster ID -> index in rosters, and in teams until they're sorted
+	for i, r := range rosters {
+		pos[r.RosterID] = i
+	}
 	scores := make(map[int]float64, len(rosters))
-	for range simulations {
+	all := make([]float64, 0, len(rosters))
+	for n := range simulations {
+		if n%500 == 0 && ctx.Err() != nil {
+			return simResult{}, ctx.Err()
+		}
 		for i, r := range rosters {
 			teams[i] = team{id: r.RosterID, wins: float64(r.Settings.Wins) + float64(r.Settings.Ties)/2, pts: r.Settings.PointsFor()}
 		}
-		idx := func(id int) int { return slices.IndexFunc(teams, func(t team) bool { return t.id == id }) }
 		for wi, ms := range weeks {
-			var all []float64
+			all = all[:0]
 			for _, m := range ms {
 				mu := mean[m.RosterID]
 				scores[m.RosterID] = max(0, mu+rng.NormFloat64()*max(minSpread, mu*spreadShare))
@@ -239,8 +262,8 @@ func simulate(rosters []sleeper.Roster, weeks [][]sleeper.Matchup, playoffTeams 
 				}
 			}
 			for _, m := range ms {
-				i := idx(m.RosterID)
-				if i < 0 {
+				i, ok := pos[m.RosterID]
+				if !ok {
 					continue
 				}
 				teams[i].pts += scores[m.RosterID]
@@ -269,5 +292,5 @@ func simulate(rosters []sleeper.Roster, weeks [][]sleeper.Matchup, playoffTeams 
 	for id := range res.wins {
 		res.wins[id] = round1(res.wins[id])
 	}
-	return res
+	return res, nil
 }
