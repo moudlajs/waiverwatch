@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/moudlajs/waiverwatch/internal/fantasycalc"
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 	"github.com/moudlajs/waiverwatch/internal/sleeper/sleepertest"
 	"github.com/moudlajs/waiverwatch/internal/store"
@@ -136,6 +137,7 @@ func TestWaiverTargets(t *testing.T) {
 			"qb2": {FullName: "Qb Two", Position: "QB", Team: "NO", Active: true, SearchRank: 90},
 			"k1":  {FullName: "Kick One", Position: "K", Team: "TB", Active: true, SearchRank: 150},
 		},
+		"/projections/nfl/regular/2026/3": map[string]map[string]float64{"k1": {"pts_std": 9}, "qb2": {"pts_std": 15}},
 	}))
 	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
 	ctx := context.Background()
@@ -183,9 +185,81 @@ func TestWaiverTargets(t *testing.T) {
 		}
 	})
 
+	t.Run("with values and projections", func(t *testing.T) {
+		valued := NewService(api, NewDirectory(store.NewMemory(), api.Players), func(context.Context, fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
+			return map[string]fantasycalc.Value{"k1": {Value: 400}}, nil
+		}, "me")
+		r, err := valued.WaiverTargets(ctx, "", "", 5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f, rl := r.Leagues[0], r.Leagues[2]
+		// FAAB: 750 left; Qb Two has no value, so no bid beyond 0.
+		if q := f.Targets[0]; q.Projected != 15 || q.Bid == nil || *q.Bid != 0 || f.Note != "" {
+			t.Errorf("FAAB = %+v, note %q", f.Targets, f.Note)
+		}
+		// Rolling: Kick One's value puts him above the more-added Qb Two; no bids.
+		if rl.Targets[0].Name != "Kick One" || rl.Targets[0].Value != 400 || rl.Targets[0].Bid != nil {
+			t.Errorf("rolling = %+v", rl.Targets)
+		}
+	})
+
 	t.Run("unknown position", func(t *testing.T) {
 		if _, err := svc.WaiverTargets(ctx, "LB", "", 5); err == nil || !strings.Contains(err.Error(), "QB, RB") {
 			t.Errorf("err = %v", err)
 		}
 	})
+}
+
+func TestRankTargets(t *testing.T) {
+	cands := []Target{ // as targets() returns them: by adds, then Sleeper rank
+		{PlayerID: "hot", Name: "Hot Pickup", Adds: 5000},
+		{PlayerID: "stash", Name: "Dynasty Stash", Adds: 10},
+		{PlayerID: "stream", Name: "Streamer"},
+		{PlayerID: "nobody", Name: "Nobody"},
+	}
+	market := map[string]fantasycalc.Value{"hot": {Value: 1200}, "stash": {Value: 2500}}
+	proj := map[string]map[string]float64{"hot": {"pts_ppr": 14}, "stream": {"pts_ppr": 9}, "stash": {"pts_ppr": 2}}
+	left := 80
+	got := rankTargets(cands, market, proj, "pts_ppr", Waivers{Type: "faab", FAABRemaining: &left}, false, 3)
+
+	var names []string
+	for _, tg := range got {
+		names = append(names, tg.Name)
+	}
+	// Value first, then projection; Nobody (no value, no projection) is cut by the limit.
+	if strings.Join(names, ",") != "Dynasty Stash,Hot Pickup,Streamer" {
+		t.Fatalf("order = %v", names)
+	}
+	// Stash: 25% of 80 = 20. Hot: 12% + 5 (trending) = 17% of 80 = 13. Streamer: no value, 0.
+	if *got[0].Bid != 20 || *got[1].Bid != 13 || *got[2].Bid != 0 || got[1].Projected != 14 || got[0].Value != 2500 {
+		t.Errorf("got %+v", got)
+	}
+
+	if got := rankTargets([]Target{{PlayerID: "hot"}}, market, proj, "pts_ppr", Waivers{Type: "rolling"}, false, 5); got[0].Bid != nil {
+		t.Errorf("no FAAB, no bid: %+v", got[0])
+	}
+	if got := rankTargets([]Target{{Name: "B"}, {Name: "A"}}, nil, nil, "pts_ppr", Waivers{}, false, 5); got[0].Name != "B" {
+		t.Errorf("without values or projections the incoming order stands: %+v", got)
+	}
+	survive := rankTargets([]Target{{PlayerID: "stash"}, {PlayerID: "hot"}, {PlayerID: "stream"}}, market, proj, "pts_ppr", Waivers{}, true, 3)
+	if survive[0].PlayerID != "hot" || survive[1].PlayerID != "stream" { // guillotine: this week's points first
+		t.Errorf("guillotine order = %+v", survive)
+	}
+}
+
+func TestFAABBid(t *testing.T) {
+	for _, tt := range []struct {
+		value, adds, left, want int
+	}{
+		{1000, 0, 100, 10},
+		{9000, 0, 100, 50},    // capped at half
+		{9000, 2000, 100, 55}, // cap, then the trending bump
+		{300, 0, 7, 0},        // 3% of 7 rounds down
+		{2000, 0, 0, 0},       // nothing left
+	} {
+		if got := faabBid(Target{Value: tt.value, Adds: tt.adds}, tt.left); got != tt.want {
+			t.Errorf("faabBid(value %d, adds %d, left %d) = %d, want %d", tt.value, tt.adds, tt.left, got, tt.want)
+		}
+	}
 }
