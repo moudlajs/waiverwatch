@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/moudlajs/waiverwatch/compare/v0.22.0...v0.23.0) (2026-10-07)
+
+
+### Features
+
+* **mcp:** mutual trade targets ([#118](https://github.com/moudlajs/waiverwatch/issues/118)) ([4f4a24a](https://github.com/moudlajs/waiverwatch/commit/4f4a24a4084d1149201c57d010bc6f0e81fe8b2c))
+
 ## [0.22.0](https://github.com/moudlajs/waiverwatch/compare/v0.21.1...v0.22.0) (2026-10-07)
 
 
