@@ -147,6 +147,7 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 	// The current lineup, slot by slot.
 	type seat struct{ slot, id string }
 	var seats []seat
+	holes := 0 // empty slots and starters who can't score
 	for i, slot := range slots {
 		if slot == "BN" || slot == "IR" || slot == "TAXI" {
 			continue // not a starting slot
@@ -161,8 +162,10 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 		seats = append(seats, seat{slot, id})
 		switch out, why := out(id); {
 		case id == "0" || id == "":
+			holes++
 			problems = append(problems, slot+" slot is empty")
 		case out:
+			holes++
 			problems = append(problems, fmt.Sprintf("%s (%s) is %s", Lookup(players, id).Name(), slot, why))
 		default:
 			current += pts(id)
@@ -174,7 +177,8 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 
 	// The best lineup: every healthy, playing player on the active roster
 	// (not IR or taxi), dedicated slots first, then flex from the most
-	// restrictive to the least.
+	// restrictive to the least. Greedy: right for the usual slot sets, but a
+	// heuristic, not a guaranteed optimum for every combination.
 	var pool []string
 	for _, id := range r.Players {
 		if gone, _ := out(id); !gone && !slices.Contains(r.Reserve, id) && !slices.Contains(r.Taxi, id) {
@@ -200,12 +204,13 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 	}
 	current, best = math.Round(current*100)/100, math.Round(best*100)/100
 
-	// Only suggest changes worth making: the gain, or a hole being filled.
+	// Only suggest changes worth making: any change that fills a hole,
+	// otherwise only a real gain.
 	starting := make(map[string]bool)
 	for _, st := range seats {
 		starting[st.id] = true
 	}
-	if best-current < minGain && len(problems) == 0 {
+	if best-current < minGain && holes == 0 {
 		return problems, nil, nil, current, best
 	}
 	for i, st := range seats {
@@ -215,10 +220,6 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 		if st.id != "0" && st.id != "" && !used[st.id] {
 			bench = append(bench, lp(st.id, st.slot))
 		}
-	}
-	if best-current < minGain && len(start) > 0 {
-		// Problems, but nothing better to start: report the problems alone.
-		start, bench = nil, nil
 	}
 	return problems, start, bench, current, best
 }

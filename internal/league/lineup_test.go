@@ -79,6 +79,15 @@ func TestCheckLineup(t *testing.T) {
 		}
 	})
 
+	t.Run("any fill beats a hole", func(t *testing.T) {
+		tiny := map[string]float64{"te": 0.6}
+		r := sleeper.Roster{Players: []string{"te"}, Starters: []string{"0"}}
+		_, start, _, _, _ := checkLineup([]string{"TE"}, r, players, wk, func(id string) float64 { return tiny[id] })
+		if len(start) != 1 || start[0].Name != "T E" {
+			t.Errorf("start = %v, want the 0.6-point TE in the empty slot", start)
+		}
+	})
+
 	t.Run("a tiny gain isn't worth a swap", func(t *testing.T) {
 		near := map[string]float64{"wr3": 11, "rb2": 11.5}
 		r := sleeper.Roster{Players: []string{"wr3", "rb2"}, Starters: []string{"wr3"}}
