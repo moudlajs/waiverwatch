@@ -84,6 +84,10 @@ func TestTradeTargets(t *testing.T) {
 		if a := d.Targets[0]; !a.Mutual || !slices.Equal(a.TheyNeed, []string{"QB", "WR"}) {
 			t.Errorf("R A: mutual %v, they need %v", a.Mutual, a.TheyNeed)
 		}
+		// Third's only healthy RB is R D (R E is on IR): taking him leaves them short, so not mutual.
+		if dd := d.Targets[1]; dd.Mutual || !slices.Equal(dd.TheyNeed, []string{"QB", "RB", "WR"}) {
+			t.Errorf("R D: mutual %v, they need %v", dd.Mutual, dd.TheyNeed)
+		}
 		if !strings.Contains(s.Note, "no thin spots") || len(s.Targets) != 0 {
 			t.Errorf("settled league = %+v", s)
 		}

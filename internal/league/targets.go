@@ -169,6 +169,8 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 			pv.Team = TeamName(users, r.OwnerID)
 			t := TradeTarget{PlayerValue: pv, TheyNeed: theyNeed}
 			t.Offer, t.OfferValue, t.Mutual = offerFor(out.Spares, theyNeed, pv.Value)
+			// Taking him from a position they're thin at doesn't help them.
+			t.Mutual = t.Mutual && !slices.Contains(theyNeed, pv.Position)
 			out.Targets = append(out.Targets, t)
 		}
 	}
