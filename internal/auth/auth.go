@@ -2,7 +2,9 @@
 // It knows OAuth, not MCP or football.
 //
 // Claude identifies itself with a Client ID Metadata Document (its client_id
-// is an HTTPS URL); only Claude's documents are accepted. People sign in with
+// is an HTTPS URL); only Claude's documents are accepted. Other MCP clients
+// (Gemini) register dynamically, statelessly, and may only redirect to
+// loopback or Google's hosts (register.go). People sign in with
 // their Sleeper username: Sleeper data is public, so identity only says which
 // user to answer for (docs/multi-user.md). Codes and tokens are HMAC-signed
 // and carry that identity, so nothing is stored and restarts don't sign
@@ -140,6 +142,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /authorize", s.authorizeForm)
 	mux.HandleFunc("POST /authorize", s.authorizeSubmit)
 	mux.HandleFunc("POST /token", s.token)
+	mux.HandleFunc("POST /register", s.register)
 }
 
 // Protect lets requests with a valid access token for Resource through,

@@ -67,7 +67,11 @@ fine, it's the transport).
 - **Hosted sign-in (`internal/auth`):** waiverwatch is its own tiny OAuth 2.1
   authorization server. Claude identifies itself with a Client ID Metadata
   Document; only Claude's two client IDs are accepted (claude.ai and Claude
-  Code). People sign in with their **Sleeper username** (checked against
+  Code). Other clients (Gemini app and CLI) use Dynamic Client Registration
+  (`POST /register`, #105): stateless, the client_id is a signed token
+  holding the redirect URIs; only loopback http or HTTPS on `*.google.com`
+  may be registered, so tokens can only go back to the user's machine or
+  Google. People sign in with their **Sleeper username** (checked against
   Sleeper; public data, so no password: docs/multi-user.md); tokens carry the
   Sleeper user id and username, and every tool answers for the token's user
   (`auth.UserFrom` → `league.WithUser`). stdio uses `WAIVERWATCH_USER`.

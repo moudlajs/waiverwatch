@@ -15,6 +15,7 @@ const (
 	kindCode    = "code"
 	kindAccess  = "access"
 	kindRefresh = "refresh"
+	// kindClient (register.go) is a registered client's ID.
 )
 
 // claims is what a signed token carries. Tokens are self-contained so that
@@ -29,7 +30,10 @@ type claims struct {
 	RedirectURI string `json:"r,omitempty"`  // codes
 	Challenge   string `json:"pc,omitempty"` // codes: PKCE S256 challenge
 	ID          string `json:"j,omitempty"`  // codes: single-use ID
-	Expires     int64  `json:"e"`
+	// Registered clients (register.go).
+	Name         string   `json:"n,omitempty"`
+	RedirectURIs []string `json:"rs,omitempty"`
+	Expires      int64    `json:"e"`
 }
 
 var errBadToken = errors.New("invalid token")
