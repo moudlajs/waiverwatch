@@ -30,6 +30,27 @@ need a Claude plan that allows custom connectors.
    **Sign in**. It then syncs to the Claude app on your phone; switch it on
    per chat under **+ → Connectors**.
 
+### Gemini
+
+Gemini can use waiverwatch too; you sign in the same way, with your Sleeper
+username.
+
+- **Gemini CLI** (free, anywhere): add to `~/.gemini/settings.json`, then
+  run `/mcp auth waiverwatch` in Gemini CLI to sign in:
+
+  ```json
+  {
+    "mcpServers": {
+      "waiverwatch": { "httpUrl": "https://waiverwatch-44okyiteea-ew.a.run.app/mcp" }
+    }
+  }
+  ```
+- **Gemini app:** Google limits custom apps to personal accounts in the US,
+  in English, on paid Google AI plans. If you qualify: on
+  [gemini.google.com](https://gemini.google.com), **Settings → Connected
+  apps → Add a custom app**, with the same URL. This path hasn't been tried
+  yet; tell us if it works.
+
 ## What you can ask
 
 Every question covers all your leagues unless you name one ("…in my dynasty

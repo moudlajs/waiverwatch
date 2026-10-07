@@ -27,15 +27,17 @@ func (s *Server) protectedResource(w http.ResponseWriter, _ *http.Request) {
 
 func (s *Server) authorizationServer(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"issuer":                                s.base,
-		"authorization_endpoint":                s.base + "/authorize",
-		"token_endpoint":                        s.base + "/token",
-		"scopes_supported":                      []string{scope},
-		"response_types_supported":              []string{"code"},
-		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
-		"token_endpoint_auth_methods_supported": []string{"none"}, // Claude is a public client
-		"code_challenge_methods_supported":      []string{"S256"},
-		"client_id_metadata_document_supported": true,
+		"issuer":                                         s.base,
+		"authorization_endpoint":                         s.base + "/authorize",
+		"token_endpoint":                                 s.base + "/token",
+		"scopes_supported":                               []string{scope},
+		"response_types_supported":                       []string{"code"},
+		"grant_types_supported":                          []string{"authorization_code", "refresh_token"},
+		"token_endpoint_auth_methods_supported":          []string{"none"}, // public clients, with PKCE
+		"code_challenge_methods_supported":               []string{"S256"},
+		"client_id_metadata_document_supported":          true,
+		"registration_endpoint":                          s.base + "/register",
+		"authorization_response_iss_parameter_supported": true, // RFC 9207: /authorize sends iss
 	})
 }
 
@@ -53,12 +55,17 @@ func (s *Server) parseAuthorize(ctx context.Context, v url.Values) (authRequest,
 		ClientID: v.Get("client_id"), RedirectURI: v.Get("redirect_uri"), State: v.Get("state"),
 		Challenge: v.Get("code_challenge"), Scope: v.Get("scope"), Resource: v.Get("resource"),
 	}
-	if !s.clients[req.ClientID] {
-		return req, fmt.Errorf("unknown client %q: only Claude can sign in here", req.ClientID)
-	}
-	doc, err := s.clientDoc(ctx, req.ClientID)
-	if err != nil {
-		return req, err
+	var doc clientMetadata
+	switch reg, registered := s.registeredClient(req.ClientID); {
+	case s.clients[req.ClientID]:
+		var err error
+		if doc, err = s.clientDoc(ctx, req.ClientID); err != nil {
+			return req, err
+		}
+	case registered:
+		doc = reg
+	default:
+		return req, errUnknownClient
 	}
 	if !redirectAllowed(req.RedirectURI, doc.RedirectURIs) {
 		return req, fmt.Errorf("redirect_uri %q is not registered for this client", req.RedirectURI)
@@ -71,8 +78,18 @@ func (s *Server) parseAuthorize(ctx context.Context, v url.Values) (authRequest,
 	case req.Resource != "" && req.Resource != s.Resource():
 		return req, fmt.Errorf("resource must be %s", s.Resource())
 	}
-	u, _ := url.Parse(req.ClientID)
-	req.ClientHost, req.ClientName = u.Host, doc.ClientName
+	req.ClientName = doc.ClientName
+	if strings.HasPrefix(req.ClientID, registeredPrefix) {
+		// A registered client names itself: show where the sign-in goes back to.
+		u, _ := url.Parse(req.RedirectURI)
+		req.ClientHost = u.Host
+		if isLoopback(u) {
+			req.ClientHost = "An app on this computer"
+		}
+	} else {
+		u, _ := url.Parse(req.ClientID)
+		req.ClientHost = u.Host
+	}
 	return req, nil
 }
 

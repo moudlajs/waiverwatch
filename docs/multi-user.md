@@ -71,6 +71,17 @@ truncated) and per sign-in attempt (outcome only). The ID counts distinct
 users per day; it can't be reversed without the key and changes daily.
 `deploy/stats.sh` summarises it. The public guide says so.
 
+## Other AI apps (#86, #105)
+
+Decided 2026-10-07: Gemini only, for now. Both the Gemini app (custom apps:
+US, 18+, English, paid plans) and Gemini CLI register themselves (RFC 7591)
+instead of publishing a Client ID Metadata Document. `/register` is open but
+stateless (the client_id is a signed record of its redirect URIs, five
+years) and restricted to loopback and `*.google.com` redirects, so no token
+can be sent to a third party's site. The data behind it is public anyway;
+the restriction stops a stranger's site from collecting tokens that look
+like ours. ChatGPT would need its redirect host added; not planned.
+
 ## Order
 
 #53 sign-in with a Sleeper username → #54 tools answer for the token's user →
