@@ -62,7 +62,7 @@ type Target struct {
 	// waiver_targets only:
 	Value     int     `json:"value,omitempty" jsonschema:"FantasyCalc trade value in this league's format: rest-of-season worth"`
 	Projected float64 `json:"projected,omitempty" jsonschema:"Sleeper's projected points this week in this league's scoring"`
-	Bid       *int    `json:"bid,omitempty" jsonschema:"FAAB leagues: a suggested bid, value/100 percent of my remaining budget (at most half), plus 5 points when he's trending hard; a starting point, not a rule"`
+	Bid       *int    `json:"bid,omitempty" jsonschema:"FAAB leagues, players with a trade value: a suggested bid, value/100 percent of my remaining budget plus 5 points when he's trending hard, at most half; a starting point, not a rule"`
 }
 
 // Waiver ranking and bids.
@@ -272,21 +272,23 @@ func rankTargets(cands []Target, market map[string]fantasycalc.Value, proj map[s
 	cands = cands[:min(len(cands), limit)]
 	if w.FAABRemaining != nil {
 		for i := range cands {
-			bid := faabBid(cands[i], *w.FAABRemaining)
-			cands[i].Bid = &bid
+			if cands[i].Value > 0 { // no value, no basis for a bid
+				bid := faabBid(cands[i], *w.FAABRemaining)
+				cands[i].Bid = &bid
+			}
 		}
 	}
 	return cands
 }
 
 // faabBid suggests a bid: value/100 percent of what's left (a 1,000-value
-// player gets 10%), at most half, plus 5 points for a player trending hard.
+// player gets 10%), plus 5 points for a player trending hard, at most half.
 func faabBid(t Target, remaining int) int {
-	pct := min(50, t.Value/100)
+	pct := t.Value / 100
 	if t.Adds >= hotAdds {
 		pct += 5
 	}
-	return max(0, remaining*pct/100)
+	return max(0, remaining*min(50, pct)/100)
 }
 
 // rankKey sorts unranked (0) players after every ranked one.

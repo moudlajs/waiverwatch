@@ -196,8 +196,8 @@ func TestWaiverTargets(t *testing.T) {
 			t.Fatal(err)
 		}
 		f, rl := r.Leagues[0], r.Leagues[2]
-		// FAAB: 750 left; Qb Two has no value, so no bid beyond 0.
-		if q := f.Targets[0]; q.Projected != 15 || q.Bid == nil || *q.Bid != 0 || f.Note != "" {
+		// FAAB: 750 left; Qb Two has no value, so no bid.
+		if q := f.Targets[0]; q.Projected != 15 || q.Bid != nil || f.Note != "" {
 			t.Errorf("FAAB = %+v, note %q", f.Targets, f.Note)
 		}
 		// Rolling: Kick One's value puts him above the more-added Qb Two; no bids.
@@ -233,8 +233,8 @@ func TestRankTargets(t *testing.T) {
 	if strings.Join(names, ",") != "Dynasty Stash,Hot Pickup,Streamer" {
 		t.Fatalf("order = %v", names)
 	}
-	// Stash: 25% of 80 = 20. Hot: 12% + 5 (trending) = 17% of 80 = 13. Streamer: no value, 0.
-	if *got[0].Bid != 20 || *got[1].Bid != 13 || *got[2].Bid != 0 || got[1].Projected != 14 || got[0].Value != 2500 {
+	// Stash: 25% of 80 = 20. Hot: 12% + 5 (trending) = 17% of 80 = 13. Streamer: no value, no bid.
+	if *got[0].Bid != 20 || *got[1].Bid != 13 || got[2].Bid != nil || got[1].Projected != 14 || got[0].Value != 2500 {
 		t.Errorf("got %+v", got)
 	}
 
@@ -263,7 +263,7 @@ func TestFAABBid(t *testing.T) {
 	}{
 		{1000, 0, 100, 10},
 		{9000, 0, 100, 50},    // capped at half
-		{9000, 2000, 100, 55}, // cap, then the trending bump
+		{9000, 2000, 100, 50}, // the trending bump, then the cap
 		{300, 0, 7, 0},        // 3% of 7 rounds down
 		{2000, 0, 0, 0},       // nothing left
 	} {
