@@ -75,8 +75,9 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 	sdk.AddTool(s, &sdk.Tool{
 		Name: "waiver_targets",
 		Description: "The best available free agents in each of my leagues (on no roster, on an NFL team, at a position " +
-			"the league can start), ranked by this week's trending adds and then Sleeper's overall rank. Includes my " +
-			"waiver priority or FAAB budget left in each league. Use it for \"who should I pick up?\"",
+			"the league can start), ranked by trade value (rest-of-season worth in that league's format), then this " +
+			"week's projected points, then trending adds. Includes my waiver priority or FAAB budget left, and in FAAB " +
+			"leagues a suggested bid per player. Use it for \"who should I pick up?\" and \"how much should I bid?\"",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
 	}, limited(g, func(ctx context.Context, in WaiverInput) (league.WaiverReport, error) {
 		limit := in.Limit

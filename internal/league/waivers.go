@@ -7,7 +7,9 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"time"
 
+	"github.com/moudlajs/waiverwatch/internal/fantasycalc"
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
@@ -57,17 +59,29 @@ type Target struct {
 	Injury     string `json:"injury,omitempty"`
 	Adds       int    `json:"adds,omitempty" jsonschema:"adds across Sleeper in the last 24h (only the top 100 trending are counted)"`
 	SearchRank int    `json:"search_rank,omitempty" jsonschema:"Sleeper's overall player rank, lower is better"`
+	// waiver_targets only:
+	Value     int     `json:"value,omitempty" jsonschema:"FantasyCalc trade value in this league's format: rest-of-season worth"`
+	Projected float64 `json:"projected,omitempty" jsonschema:"Sleeper's projected points this week in this league's scoring"`
+	Bid       *int    `json:"bid,omitempty" jsonschema:"FAAB leagues, players with a trade value: a suggested bid, value/100 percent of my remaining budget plus 5 points when he's trending hard, at most half; a starting point, not a rule"`
 }
+
+// Waiver ranking and bids.
+const (
+	candidatePool = 400  // available players considered before re-ranking by value and projection
+	hotAdds       = 1000 // 24h adds that count as trending hard
+)
 
 // WaiverTargets returns, per league, the best available players: those on no
 // roster, on an NFL team, active, and at a position the league can start.
 // position and leagueQuery (a league name fragment or ID) narrow it down;
-// empty means all. Ranked by 24h trending adds, then Sleeper's search rank.
+// empty means all. Ranked by trade value (rest-of-season worth), then this
+// week's projection, then 24h trending adds; FAAB leagues get a suggested bid.
+// Without values or projections, it falls back to trending and Sleeper's rank.
 func (s *Service) WaiverTargets(ctx context.Context, position, leagueQuery string, limit int) (WaiverReport, error) {
 	if position != "" && !slices.Contains(Positions, position) {
 		return WaiverReport{}, fmt.Errorf("unknown position %q: use one of %s", position, strings.Join(Positions, ", "))
 	}
-	_, user, leagues, err := s.myLeagues(ctx)
+	state, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
 		return WaiverReport{}, err
 	}
@@ -85,6 +99,27 @@ func (s *Service) WaiverTargets(ctx context.Context, position, leagueQuery strin
 	adds := make(map[string]int, len(trending))
 	for _, t := range trending {
 		adds[t.PlayerID] = t.Count
+	}
+	var notes []string
+	seasonType := state.SeasonType
+	if seasonType == "" || seasonType == "off" {
+		seasonType = "regular"
+	}
+	proj, err := s.api.Projections(ctx, seasonType, state.Season, state.Week)
+	if err != nil {
+		notes = append(notes, "no projections: "+err.Error())
+	} else {
+		var (
+			note string
+			ok   bool
+		)
+		proj, note, ok = s.projections.complete(weekKey(seasonType, state.Season, state.Week), proj, players, time.Now())
+		if !ok {
+			proj = nil // ranked by value and trending alone
+		}
+		if note != "" {
+			notes = append(notes, note)
+		}
 	}
 
 	pools := s.pools(ctx, leagues, user.UserID)
@@ -112,7 +147,20 @@ func (s *Service) WaiverTargets(ctx context.Context, position, leagueQuery strin
 			}
 			eligible = map[string]bool{position: true}
 		}
-		b.Targets = targets(players, p.rostered, eligible, adds, limit)
+		b.Targets = targets(players, p.rostered, eligible, adds, candidatePool)
+		for _, n := range notes {
+			addNote(&b.Note, n)
+		}
+		var market map[string]fantasycalc.Value
+		if s.values != nil {
+			m, source, err := s.market(ctx, ValueSettings(l).Normalise())
+			if err != nil {
+				addNote(&b.Note, "no trade values: "+err.Error())
+			}
+			market = m
+			addNote(&b.Note, source)
+		}
+		b.Targets = rankTargets(b.Targets, market, proj, projectionKey(l.Scoring.Rec), b.Waivers, l.Kind(), limit)
 		out.Leagues[i] = b
 	}
 	return out, nil
@@ -195,6 +243,56 @@ func targets(players map[string]sleeper.Player, rostered, eligible map[string]bo
 		out = []Target{}
 	}
 	return out
+}
+
+// rankTargets values the candidates, keeps the best limit by trade value,
+// then projection, then trending adds (candidates arrive sorted by adds and
+// Sleeper's rank, which breaks the remaining ties), and suggests FAAB bids.
+// Guillotine leagues (survive this week or be cut) put the projection
+// before the value. Outside dynasty, where injured players are stashes,
+// players who can't play (Out, IR...) go after everyone who can.
+func rankTargets(cands []Target, market map[string]fantasycalc.Value, proj map[string]map[string]float64, key string, w Waivers, kind string, limit int) []Target {
+	for i := range cands {
+		cands[i].Value = market[cands[i].PlayerID].Value
+		cands[i].Projected = proj[cands[i].PlayerID][key]
+	}
+	out := func(t Target) int {
+		if kind != "dynasty" && slices.Contains(unavailable, t.Injury) {
+			return 1
+		}
+		return 0
+	}
+	slices.SortStableFunc(cands, func(a, b Target) int {
+		byValue, byProj := cmp.Compare(b.Value, a.Value), cmp.Compare(b.Projected, a.Projected)
+		if kind == "guillotine" {
+			return cmp.Or(cmp.Compare(out(a), out(b)), byProj, byValue)
+		}
+		return cmp.Or(cmp.Compare(out(a), out(b)), byValue, byProj)
+	})
+	cands = cands[:min(len(cands), limit)]
+	if w.FAABRemaining != nil {
+		for i := range cands {
+			if cands[i].Value > 0 { // no value, no basis for a bid
+				bid := faabBid(cands[i], *w.FAABRemaining)
+				cands[i].Bid = &bid
+			}
+		}
+	}
+	return cands
+}
+
+// faabBid suggests a bid: value/100 percent of what's left (a 1,000-value
+// player gets 10%), plus 5 points for a player trending hard, at most half;
+// at least 1 while there's budget, so a valued player is never a zero bid.
+func faabBid(t Target, remaining int) int {
+	pct := t.Value / 100
+	if t.Adds >= hotAdds {
+		pct += 5
+	}
+	if remaining <= 0 {
+		return 0
+	}
+	return max(1, remaining*min(50, pct)/100)
 }
 
 // rankKey sorts unranked (0) players after every ranked one.

@@ -81,7 +81,7 @@ func (s *Service) LineupCheck(ctx context.Context, leagueQuery string) (LineupRe
 	// Byes come from anyone projected: team defenses stay even in a blank feed.
 	wk := week{proj: proj, playing: make(map[string]bool), complete: complete}
 	for id, stats := range proj {
-		if _, ok := stats["pts_ppr"]; ok {
+		if hasPoints(stats) {
 			if team := players[id].Team; team != "" {
 				wk.playing[team] = true
 			}
