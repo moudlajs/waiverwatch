@@ -80,6 +80,14 @@ func TestTradeTargets(t *testing.T) {
 				t.Errorf("target %d = %+v, want %+v", i, g, want[i])
 			}
 		}
+		// Rival FC has no QB and one WR: my W/Q spares fill that, so the deal helps both.
+		if a := d.Targets[0]; !a.Mutual || !slices.Equal(a.TheyNeed, []string{"QB", "WR"}) {
+			t.Errorf("R A: mutual %v, they need %v", a.Mutual, a.TheyNeed)
+		}
+		// Third's only healthy RB is R D (R E is on IR): taking him leaves them short, so not mutual.
+		if dd := d.Targets[1]; dd.Mutual || !slices.Equal(dd.TheyNeed, []string{"QB", "RB", "WR"}) {
+			t.Errorf("R D: mutual %v, they need %v", dd.Mutual, dd.TheyNeed)
+		}
 		if !strings.Contains(s.Note, "no thin spots") || len(s.Targets) != 0 {
 			t.Errorf("settled league = %+v", s)
 		}
@@ -122,8 +130,55 @@ func TestCheapestOffer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		offer, v := cheapestOffer(spares, tt.want)
-		if strings.Join(offer, ",") != tt.offer || (tt.wantValue != 0 && v != tt.wantValue) {
+		if strings.Join(playerNames(offer), ",") != tt.offer || (tt.wantValue != 0 && v != tt.wantValue) {
 			t.Errorf("want %d: offer %v (%d), expected %s (%d)", tt.want, offer, v, tt.offer, tt.wantValue)
 		}
+	}
+}
+
+func TestSortTradeTargets(t *testing.T) {
+	ts := []TradeTarget{
+		{PlayerValue: PlayerValue{Name: "Pricey", Value: 5000}},
+		{PlayerValue: PlayerValue{Name: "Fits cheap", Value: 1000}, Mutual: true},
+		{PlayerValue: PlayerValue{Name: "Fits", Value: 2000}, Mutual: true},
+		{PlayerValue: PlayerValue{Name: "Cheap", Value: 500}},
+	}
+	sortTradeTargets(ts)
+	var got []string
+	for _, tt := range ts {
+		got = append(got, tt.Name)
+	}
+	if !slices.Equal(got, []string{"Fits", "Fits cheap", "Pricey", "Cheap"}) {
+		t.Errorf("order = %v", got)
+	}
+}
+
+func TestOfferFor(t *testing.T) {
+	spares := []PlayerValue{ // most valuable first, as TargetBoard.Spares
+		{Name: "WR Big", Position: "WR", Value: 3000},
+		{Name: "TE Mid", Position: "TE", Value: 1500},
+		{Name: "QB Small", Position: "QB", Value: 600},
+	}
+	tests := []struct {
+		name     string
+		theyNeed []string
+		want     int
+		offer    string
+		mutual   bool
+	}{
+		{"a needed spare covers it", []string{"TE"}, 1400, "TE Mid", true},
+		{"needed spares fall short: a plain offer", []string{"QB"}, 2500, "WR Big", false},
+		// 3000 + 600×√(600/3200) = 3260 beats WR+TE (4027) as the cheapest pair, and QB is needed.
+		{"fallback pair with a needed player", []string{"QB"}, 3200, "WR Big,QB Small", true},
+		{"they need nothing I have", []string{"RB"}, 1400, "TE Mid", false},
+		{"out of reach: underpaying isn't a fit", []string{"QB"}, 9000, "WR Big,TE Mid", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			names, _, mutual := offerFor(spares, tt.theyNeed, tt.want)
+			if strings.Join(names, ",") != tt.offer || mutual != tt.mutual {
+				t.Errorf("offer %v mutual %v, want %s %v", names, mutual, tt.offer, tt.mutual)
+			}
+		})
 	}
 }

@@ -31,7 +31,7 @@ type TargetBoard struct {
 	Market   string        `json:"market,omitempty"`
 	Needs    []string      `json:"needs" jsonschema:"positions I'm targeting, with why (thin: no backup, short: can't fill the lineup)"`
 	Spares   []PlayerValue `json:"spares" jsonschema:"my healthy players beyond what my lineup needs, at positions with depth to spare: what I can offer, most valuable first"`
-	Targets  []TradeTarget `json:"targets" jsonschema:"players on other teams at the needed positions I can afford, most valuable first"`
+	Targets  []TradeTarget `json:"targets" jsonschema:"players on other teams at the needed positions I can afford: mutual fits first (my offer fills their thin spot), then most valuable"`
 	Note     string        `json:"note,omitempty"`
 	Error    string        `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
 }
@@ -39,8 +39,10 @@ type TargetBoard struct {
 // TradeTarget is a player to ask for and what to offer for him.
 type TradeTarget struct {
 	PlayerValue
-	Offer      []string `json:"offer" jsonschema:"the fewest, least valuable spares that match his value (one or two players)"`
+	Offer      []string `json:"offer" jsonschema:"one or two of my spares that match his value: the cheapest from positions his team needs when that works, else the cheapest overall"`
 	OfferValue int      `json:"offer_value" jsonschema:"the offer's value after the 2-for-1 adjustment evaluate_trade uses"`
+	TheyNeed   []string `json:"they_need,omitempty" jsonschema:"positions where his team is thin or short"`
+	Mutual     bool     `json:"mutual,omitempty" jsonschema:"the offer includes a player at a position his team needs: a deal that helps both sides"`
 }
 
 // TradeTargets finds, in each league matching leagueQuery (empty = all),
@@ -154,6 +156,7 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 		if r.RosterID == mine.RosterID {
 			continue
 		}
+		theyNeed := thinPositions(l.RosterPositions, r, players)
 		for _, id := range r.Players {
 			p := Lookup(players, id)
 			if !slices.Contains(needs, p.Position) || slices.Contains(unavailable, p.InjuryStatus) || slices.Contains(r.Reserve, id) {
@@ -164,16 +167,70 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 				continue
 			}
 			pv.Team = TeamName(users, r.OwnerID)
-			offer, value := cheapestOffer(out.Spares, pv.Value)
-			out.Targets = append(out.Targets, TradeTarget{PlayerValue: pv, Offer: offer, OfferValue: value})
+			t := TradeTarget{PlayerValue: pv, TheyNeed: theyNeed}
+			t.Offer, t.OfferValue, t.Mutual = offerFor(out.Spares, theyNeed, pv.Value)
+			// Taking him from a position they're thin at doesn't help them.
+			t.Mutual = t.Mutual && !slices.Contains(theyNeed, pv.Position)
+			out.Targets = append(out.Targets, t)
 		}
 	}
-	slices.SortStableFunc(out.Targets, func(a, b TradeTarget) int { return cmp.Compare(b.Value, a.Value) })
+	sortTradeTargets(out.Targets)
 	out.Targets = out.Targets[:min(len(out.Targets), limit)]
 	if len(out.Targets) == 0 {
 		addNote(&out.Note, "nobody at the needed positions is within reach of my spares")
 	}
 	return out, nil
+}
+
+// thinPositions is where a roster is thin or short, kickers and defenses
+// aside (streamed, not traded for).
+func thinPositions(slots []string, r sleeper.Roster, players map[string]sleeper.Player) []string {
+	var out []string
+	depth, _, _ := depthChart(slots, r, players)
+	for _, pd := range depth {
+		if pd.Status != depthOK && pd.Position != "K" && pd.Position != "DEF" {
+			out = append(out, pd.Position)
+		}
+	}
+	return out
+}
+
+// sortTradeTargets puts mutual fits first, then the most valuable.
+func sortTradeTargets(ts []TradeTarget) {
+	slices.SortStableFunc(ts, func(a, b TradeTarget) int {
+		return cmp.Or(cmp.Compare(boolRank(a.Mutual), boolRank(b.Mutual)), cmp.Compare(b.Value, a.Value))
+	})
+}
+
+// boolRank sorts true before false.
+func boolRank(b bool) int {
+	if b {
+		return 0
+	}
+	return 1
+}
+
+// offerFor builds an offer worth want from spares: from the spares at
+// positions the other team needs first (that offer gets accepted), else the
+// cheapest from all of them. mutual reports whether it includes a needed
+// position and is worth what he is: an underpaying offer isn't a fit.
+func offerFor(spares []PlayerValue, theyNeed []string, want int) (names []string, value int, mutual bool) {
+	needed := func(sp PlayerValue) bool { return slices.Contains(theyNeed, sp.Position) }
+	if fits := slices.DeleteFunc(slices.Clone(spares), func(sp PlayerValue) bool { return !needed(sp) }); len(fits) > 0 {
+		if offer, v := cheapestOffer(fits, want); v >= want {
+			return playerNames(offer), v, true
+		}
+	}
+	offer, v := cheapestOffer(spares, want)
+	return playerNames(offer), v, v >= want && slices.ContainsFunc(offer, needed)
+}
+
+func playerNames(pvs []PlayerValue) []string {
+	names := make([]string, len(pvs))
+	for i, pv := range pvs {
+		names[i] = pv.Name
+	}
+	return names
 }
 
 // offerValue is what a package of players is worth after the 2-for-1
@@ -193,19 +250,20 @@ func offerValue(pvs []PlayerValue) int {
 
 // cheapestOffer picks the least valuable single spare, else pair, whose
 // adjusted value reaches want; failing that, the two best spares.
-func cheapestOffer(spares []PlayerValue, want int) ([]string, int) {
+func cheapestOffer(spares []PlayerValue, want int) ([]PlayerValue, int) {
 	// Spares are sorted most valuable first; scan from the cheap end.
 	for i := len(spares) - 1; i >= 0; i-- {
 		if spares[i].Value >= want {
-			return []string{spares[i].Name}, spares[i].Value
+			return []PlayerValue{spares[i]}, spares[i].Value
 		}
 	}
-	best, bestValue := []string(nil), 0
+	var best []PlayerValue
+	bestValue := 0
 	for i := range spares {
 		for j := i + 1; j < len(spares); j++ {
 			v := pairValue(spares[i], spares[j], want)
 			if v >= want && (best == nil || v < bestValue) {
-				best, bestValue = []string{spares[i].Name, spares[j].Name}, v
+				best, bestValue = []PlayerValue{spares[i], spares[j]}, v
 			}
 		}
 	}
@@ -213,11 +271,7 @@ func cheapestOffer(spares []PlayerValue, want int) ([]string, int) {
 		return best, bestValue
 	}
 	top := spares[:min(2, len(spares))]
-	var names []string
-	for _, pv := range top {
-		names = append(names, pv.Name)
-	}
-	return names, offerValue(top)
+	return top, offerValue(top)
 }
 
 // pairValue is two spares' adjusted value offered for one player worth want:

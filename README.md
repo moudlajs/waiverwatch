@@ -87,7 +87,8 @@ fantasy trades and fitted to each league: dynasty or redraft, superflex or
   actually holds them; next year's picks are valued early, mid or late from
   the original team's record.
 - *"Who should I trade for?"* Your thin positions, the spare players you can
-  afford to give up, and players on other teams they can buy.
+  afford to give up, and players on other teams they can buy. Deals that also
+  fill the other team's thin spot come first: those get accepted.
 
 **History**
 
