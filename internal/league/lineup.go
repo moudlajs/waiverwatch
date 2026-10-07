@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"time"
 
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
@@ -48,8 +49,9 @@ type LineupPlayer struct {
 
 // week is what a lineup check needs to know about the NFL week.
 type week struct {
-	proj    map[string]map[string]float64 // projected stats by player
-	playing map[string]bool               // NFL teams with a game (anyone projected)
+	proj     map[string]map[string]float64 // projected stats by player
+	playing  map[string]bool               // NFL teams with a game (anyone projected)
+	complete bool                          // false: player points are missing, so no swaps
 }
 
 // LineupCheck checks my lineup in every league matching leagueQuery (empty =
@@ -70,12 +72,14 @@ func (s *Service) LineupCheck(ctx context.Context, leagueQuery string) (LineupRe
 	if seasonType == "" || seasonType == "off" {
 		seasonType = "regular"
 	}
-	proj, err := s.api.Projections(ctx, seasonType, state.Season, state.Week)
+	feed, err := s.api.Projections(ctx, seasonType, state.Season, state.Week)
 	if err != nil {
 		// Without projections there are no byes or better lineups to find.
 		return LineupReport{}, fmt.Errorf("checking lineups needs this week's projections: %w", err)
 	}
-	wk := week{proj: proj, playing: make(map[string]bool)}
+	proj, projNote, complete := s.projections.complete(weekKey(seasonType, state.Season, state.Week), feed, players, time.Now())
+	// Byes come from anyone projected: team defenses stay even in a blank feed.
+	wk := week{proj: proj, playing: make(map[string]bool), complete: complete}
 	for id, stats := range proj {
 		if _, ok := stats["pts_ppr"]; ok {
 			if team := players[id].Team; team != "" {
@@ -90,6 +94,11 @@ func (s *Service) LineupCheck(ctx context.Context, leagueQuery string) (LineupRe
 	}
 	out := LineupReport{Week: state.Week, Leagues: make([]LineupCheck, len(leagues)),
 		Note: "projections are for whole games: a player whose game has started is locked, so check kickoff times before swapping"}
+	if !complete {
+		out.Note = projNote + "; only empty slots, injuries and byes are checked"
+	} else {
+		addNote(&out.Note, projNote)
+	}
 	eachLeague(leagues, func(i int, l sleeper.League) {
 		c, err := s.lineup(ctx, l, user.UserID, players, wk)
 		if err != nil {
@@ -117,6 +126,9 @@ func (s *Service) lineup(ctx context.Context, l sleeper.League, userID string, p
 	key := projectionKey(l.Scoring.Rec)
 	pts := func(id string) float64 { return wk.proj[id][key] }
 	out.Problems, out.Start, out.Bench, out.Projected, out.Best = checkLineup(l.RosterPositions, mine, players, wk, pts)
+	if !wk.complete { // missing points aren't zeros: no swaps, no totals
+		out.Start, out.Bench, out.Projected, out.Best = nil, nil, 0, 0
+	}
 	if len(out.Problems) > 0 || len(out.Start) > 0 {
 		out.Status = "fix"
 	}
