@@ -82,7 +82,12 @@ func TestSeasonOutlook(t *testing.T) {
 			{LeagueID: "H", Name: "Head", Settings: sleeper.LeagueSettings{PlayoffWeekStart: 7, PlayoffTeams: 2}},
 			{LeagueID: "G", Name: "Guillotine", Settings: sleeper.LeagueSettings{Type: 3}},
 			{LeagueID: "N", Name: "No playoffs"},
+			{LeagueID: "U", Name: "Unset", Settings: sleeper.LeagueSettings{PlayoffWeekStart: 7, PlayoffTeams: 1}},
 		},
+		"/league/U/rosters":    []sleeper.Roster{team(1, 1, 0, 100), team(2, 0, 1, 90)},
+		"/league/U/users":      []sleeper.LeagueUser{user("b", "me", "")},
+		"/league/U/matchups/5": pairs(1, 2),
+		"/league/U/matchups/6": []sleeper.Matchup{}, // not set yet
 		"/league/H/rosters":    []sleeper.Roster{team(1, 3, 1, 150), team(2, 2, 2, 110), team(3, 2, 2, 105), team(4, 1, 3, 70)},
 		"/league/H/users":      []sleeper.LeagueUser{user("b", "me", "Mine"), user("c", "top", "Top Dogs"), user("e", "low", "Low")},
 		"/league/H/matchups/5": week5,
@@ -102,6 +107,9 @@ func TestSeasonOutlook(t *testing.T) {
 	}
 	if !strings.Contains(g.Note, "guillotine") || g.PlayoffChance != nil || !strings.Contains(n.Note, "no playoffs") {
 		t.Errorf("guillotine %+v, no playoffs %+v", g, n)
+	}
+	if u := r.Leagues[3]; !strings.Contains(u.Note, "future matchups") || len(u.Schedule) != 1 {
+		t.Errorf("unset weeks = %+v", u)
 	}
 	if !strings.Contains(r.Method, "simulated seasons") {
 		t.Errorf("method = %q", r.Method)

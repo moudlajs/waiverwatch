@@ -136,6 +136,9 @@ func (s *Service) outlook(ctx context.Context, l sleeper.League, userID string, 
 	if len(weeks) == 0 {
 		addNote(&out.Note, "the regular season is over: the chance follows the final standings")
 	}
+	if slices.ContainsFunc(games, func(ms []sleeper.Matchup) bool { return len(ms) == 0 }) {
+		addNote(&out.Note, "Sleeper hasn't set some future matchups yet: those weeks aren't simulated")
+	}
 
 	byID := make(map[int]sleeper.Roster, len(rosters))
 	for _, r := range rosters {
@@ -151,7 +154,10 @@ func (s *Service) outlook(ctx context.Context, l sleeper.League, userID string, 
 		if !ok {
 			continue
 		}
-		r := byID[opp.RosterID]
+		r, known := byID[opp.RosterID]
+		if !known {
+			continue // a roster the league no longer lists: no name or record to show
+		}
 		up := Upcoming{Week: w, Opponent: TeamName(users, r.OwnerID), PPG: round1(ppg(r.Settings, median)),
 			Record: fmt.Sprintf("%d-%d-%d", r.Settings.Wins, r.Settings.Losses, r.Settings.Ties),
 			WinPct: round1(sim.games[gameKey{week: i, roster: mine.RosterID}])}
