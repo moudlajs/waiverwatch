@@ -1,8 +1,5 @@
-// Package killswitch turns billing off for the project when the budget is
-// spent. Google Cloud has no hard spending cap: a budget only notifies. The
-// budget publishes to Pub/Sub, Pub/Sub pushes here, and once actual cost
-// reaches the budget this unlinks the project's billing account, which
-// stops every paid service. Re-linking billing brings it back.
+// Package killswitch unlinks the project's billing account when a budget's Pub/Sub
+// notification reports actual cost at or over budget (GCP has no hard spending cap).
 package killswitch
 
 import (
@@ -26,8 +23,7 @@ type Notification struct {
 	CostIntervalStart string  `json:"costIntervalStart"`
 }
 
-// Over reports whether actual cost has reached the budget. Forecasts are
-// ignored: only money already spent pulls the switch.
+// Over reports whether actual (not forecast) cost has reached the budget.
 func (n Notification) Over() bool {
 	return n.BudgetAmount > 0 && n.CostAmount >= n.BudgetAmount
 }
@@ -37,7 +33,6 @@ type Switch struct {
 	Project string // project ID whose billing is unlinked
 	DryRun  bool   // log and check permissions only
 
-	// Endpoints and credentials; the defaults are Google's. Tests override.
 	BillingURL  string
 	ResourceURL string
 	Token       func(ctx context.Context) (string, error)
@@ -57,8 +52,7 @@ func New(project string, dryRun bool) *Switch {
 	}
 }
 
-// ServeHTTP handles one push delivery. Malformed messages are acknowledged
-// (retrying can't fix them); a failed unlink answers 500 so Pub/Sub retries.
+// ServeHTTP acks malformed messages (retry can't fix them); a failed unlink answers 500 so Pub/Sub retries.
 func (s *Switch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -89,8 +83,7 @@ func (s *Switch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.DryRun {
-		// Exercise everything the armed path does except the unlink itself,
-		// so a missing permission shows up here, not during a real overage.
+		// Exercise everything but the unlink, so a missing permission shows up before a real overage.
 		enabled, readErr := s.billingEnabled(r.Context())
 		ok, permErr := s.canUnlink(r.Context())
 		log.Warn("killswitch: over budget, DRY RUN: would unlink billing",
@@ -111,8 +104,7 @@ func (s *Switch) billingInfoURL() string {
 	return fmt.Sprintf("%s/v1/projects/%s/billingInfo", s.BillingURL, s.Project)
 }
 
-// billingEnabled reads whether the project still has billing. It needs
-// resourcemanager.projects.get, which roles/billing.projectManager lacks.
+// billingEnabled needs resourcemanager.projects.get, which roles/billing.projectManager lacks.
 func (s *Switch) billingEnabled(ctx context.Context) (bool, error) {
 	var info struct {
 		BillingEnabled bool `json:"billingEnabled"`
@@ -123,7 +115,6 @@ func (s *Switch) billingEnabled(ctx context.Context) (bool, error) {
 	return info.BillingEnabled, nil
 }
 
-// unlink removes the project's billing account, unless it's already gone.
 func (s *Switch) unlink(ctx context.Context) error {
 	enabled, err := s.billingEnabled(ctx)
 	if err != nil {
@@ -139,10 +130,8 @@ func (s *Switch) unlink(ctx context.Context) error {
 	return nil
 }
 
-// needed are the permissions the armed path uses: read, then unlink.
 var needed = []string{"resourcemanager.projects.get", "resourcemanager.projects.deleteBillingAssignment"}
 
-// canUnlink asks whether this identity holds every permission in needed.
 func (s *Switch) canUnlink(ctx context.Context) (bool, error) {
 	var out struct {
 		Permissions []string `json:"permissions"`
@@ -193,8 +182,6 @@ func (s *Switch) call(ctx context.Context, method, url string, in, out any) erro
 	return nil
 }
 
-// metadataToken fetches the service account's access token from the Cloud
-// Run metadata server.
 func metadataToken(hc *http.Client, base string) func(context.Context) (string, error) {
 	return func(ctx context.Context) (string, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet,

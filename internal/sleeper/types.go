@@ -2,8 +2,6 @@ package sleeper
 
 import "strings"
 
-// Only the fields waiverwatch uses are mapped; encoding/json ignores the rest.
-
 // User is a Sleeper account.
 type User struct {
 	UserID      string `json:"user_id"`
@@ -14,7 +12,7 @@ type User struct {
 // League is one fantasy league in one season.
 type League struct {
 	LeagueID        string         `json:"league_id"`
-	PreviousID      string         `json:"previous_league_id"` // last season's league, for leagues that carry over
+	PreviousID      string         `json:"previous_league_id"` // last season's league
 	Name            string         `json:"name"`
 	Season          string         `json:"season"`
 	Status          string         `json:"status"` // pre_draft, drafting, in_season, complete
@@ -36,8 +34,8 @@ type LeagueSettings struct {
 	PlayoffTeams     int `json:"playoff_teams"`
 	MedianMatch      int `json:"league_average_match"` // 1: each week also a game against the league median
 	WaiverType       int `json:"waiver_type"`          // 0 rolling priority, 1 reverse standings, 2 FAAB
-	WaiverBudget     int `json:"waiver_budget"`        // FAAB budget per team
-	DraftRounds      int `json:"draft_rounds"`         // rounds in each (rookie) draft
+	WaiverBudget     int `json:"waiver_budget"`
+	DraftRounds      int `json:"draft_rounds"`
 }
 
 // Kind names the league format from settings.type.
@@ -56,8 +54,7 @@ func (l League) Kind() string {
 	}
 }
 
-// Roster is one team in a league. Player lists hold player IDs; NFL team
-// defenses use the team abbreviation (e.g. "SEA").
+// Roster is one team in a league; team defenses' IDs are team abbreviations (e.g. "SEA").
 type Roster struct {
 	RosterID int            `json:"roster_id"`
 	OwnerID  string         `json:"owner_id"`
@@ -69,8 +66,7 @@ type Roster struct {
 	Settings RosterSettings `json:"settings"`
 }
 
-// RosterSettings holds a team's record. Sleeper splits points into a whole
-// part and a hundredths part.
+// RosterSettings holds a team's record; Sleeper splits points into whole and hundredths parts.
 type RosterSettings struct {
 	Wins               int `json:"wins"`
 	Losses             int `json:"losses"`
@@ -102,8 +98,7 @@ type LeagueUser struct {
 	} `json:"metadata"`
 }
 
-// Matchup is one team's side of a week's game. Two entries with the same
-// MatchupID play each other; MatchupID is 0 when a team has no opponent.
+// Matchup is one team's side of a week's game; equal MatchupIDs play each other, 0 means no opponent.
 type Matchup struct {
 	RosterID       int                `json:"roster_id"`
 	MatchupID      int                `json:"matchup_id"`
@@ -126,8 +121,7 @@ type Trending struct {
 	Count    int    `json:"count"`
 }
 
-// Player is an entry in the player dictionary. Team defenses use the team
-// abbreviation as their ID and have no FullName.
+// Player is a dictionary entry; team defenses use the team abbreviation as ID and have no FullName.
 type Player struct {
 	PlayerID       string `json:"player_id"`
 	FullName       string `json:"full_name"`
@@ -163,8 +157,7 @@ type Draft struct {
 	} `json:"settings"`
 }
 
-// Pick is one selection in a draft. PickedBy is the user who made it;
-// RosterID is the team the pick belonged to.
+// Pick is one selection in a draft: PickedBy is the user, RosterID the team within that season.
 type Pick struct {
 	Round    int    `json:"round"`
 	PickNo   int    `json:"pick_no"`
@@ -181,9 +174,7 @@ type Pick struct {
 	} `json:"metadata"`
 }
 
-// TradedPick is a draft pick that changed hands. RosterID is the team whose
-// pick it originally was, OwnerID the roster holding it now. Picks never
-// traded are not listed: they belong to their original team.
+// TradedPick is a pick that changed hands: RosterID is its original team, OwnerID the current holder.
 type TradedPick struct {
 	Season          string `json:"season"`
 	Round           int    `json:"round"`

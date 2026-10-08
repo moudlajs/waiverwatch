@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
-# Usage summary for the hosted waiverwatch, from its anonymous usage log.
-#
+# Per-day usage summary for the hosted waiverwatch, from its anonymous usage log (no usernames).
 #   deploy/stats.sh [days] [project-id]     (default: 7 days, waiverwatch-509716)
-#
-# Per UTC day: distinct users (anonymous daily IDs), tool calls, errors,
-# sign-ins by outcome, and the most used tools. No usernames exist in the
-# log, so none can be shown.
 set -euo pipefail
 
 DAYS=${1:-7}

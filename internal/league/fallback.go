@@ -11,20 +11,16 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// fallbackNote goes on every answer valued by the backup source.
 const fallbackNote = "FantasyCalc isn't responding, so these values come from DynastyProcess (open dynasty values, " +
 	"updated weekly): 1QB or superflex only, not fitted to league size, scoring or redraft, and no draft picks"
 
-// WithFallback makes values that FantasyCalc can't provide come from
-// fallback instead, with a note saying so.
+// WithFallback serves values FantasyCalc can't provide from fallback, with a note.
 func (s *Service) WithFallback(fallback FetchValues) *Service {
 	s.fallback = fallback
 	return s
 }
 
-// market returns the trade values for settings: FantasyCalc's, else the
-// fallback's with fallbackNote. When both fail, FantasyCalc's error is
-// returned: it is the source people know.
+// market returns FantasyCalc's values, else the fallback's; if both fail, FantasyCalc's error.
 func (s *Service) market(ctx context.Context, settings fantasycalc.Settings) (map[string]fantasycalc.Value, string, error) {
 	m, err := s.values(ctx, settings)
 	if err == nil || s.fallback == nil || ctx.Err() != nil {
@@ -38,8 +34,6 @@ func (s *Service) market(ctx context.Context, settings fantasycalc.Settings) (ma
 	return nil, "", err
 }
 
-// marketLabel names where values came from: the FantasyCalc market, or the
-// backup's dynasty values when note says the backup was used.
 func marketLabel(settings fantasycalc.Settings, note string) string {
 	if note == "" {
 		return settings.String()
@@ -50,8 +44,6 @@ func marketLabel(settings fantasycalc.Settings, note string) string {
 	return "DynastyProcess dynasty 1QB (backup)"
 }
 
-// redraftNote says that keeper and guillotine leagues get redraft values,
-// unless the backup's dynasty values are in use (its own note covers that).
 func redraftNote(l sleeper.League, source string) string {
 	if k := l.Kind(); source == "" && (k == "keeper" || k == "guillotine") {
 		return k + " league: valued with redraft values"
@@ -59,8 +51,7 @@ func redraftNote(l sleeper.League, source string) string {
 	return ""
 }
 
-// DynastyProcessValues adapts DynastyProcess's values to FetchValues: 1QB or
-// superflex values by settings.QBs, ranked overall and by position.
+// DynastyProcessValues adapts DynastyProcess values (1QB or superflex by settings.QBs) to FetchValues.
 func DynastyProcessValues(fetch func(context.Context) (map[string]dynastyprocess.Player, error)) FetchValues {
 	return func(ctx context.Context, s fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
 		players, err := fetch(ctx)
@@ -89,7 +80,6 @@ func DynastyProcessValues(fetch func(context.Context) (map[string]dynastyprocess
 	}
 }
 
-// addNote appends note to a free-text note field.
 func addNote(field *string, note string) {
 	switch {
 	case note == "":

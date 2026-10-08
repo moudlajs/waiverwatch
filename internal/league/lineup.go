@@ -11,8 +11,6 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// minGain is the projected gain below which a different lineup isn't worth
-// suggesting: projections aren't that precise.
 const minGain = 1.0
 
 // LineupReport checks my lineup in each league for one week.
@@ -47,15 +45,13 @@ type LineupPlayer struct {
 	Projected float64 `json:"projected"`
 }
 
-// week is what a lineup check needs to know about the NFL week.
 type week struct {
-	proj     map[string]map[string]float64 // projected stats by player
-	playing  map[string]bool               // NFL teams with a game (anyone projected)
-	complete bool                          // false: player points are missing, so no swaps
+	proj     map[string]map[string]float64
+	playing  map[string]bool
+	complete bool // false: player points are missing, so no swaps
 }
 
-// LineupCheck checks my lineup in every league matching leagueQuery (empty =
-// all) for the current week.
+// LineupCheck checks my lineup for the current week in leagues matching leagueQuery.
 func (s *Service) LineupCheck(ctx context.Context, leagueQuery string) (LineupReport, error) {
 	state, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -74,7 +70,6 @@ func (s *Service) LineupCheck(ctx context.Context, leagueQuery string) (LineupRe
 	}
 	feed, err := s.api.Projections(ctx, seasonType, state.Season, state.Week)
 	if err != nil {
-		// Without projections there are no byes or better lineups to find.
 		return LineupReport{}, fmt.Errorf("checking lineups needs this week's projections: %w", err)
 	}
 	proj, projNote, complete := s.projections.complete(weekKey(seasonType, state.Season, state.Week), feed, players, time.Now())
@@ -135,11 +130,9 @@ func (s *Service) lineup(ctx context.Context, l sleeper.League, userID string, p
 	return out, nil
 }
 
-// checkLineup finds what's wrong with a roster's lineup and the best lineup
-// by projections. Slots it doesn't know (IDP) are left as they are.
 func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Player, wk week, pts func(id string) float64) (problems []string, start, bench []LineupPlayer, current, best float64) {
 	problems = []string{}
-	out := func(id string) (bool, string) { // can't score this week, and why
+	out := func(id string) (bool, string) {
 		p := Lookup(players, id)
 		switch {
 		case slices.Contains(unavailable, p.InjuryStatus):
@@ -156,13 +149,12 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 		return LineupPlayer{Slot: slot, Name: p.Name(), Position: p.Position, NFLTeam: p.Team, Injury: p.InjuryStatus, Projected: pts(id)}
 	}
 
-	// The current lineup, slot by slot.
 	type seat struct{ slot, id string }
 	var seats []seat
-	holes := 0 // empty slots and starters who can't score
+	holes := 0
 	for i, slot := range slots {
 		if slot == "BN" || slot == "IR" || slot == "TAXI" {
-			continue // not a starting slot
+			continue
 		}
 		id := "0" // Sleeper may list fewer starters than slots: the rest are empty
 		if i < len(r.Starters) {
@@ -187,10 +179,7 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 		}
 	}
 
-	// The best lineup: every healthy, playing player on the active roster
-	// (not IR or taxi), dedicated slots first, then flex from the most
-	// restrictive to the least. Greedy: right for the usual slot sets, but a
-	// heuristic, not a guaranteed optimum for every combination.
+	// Greedy: dedicated slots, then flex most to least restrictive; not a guaranteed optimum.
 	var pool []string
 	for _, id := range r.Players {
 		if gone, _ := out(id); !gone && !slices.Contains(r.Reserve, id) && !slices.Contains(r.Taxi, id) {
@@ -203,7 +192,7 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 		order[i] = i
 	}
 	slices.SortStableFunc(order, func(a, b int) int { return cmp.Compare(len(eligible(seats[a].slot)), len(eligible(seats[b].slot))) })
-	chosen := make(map[int]string) // seat index -> player
+	chosen := make(map[int]string)
 	used := make(map[string]bool)
 	for _, i := range order {
 		for _, id := range pool {
@@ -216,8 +205,6 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 	}
 	current, best = math.Round(current*100)/100, math.Round(best*100)/100
 
-	// Only suggest changes worth making: any change that fills a hole,
-	// otherwise only a real gain.
 	starting := make(map[string]bool)
 	for _, st := range seats {
 		starting[st.id] = true
@@ -236,7 +223,6 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 	return problems, start, bench, current, best
 }
 
-// eligible is the positions a lineup slot accepts.
 func eligible(slot string) []string {
 	if ps, ok := flexSlots[slot]; ok {
 		return ps
@@ -244,7 +230,6 @@ func eligible(slot string) []string {
 	return []string{slot}
 }
 
-// known reports whether waiverwatch understands a lineup slot.
 func known(slot string) bool {
 	_, flex := flexSlots[slot]
 	return flex || slices.Contains(Positions, slot)

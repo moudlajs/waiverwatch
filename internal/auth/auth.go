@@ -1,14 +1,5 @@
-// Package auth is waiverwatch's own small OAuth 2.1 authorization server.
-// It knows OAuth, not MCP or football.
-//
-// Claude identifies itself with a Client ID Metadata Document (its client_id
-// is an HTTPS URL); only Claude's documents are accepted. Other MCP clients
-// (Gemini) register dynamically, statelessly, and may only redirect to
-// loopback or Google's hosts (register.go). People sign in with
-// their Sleeper username: Sleeper data is public, so identity only says which
-// user to answer for (docs/multi-user.md). Codes and tokens are HMAC-signed
-// and carry that identity, so nothing is stored and restarts don't sign
-// anyone out.
+// Package auth is waiverwatch's small stateless OAuth 2.1 authorization server:
+// users sign in with a Sleeper username, codes and tokens are HMAC-signed.
 package auth
 
 import (
@@ -51,8 +42,7 @@ type Identity struct {
 // ErrNoSuchUser is what a Lookup returns for a username Sleeper doesn't know.
 var ErrNoSuchUser = errors.New("no such Sleeper user")
 
-// Lookup resolves a Sleeper username, returning ErrNoSuchUser if it doesn't
-// exist.
+// Lookup resolves a Sleeper username, returning ErrNoSuchUser if it doesn't exist.
 type Lookup func(ctx context.Context, username string) (Identity, error)
 
 // Config configures a Server.
@@ -75,8 +65,7 @@ type Server struct {
 	httpClient *http.Client
 	now        func() time.Time
 
-	// Sign-in attempts across everyone: each costs a Sleeper lookup.
-	logins *rate.Limiter
+	logins *rate.Limiter // global sign-in limit: each attempt costs a Sleeper lookup
 
 	mu        sync.Mutex
 	usedCodes map[string]time.Time // single-use codes, kept until they expire
@@ -145,9 +134,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /register", s.register)
 }
 
-// Protect lets requests with a valid access token for Resource through,
-// with the token's identity available to MCP tools (see UserFrom), and
-// answers the rest with the 401 challenge that starts Claude's sign-in.
+// Protect admits requests with a valid access token and answers the rest with a 401 challenge.
 func (s *Server) Protect(next http.Handler) http.Handler {
 	return sdkauth.RequireBearerToken(s.verifyAccess, &sdkauth.RequireBearerTokenOptions{
 		ResourceMetadataURL: s.resourceMetadataURL(),
@@ -157,8 +144,7 @@ func (s *Server) Protect(next http.Handler) http.Handler {
 
 func (s *Server) verifyAccess(_ context.Context, token string, _ *http.Request) (*sdkauth.TokenInfo, error) {
 	c, err := s.signer.verify(token, kindAccess, s.now())
-	// Tokens from before usernames (owner passphrase era) carry no subject:
-	// refusing them makes Claude sign in again.
+	// Tokens without a subject (pre-username) are refused so the client signs in again.
 	if err != nil || c.Audience != s.Resource() || c.Subject == "" {
 		return nil, sdkauth.ErrInvalidToken
 	}
@@ -172,8 +158,7 @@ func (s *Server) verifyAccess(_ context.Context, token string, _ *http.Request) 
 
 const usernameKey = "sleeper_username"
 
-// UserFrom returns the identity Protect verified for a request, from the
-// token info MCP passes to tools. ok is false without a token (stdio).
+// UserFrom returns the identity Protect verified; ok is false without a token (stdio).
 func UserFrom(ti *sdkauth.TokenInfo) (Identity, bool) {
 	if ti == nil || ti.UserID == "" {
 		return Identity{}, false
@@ -182,13 +167,11 @@ func UserFrom(ti *sdkauth.TokenInfo) (Identity, bool) {
 	return Identity{UserID: ti.UserID, Username: name}, name != ""
 }
 
-// allowedUser reports whether username may sign in: anyone, unless an
-// allowlist is configured.
 func (s *Server) allowedUser(username string) bool {
 	return len(s.allowed) == 0 || s.allowed[strings.ToLower(username)]
 }
 
-// useCode marks a code ID as spent. It reports false if it already was.
+// useCode marks a code ID as spent; false if it already was (codes are single-use).
 func (s *Server) useCode(id string, expires time.Time) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -205,7 +188,6 @@ func (s *Server) useCode(id string, expires time.Time) bool {
 	return true
 }
 
-// pkceOK checks an S256 code verifier against its challenge.
 func pkceOK(verifier, challenge string) bool {
 	if len(verifier) < 43 || len(verifier) > 128 {
 		return false

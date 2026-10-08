@@ -19,8 +19,7 @@ type Week struct {
 	Note    string `json:"note,omitempty"`
 }
 
-// Game is the user's game in one league. Head-to-head leagues set
-// Opponent; guillotine leagues set Survival instead.
+// Game is the user's game in one league: Opponent for head-to-head, Survival for guillotine.
 type Game struct {
 	LeagueID string    `json:"league_id"`
 	Name     string    `json:"name"`
@@ -41,14 +40,12 @@ type Side struct {
 
 // Starter is one filled (or empty) lineup slot.
 type Starter struct {
-	Slot     string  `json:"slot" jsonschema:"lineup slot, e.g. QB, RB, FLEX, SUPER_FLEX"`
-	Name     string  `json:"name"`
-	Position string  `json:"position,omitempty"`
-	NFLTeam  string  `json:"nfl_team,omitempty"`
-	Injury   string  `json:"injury,omitempty"`
-	Points   float64 `json:"points"`
-	// Projected is for the whole game, not what's left of it: points
-	// already scored are part of it.
+	Slot      string  `json:"slot" jsonschema:"lineup slot, e.g. QB, RB, FLEX, SUPER_FLEX"`
+	Name      string  `json:"name"`
+	Position  string  `json:"position,omitempty"`
+	NFLTeam   string  `json:"nfl_team,omitempty"`
+	Injury    string  `json:"injury,omitempty"`
+	Points    float64 `json:"points"`
 	Projected float64 `json:"projected,omitempty" jsonschema:"Sleeper's projected points for the whole game in this league's standard, half or full PPR scoring (custom bonuses like TE premium aren't included); 0 or missing on a bye"`
 }
 
@@ -60,8 +57,7 @@ type Survival struct {
 	Margin     float64 `json:"margin" jsonschema:"my points minus the lowest other surviving team; negative means I am currently last"`
 }
 
-// Matchups returns the user's matchup in every league for week, or the
-// current week when week is 0.
+// Matchups returns the user's matchup in every league for week (0 = current).
 func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 	state, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -71,8 +67,7 @@ func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 		week = state.Week
 	}
 	out := Week{Season: state.Season, Week: week, Leagues: make([]Game, len(leagues))}
-	// Off-season (or unknown): ask for the regular season's week; failing
-	// that, the answer just carries a note.
+	// Off-season (or unknown): ask for the regular season's week.
 	seasonType := state.SeasonType
 	if seasonType == "" || seasonType == "off" {
 		seasonType = "regular"
@@ -82,7 +77,7 @@ func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 		projErr error
 		fetched = make(chan struct{})
 	)
-	go func() { // alongside the player dictionary: both can be cold
+	go func() {
 		defer close(fetched)
 		proj, projErr = s.api.Projections(ctx, seasonType, state.Season, week)
 	}()
@@ -92,7 +87,7 @@ func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 		return Week{}, err
 	}
 	if projErr != nil {
-		out.Note = "no projections: " + projErr.Error() // live points still stand
+		out.Note = "no projections: " + projErr.Error()
 	} else {
 		var (
 			note string
@@ -167,8 +162,7 @@ func find(ms []sleeper.Matchup, rosterID int) (sleeper.Matchup, bool) {
 	return sleeper.Matchup{}, false
 }
 
-// Opponent is the other team sharing me's matchup ID. There is none on a
-// bye (matchup ID 0).
+// Opponent is the other team sharing me's matchup ID; none on a bye (ID 0).
 func Opponent(ms []sleeper.Matchup, me sleeper.Matchup) (sleeper.Matchup, bool) {
 	if me.MatchupID == 0 {
 		return sleeper.Matchup{}, false
@@ -181,8 +175,7 @@ func Opponent(ms []sleeper.Matchup, me sleeper.Matchup) (sleeper.Matchup, bool) 
 	return sleeper.Matchup{}, false
 }
 
-// side resolves a matchup's starters to names. slots is the league's
-// roster_positions; starters fill its first len(starters) entries in order.
+// side resolves starters to names; they fill the first len(starters) slots in order.
 func side(m sleeper.Matchup, team string, slots []string, players map[string]sleeper.Player, proj map[string]map[string]float64, key string) *Side {
 	out := &Side{Team: team, Points: m.Points, Starters: make([]Starter, 0, len(m.Starters))}
 	for i, id := range m.Starters {
@@ -207,8 +200,6 @@ func side(m sleeper.Matchup, team string, slots []string, players map[string]sle
 	return out
 }
 
-// projectionKey picks Sleeper's projected points for a league's points per
-// reception: standard, half or full PPR.
 func projectionKey(rec float64) string {
 	switch {
 	case rec >= 0.75:
@@ -220,8 +211,7 @@ func projectionKey(rec float64) string {
 	}
 }
 
-// survival places mine among the guillotine league's surviving teams, i.e.
-// rosters that still have players; eliminated teams are emptied.
+// survival ranks mine among rosters that still have players (Sleeper empties eliminated teams).
 func survival(ms []sleeper.Matchup, rosters []sleeper.Roster, mine sleeper.Roster) *Survival {
 	if len(mine.Players) == 0 {
 		return &Survival{Eliminated: true, Alive: alive(rosters)}
@@ -244,7 +234,7 @@ func survival(ms []sleeper.Matchup, rosters []sleeper.Roster, mine sleeper.Roste
 	}
 	out := &Survival{Alive: alive(rosters), Rank: 1}
 	if len(others) == 0 {
-		return out // last team standing
+		return out
 	}
 	lowest := others[0]
 	for _, p := range others {

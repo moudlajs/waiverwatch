@@ -13,11 +13,9 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// Positions waiver_targets understands: the offensive fantasy positions plus
-// kickers and team defenses. IDP is not supported.
+// Positions waiver_targets understands; IDP is not supported.
 var Positions = []string{"QB", "RB", "WR", "TE", "K", "DEF"}
 
-// flexSlots maps Sleeper's flex lineup slots to the positions they accept.
 var flexSlots = map[string][]string{
 	"FLEX":       {"RB", "WR", "TE"},
 	"SUPER_FLEX": {"QB", "RB", "WR", "TE"},
@@ -52,31 +50,24 @@ type Waivers struct {
 
 // Target is an available player worth a claim.
 type Target struct {
-	PlayerID   string `json:"player_id"`
-	Name       string `json:"name"`
-	Position   string `json:"position"`
-	NFLTeam    string `json:"nfl_team"`
-	Injury     string `json:"injury,omitempty"`
-	Adds       int    `json:"adds,omitempty" jsonschema:"adds across Sleeper in the last 24h (only the top 100 trending are counted)"`
-	SearchRank int    `json:"search_rank,omitempty" jsonschema:"Sleeper's overall player rank, lower is better"`
-	// waiver_targets only:
-	Value     int     `json:"value,omitempty" jsonschema:"FantasyCalc trade value in this league's format: rest-of-season worth"`
-	Projected float64 `json:"projected,omitempty" jsonschema:"Sleeper's projected points this week in this league's scoring"`
-	Bid       *int    `json:"bid,omitempty" jsonschema:"FAAB leagues, players with a trade value: a suggested bid, value/100 percent of my remaining budget plus 5 points when he's trending hard, at most half; a starting point, not a rule"`
+	PlayerID   string  `json:"player_id"`
+	Name       string  `json:"name"`
+	Position   string  `json:"position"`
+	NFLTeam    string  `json:"nfl_team"`
+	Injury     string  `json:"injury,omitempty"`
+	Adds       int     `json:"adds,omitempty" jsonschema:"adds across Sleeper in the last 24h (only the top 100 trending are counted)"`
+	SearchRank int     `json:"search_rank,omitempty" jsonschema:"Sleeper's overall player rank, lower is better"`
+	Value      int     `json:"value,omitempty" jsonschema:"FantasyCalc trade value in this league's format: rest-of-season worth"`
+	Projected  float64 `json:"projected,omitempty" jsonschema:"Sleeper's projected points this week in this league's scoring"`
+	Bid        *int    `json:"bid,omitempty" jsonschema:"FAAB leagues, players with a trade value: a suggested bid, value/100 percent of my remaining budget plus 5 points when he's trending hard, at most half; a starting point, not a rule"`
 }
 
-// Waiver ranking and bids.
 const (
 	candidatePool = 400  // available players considered before re-ranking by value and projection
 	hotAdds       = 1000 // 24h adds that count as trending hard
 )
 
-// WaiverTargets returns, per league, the best available players: those on no
-// roster, on an NFL team, active, and at a position the league can start.
-// position and leagueQuery (a league name fragment or ID) narrow it down;
-// empty means all. Ranked by trade value (rest-of-season worth), then this
-// week's projection, then 24h trending adds; FAAB leagues get a suggested bid.
-// Without values or projections, it falls back to trending and Sleeper's rank.
+// WaiverTargets returns each league's best available players, ranked by value, projection, then trending adds.
 func (s *Service) WaiverTargets(ctx context.Context, position, leagueQuery string, limit int) (WaiverReport, error) {
 	if position != "" && !slices.Contains(Positions, position) {
 		return WaiverReport{}, fmt.Errorf("unknown position %q: use one of %s", position, strings.Join(Positions, ", "))
@@ -166,8 +157,6 @@ func (s *Service) WaiverTargets(ctx context.Context, position, leagueQuery strin
 	return out, nil
 }
 
-// matchLeagues keeps the leagues whose ID equals query or whose name contains
-// it, ignoring case. An empty query keeps all.
 func matchLeagues(leagues []sleeper.League, query string) ([]sleeper.League, error) {
 	if query == "" {
 		return leagues, nil
@@ -187,8 +176,7 @@ func matchLeagues(leagues []sleeper.League, query string) ([]sleeper.League, err
 	return kept, nil
 }
 
-// EligiblePositions is the set of Positions a league can start, expanding
-// flex slots.
+// EligiblePositions is the set of Positions a league can start, expanding flex slots.
 func EligiblePositions(slots []string) map[string]bool {
 	set := make(map[string]bool)
 	for _, s := range slots {
@@ -216,8 +204,6 @@ func waivers(l sleeper.League, me sleeper.Roster) Waivers {
 	return w
 }
 
-// targets ranks the available players at eligible positions: trending adds
-// first, then search rank (unranked last), then name for a stable order.
 func targets(players map[string]sleeper.Player, rostered, eligible map[string]bool, adds map[string]int, limit int) []Target {
 	var out []Target
 	for id, p := range players {
@@ -245,12 +231,7 @@ func targets(players map[string]sleeper.Player, rostered, eligible map[string]bo
 	return out
 }
 
-// rankTargets values the candidates, keeps the best limit by trade value,
-// then projection, then trending adds (candidates arrive sorted by adds and
-// Sleeper's rank, which breaks the remaining ties), and suggests FAAB bids.
-// Guillotine leagues (survive this week or be cut) put the projection
-// before the value. Outside dynasty, where injured players are stashes,
-// players who can't play (Out, IR...) go after everyone who can.
+// rankTargets keeps the best limit by value then projection (projection first in guillotine) and suggests FAAB bids.
 func rankTargets(cands []Target, market map[string]fantasycalc.Value, proj map[string]map[string]float64, key string, w Waivers, kind string, limit int) []Target {
 	for i := range cands {
 		cands[i].Value = market[cands[i].PlayerID].Value
@@ -281,9 +262,7 @@ func rankTargets(cands []Target, market map[string]fantasycalc.Value, proj map[s
 	return cands
 }
 
-// faabBid suggests a bid: value/100 percent of what's left (a 1,000-value
-// player gets 10%), plus 5 points for a player trending hard, at most half;
-// at least 1 while there's budget, so a valued player is never a zero bid.
+// faabBid suggests value/100 percent of the budget left, +5 if trending hard, at most half, at least 1.
 func faabBid(t Target, remaining int) int {
 	pct := t.Value / 100
 	if t.Adds >= hotAdds {
@@ -295,7 +274,6 @@ func faabBid(t Target, remaining int) int {
 	return max(1, remaining*min(50, pct)/100)
 }
 
-// rankKey sorts unranked (0) players after every ranked one.
 func rankKey(r int) int {
 	if r <= 0 {
 		return math.MaxInt

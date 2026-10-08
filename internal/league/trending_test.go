@@ -22,8 +22,7 @@ func TestRostered(t *testing.T) {
 	}
 }
 
-// trendingService serves three leagues: A has RB "10" on another team,
-// B has it on mine, C fails to load. Trending: RB 10, WR 20, RB 30.
+// trendingService: A has RB "10" on another team, B on mine, C fails; trending RB 10, WR 20, RB 30.
 func trendingService(t *testing.T) *Service {
 	t.Helper()
 	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{

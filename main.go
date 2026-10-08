@@ -1,11 +1,5 @@
-// Command waiverwatch is an MCP server for Sleeper fantasy football. It
-// speaks MCP over stdio for local clients (Claude Code, Claude Desktop), or
-// over HTTP at /mcp when PORT is set (Cloud Run). Over stdio it answers for
-// WAIVERWATCH_USER. Over HTTP anyone signs in with their Sleeper username
-// (OAuth; WAIVERWATCH_BASE_URL, WAIVERWATCH_SIGNING_KEY, optional
-// WAIVERWATCH_ALLOWED_USERS) and each request answers for its signed-in
-// user; WAIVERWATCH_NO_AUTH=1 turns sign-in off for local testing, with
-// WAIVERWATCH_USER as the only user.
+// Command waiverwatch is an MCP server for Sleeper fantasy football: stdio for
+// WAIVERWATCH_USER, or OAuth-protected HTTP at /mcp when PORT is set.
 package main
 
 import (
@@ -31,8 +25,7 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/store"
 )
 
-// Hosted rate limit per instance: plenty for one person's Claude, little for
-// anyone else.
+// Hosted rate limit per instance.
 const (
 	requestsPerSecond = 5
 	requestBurst      = 20
@@ -45,7 +38,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// On stdio, stdout carries the MCP protocol; diagnostics go to stderr.
+	// On stdio, stdout carries the MCP protocol: diagnostics go to stderr.
 	if err := run(ctx, *user, os.Getenv("PORT")); err != nil {
 		fmt.Fprintln(os.Stderr, "waiverwatch:", err)
 		os.Exit(1)
@@ -55,7 +48,6 @@ func main() {
 func run(ctx context.Context, username, port string) error {
 	api := sleeper.New(sleeper.DefaultBaseURL)
 	players := league.NewDirectory(store.NewMemory(), api.Players)
-	// Hosted: the signing key also keys the anonymous usage IDs. Local: none.
 	usageKey := []byte(os.Getenv("WAIVERWATCH_SIGNING_KEY"))
 	values := fantasycalc.New(fantasycalc.DefaultBaseURL)
 	backup := dynastyprocess.New(dynastyprocess.DefaultBaseURL)
@@ -76,9 +68,7 @@ func run(ctx context.Context, username, port string) error {
 	return mcp.Serve(ctx, ":"+port, mcp.HTTPHandler(server, version(), signIn, requestsPerSecond, requestBurst))
 }
 
-// signInServer builds the OAuth server from the environment. It returns nil
-// only when WAIVERWATCH_NO_AUTH=1, so a missing secret stops the server
-// instead of silently leaving it open.
+// signInServer returns nil only for WAIVERWATCH_NO_AUTH=1, so a missing secret fails instead of leaving it open.
 func signInServer(api *sleeper.Client, username string) (*auth.Server, error) {
 	if os.Getenv("WAIVERWATCH_NO_AUTH") == "1" {
 		if username == "" {
@@ -99,8 +89,7 @@ func signInServer(api *sleeper.Client, username string) (*auth.Server, error) {
 	})
 }
 
-// cloudLogging names the level and message fields the way Cloud Logging
-// reads them from JSON logs, so the console shows severities.
+// cloudLogging renames level/message to the fields Cloud Logging reads as severity and message.
 func cloudLogging(groups []string, a slog.Attr) slog.Attr {
 	if len(groups) > 0 {
 		return a
@@ -117,7 +106,6 @@ func cloudLogging(groups []string, a slog.Attr) slog.Attr {
 	return a
 }
 
-// sleeperLookup resolves sign-in usernames against Sleeper.
 func sleeperLookup(api *sleeper.Client) auth.Lookup {
 	return func(ctx context.Context, name string) (auth.Identity, error) {
 		u, err := api.User(ctx, name)
@@ -137,8 +125,6 @@ func sleeperLookup(api *sleeper.Client) auth.Lookup {
 // buildVersion is set by the container build (-ldflags -X).
 var buildVersion string
 
-// version is the release the binary was built from: stamped in by the
-// container build, the module version for `go install`, else "dev".
 func version() string {
 	if buildVersion != "" {
 		return buildVersion

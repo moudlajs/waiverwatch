@@ -7,8 +7,7 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// maxTrending is the most players Sleeper's trending endpoint returns,
-// whatever limit is asked for.
+// maxTrending is the most Sleeper's trending endpoint returns, whatever limit is asked.
 const maxTrending = 100
 
 // TrendingReport is the most-added players and where the user can claim them.
@@ -36,9 +35,7 @@ type Failure struct {
 	Error  string `json:"error"`
 }
 
-// Trending returns up to limit of the most-added players over lookbackHours,
-// optionally only at position, each with the user's leagues where the player
-// is available.
+// Trending returns the most-added players, each with the user's leagues where he is available.
 func (s *Service) Trending(ctx context.Context, lookbackHours, limit int, position string) (TrendingReport, error) {
 	_, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -92,16 +89,14 @@ func (s *Service) Trending(ctx context.Context, lookbackHours, limit int, positi
 	return out, nil
 }
 
-// pool is who is taken in one league.
 type pool struct {
 	league   sleeper.League
-	rostered map[string]bool // on any team, including mine
+	rostered map[string]bool
 	me       sleeper.Roster
 	mine     map[string]bool
 	err      error
 }
 
-// pools loads every league's rosters concurrently.
 func (s *Service) pools(ctx context.Context, leagues []sleeper.League, userID string) []pool {
 	out := make([]pool, len(leagues))
 	eachLeague(leagues, func(i int, l sleeper.League) {
@@ -122,8 +117,7 @@ func (s *Service) pools(ctx context.Context, leagues []sleeper.League, userID st
 	return out
 }
 
-// Rostered is the set of player IDs on any of rosters, including taxi squads
-// and IR.
+// Rostered is the set of player IDs on any of rosters, including taxi and IR.
 func Rostered(rosters []sleeper.Roster) map[string]bool {
 	set := make(map[string]bool)
 	for _, r := range rosters {

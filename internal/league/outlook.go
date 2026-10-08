@@ -14,11 +14,8 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// Season simulation.
 const (
-	// outlookLeagues caps leagues worked on at once: each fetches every
-	// remaining week's matchups, which adds up fast against the Sleeper call
-	// budget, and a season outlook isn't a waiver-day hurry.
+	// outlookLeagues is low: each league fetches every remaining week against the Sleeper call budget.
 	outlookLeagues = 2
 	simulations    = 5000
 	spreadShare    = 0.2  // a team's weekly score varies by about a fifth of its average
@@ -56,8 +53,7 @@ type Upcoming struct {
 	WinPct   float64 `json:"win_pct" jsonschema:"percent of simulated games I win"`
 }
 
-// SeasonOutlook simulates the rest of the regular season in every
-// head-to-head league matching leagueQuery (empty = all).
+// SeasonOutlook simulates the rest of the regular season in head-to-head leagues matching leagueQuery.
 func (s *Service) SeasonOutlook(ctx context.Context, leagueQuery string) (OutlookReport, error) {
 	state, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -81,7 +77,7 @@ func (s *Service) SeasonOutlook(ctx context.Context, leagueQuery string) (Outloo
 			return nil
 		})
 	}
-	_ = g.Wait() // errors are per league, above
+	_ = g.Wait()
 	if err := ctx.Err(); err != nil {
 		return OutlookReport{}, err
 	}
@@ -156,7 +152,7 @@ func (s *Service) outlook(ctx context.Context, l sleeper.League, userID string, 
 		}
 		r, known := byID[opp.RosterID]
 		if !known {
-			continue // a roster the league no longer lists: no name or record to show
+			continue
 		}
 		up := Upcoming{Week: w, Opponent: TeamName(users, r.OwnerID), PPG: round1(ppg(r.Settings, median)),
 			Record: fmt.Sprintf("%d-%d-%d", r.Settings.Wins, r.Settings.Losses, r.Settings.Ties),
@@ -181,8 +177,7 @@ func (s *Service) outlook(ctx context.Context, l sleeper.League, userID string, 
 	return out, nil
 }
 
-// ppg is a team's points per week played so far; 0 before any games. With a
-// weekly median game, each week adds two results to the record.
+// ppg: with a weekly median game, each week adds two results to the record.
 func ppg(st sleeper.RosterSettings, median bool) float64 {
 	n := st.Wins + st.Losses + st.Ties
 	if median {
@@ -196,14 +191,12 @@ func ppg(st sleeper.RosterSettings, median bool) float64 {
 
 func round1(x float64) float64 { return math.Round(x*10) / 10 }
 
-// seed makes a league's simulation repeatable: the same answer each time.
 func seed(leagueID string) uint64 {
 	h := fnv.New64a()
-	_, _ = h.Write([]byte(leagueID)) // never fails
+	_, _ = h.Write([]byte(leagueID))
 	return h.Sum64()
 }
 
-// gameKey is one roster's game in one remaining week (an index into weeks).
 type gameKey struct{ week, roster int }
 
 type simResult struct {
@@ -212,12 +205,7 @@ type simResult struct {
 	games    map[gameKey]float64 // percent of simulations in which that roster wins that game
 }
 
-// simulate plays the remaining weeks many times. Each team scores from a
-// normal distribution around its points per game (the league's average
-// before any games), wins and points carry over from now, and the top
-// playoffTeams by wins, then points, make the playoffs. With median, each
-// team also plays the week's median score. Ties are half a win now and
-// can't happen in simulated games.
+// simulate plays the remaining weeks many times, scoring each team from a normal distribution around its ppg.
 func simulate(ctx context.Context, rosters []sleeper.Roster, weeks [][]sleeper.Matchup, playoffTeams int, median bool, seedValue uint64) (simResult, error) {
 	rng := rand.New(rand.NewPCG(seedValue, seedValue^0x9e3779b97f4a7c15)) //nolint:gosec // a repeatable simulation, not a secret
 	mean := make(map[int]float64, len(rosters))
@@ -263,7 +251,7 @@ func simulate(ctx context.Context, rosters []sleeper.Roster, weeks [][]sleeper.M
 			if n := len(all); median && n > 0 {
 				slices.Sort(all)
 				med = all[n/2]
-				if n%2 == 0 { // between the halves: the top half beats it
+				if n%2 == 0 {
 					med = (all[n/2-1] + all[n/2]) / 2
 				}
 			}

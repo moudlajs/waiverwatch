@@ -1,7 +1,6 @@
 name: PR title
 
-# Squash merge makes the PR title the commit on main, and release-please
-# reads those commits - so the title has to be a valid Conventional Commit.
+# Squash-merged PR titles become commits release-please reads: they must be Conventional Commits.
 on:
   pull_request:
     types: [opened, reopened, edited, synchronize]

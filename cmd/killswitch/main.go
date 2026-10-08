@@ -1,10 +1,5 @@
-// Command killswitch unlinks the project's billing account when its budget
-// is spent. It deliberately imports nothing but internal/killswitch and the
-// standard library. It runs as its own Cloud Run service, reachable only by the
-// budget's Pub/Sub push subscription. See internal/killswitch.
-//
-// Environment: KILLSWITCH_PROJECT (required), KILLSWITCH_DRY_RUN=1 to only
-// log what it would do, PORT.
+// Command killswitch is a Cloud Run service that unlinks billing when the budget is spent.
+// Env: KILLSWITCH_PROJECT (required), KILLSWITCH_DRY_RUN=1, PORT.
 package main
 
 import (

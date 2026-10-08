@@ -10,27 +10,22 @@ import (
 	"time"
 )
 
-// Token kinds. A token of one kind is never accepted as another.
+// Token kinds: a token of one kind is never accepted as another.
 const (
 	kindCode    = "code"
 	kindAccess  = "access"
 	kindRefresh = "refresh"
-	// kindClient (register.go) is a registered client's ID.
 )
 
-// claims is what a signed token carries. Tokens are self-contained so that
-// nothing has to be stored: Cloud Run instances come and go, and a restart
-// must not sign the owner out.
 type claims struct {
-	Kind        string `json:"k"`
-	ClientID    string `json:"c"`
-	Subject     string `json:"s,omitempty"`  // Sleeper user ID
-	Username    string `json:"u,omitempty"`  // Sleeper username
-	Audience    string `json:"a,omitempty"`  // access tokens: the MCP resource URL
-	RedirectURI string `json:"r,omitempty"`  // codes
-	Challenge   string `json:"pc,omitempty"` // codes: PKCE S256 challenge
-	ID          string `json:"j,omitempty"`  // codes: single-use ID
-	// Registered clients (register.go).
+	Kind         string   `json:"k"`
+	ClientID     string   `json:"c"`
+	Subject      string   `json:"s,omitempty"`  // Sleeper user ID
+	Username     string   `json:"u,omitempty"`  // Sleeper username
+	Audience     string   `json:"a,omitempty"`  // access tokens: the MCP resource URL
+	RedirectURI  string   `json:"r,omitempty"`  // codes
+	Challenge    string   `json:"pc,omitempty"` // codes: PKCE S256 challenge
+	ID           string   `json:"j,omitempty"`  // codes: single-use ID
 	Name         string   `json:"n,omitempty"`
 	RedirectURIs []string `json:"rs,omitempty"`
 	Expires      int64    `json:"e"`
@@ -38,8 +33,7 @@ type claims struct {
 
 var errBadToken = errors.New("invalid token")
 
-// signer makes and checks HMAC-SHA256 signed tokens: base64url(json) "."
-// base64url(mac). Opaque to clients; only this server reads them.
+// signer makes and checks HMAC-SHA256 tokens: base64url(json) "." base64url(mac).
 type signer struct{ key []byte }
 
 func (s signer) sign(c claims) string {
@@ -48,7 +42,6 @@ func (s signer) sign(c claims) string {
 	return body + "." + base64.RawURLEncoding.EncodeToString(s.mac(body))
 }
 
-// verify checks the signature, kind and expiry.
 func (s signer) verify(token, kind string, now time.Time) (claims, error) {
 	body, sig, ok := strings.Cut(token, ".")
 	if !ok {

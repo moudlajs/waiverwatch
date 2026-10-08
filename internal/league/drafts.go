@@ -9,7 +9,6 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// maxSeasonsBack bounds how far a dynasty league's history is followed.
 const maxSeasonsBack = 5
 
 // DraftReport is the user's draft picks across leagues.
@@ -20,8 +19,7 @@ type DraftReport struct {
 	Leagues         []DraftHistory `json:"leagues"`
 }
 
-// DraftHistory is one league's drafts. Dynasty leagues include earlier
-// seasons (the startup draft and past rookie drafts).
+// DraftHistory is one league's drafts, including earlier seasons for dynasty.
 type DraftHistory struct {
 	LeagueID string         `json:"league_id"`
 	League   string         `json:"league"`
@@ -52,9 +50,7 @@ type MyPick struct {
 	StillMine bool   `json:"still_mine" jsonschema:"on my roster in this league today"`
 }
 
-// Drafts lists the user's draft picks in leagues matching leagueQuery (empty
-// = all), optionally only picks whose player name contains player. Dynasty
-// leagues include drafts from earlier seasons of the same league.
+// Drafts lists the user's draft picks in leagues matching leagueQuery, optionally filtered by player.
 func (s *Service) Drafts(ctx context.Context, leagueQuery, player string) (DraftReport, error) {
 	_, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -81,7 +77,7 @@ func (s *Service) Drafts(ctx context.Context, leagueQuery, player string) (Draft
 	for _, ld := range all {
 		ld = filterPicks(ld, player)
 		if player != "" && len(ld.Drafts) == 0 && ld.Error == "" {
-			continue // searching for a player: leave out leagues where I never drafted him
+			continue
 		}
 		for _, d := range ld.Drafts {
 			out.MyPicks += len(d.Picks)
@@ -104,8 +100,7 @@ func (s *Service) leagueDrafts(ctx context.Context, l sleeper.League, userID str
 	}
 	onRoster := Rostered([]sleeper.Roster{mine})
 
-	// This season's league, then, for dynasty, the same league's earlier
-	// seasons: that is where the startup draft lives.
+	// Dynasty: the startup draft lives in the league's earlier seasons.
 	leagueID, prev := l.LeagueID, l.PreviousID
 	for depth := 0; ; depth++ {
 		drafts, err := s.api.Drafts(ctx, leagueID)
@@ -139,9 +134,7 @@ func (s *Service) leagueDrafts(ctx context.Context, l sleeper.League, userID str
 	return out, nil
 }
 
-// myPicks keeps the picks the user made: picked_by is the user, or, when
-// Sleeper left it empty (auto-picks), the pick belonged to myRosterID
-// (0 = don't guess).
+// myPicks: Sleeper leaves picked_by empty on auto-picks, so fall back to myRosterID (0 = don't guess).
 func myPicks(picks []sleeper.Pick, userID string, myRosterID int, onRoster map[string]bool, players map[string]sleeper.Player) []MyPick {
 	out := []MyPick{}
 	for _, p := range picks {
@@ -166,8 +159,6 @@ func myPicks(picks []sleeper.Pick, userID string, myRosterID int, onRoster map[s
 	return out
 }
 
-// filterPicks keeps only picks whose player name contains player (ignoring
-// case), and only drafts with such picks. An empty player keeps everything.
 func filterPicks(ld DraftHistory, player string) DraftHistory {
 	if player == "" {
 		return ld

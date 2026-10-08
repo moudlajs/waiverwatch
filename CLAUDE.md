@@ -175,6 +175,14 @@ Trade values, public, no key, undocumented. One endpoint:
 - Table-driven tests with `t.Run`. Test our logic (joins, error paths), not
   `encoding/json`.
 - Names: `sleeper.Client`, never `sleeper.SleeperClient`.
+- **Comments are sparse.** A 1-2 line header per file, script or package
+  (scripts keep their usage line); a one-line doc comment on exported
+  identifiers. Anywhere else, one line only when something is genuinely
+  tricky (a regex, a non-obvious idiom, a surprising API behaviour, a
+  workaround with its issue number) or states a security invariant. No
+  comments that restate the code, narrate history ("found in review"),
+  explain Go basics, or run to paragraphs. Tests: one line only where a case
+  isn't obvious from its name. Lint directives stay as they are.
 - KISS: no abstractions, dependencies or config ahead of need. The MCP Go SDK
   and `errgroup` are expected dependencies; ask before adding others.
 

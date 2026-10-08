@@ -9,8 +9,7 @@ permissions:
 
 jobs:
   assign:
-    # One maintainer, so an unassigned issue is always an oversight. The
-    # issue forms also set an assignee, but only for issues created through them.
+    # One maintainer: issues not created through the forms get no assignee otherwise.
     if: github.event.issue.assignees[0] == null
     runs-on: ubuntu-latest
     steps:

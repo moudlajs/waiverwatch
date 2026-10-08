@@ -30,7 +30,6 @@ func TestOver(t *testing.T) {
 	}
 }
 
-// fakeGoogle records calls to the billing and resource manager APIs.
 type fakeGoogle struct {
 	mu             sync.Mutex
 	calls          []string

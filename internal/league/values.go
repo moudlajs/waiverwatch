@@ -15,14 +15,12 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// FetchValues returns a trade value market keyed by Sleeper player ID,
-// normally (*fantasycalc.Client).Values.
+// FetchValues returns a trade value market keyed by Sleeper player ID, normally (*fantasycalc.Client).Values.
 type FetchValues func(ctx context.Context, s fantasycalc.Settings) (map[string]fantasycalc.Value, error)
 
 // ValueSource credits where values come from; answers carry it.
 const ValueSource = "FantasyCalc (fantasycalc.com): values from real fantasy trades"
 
-// maxMatches caps the players one name can match (e.g. "Smith").
 const maxMatches = 5
 
 // ValueReport is players' trade values, per league.
@@ -32,8 +30,7 @@ type ValueReport struct {
 	Leagues  []ValueBoard `json:"leagues"`
 }
 
-// ValueBoard is the values in one league's market: named players, or one
-// team's roster.
+// ValueBoard is one league's market values: named players, or one team's roster.
 type ValueBoard struct {
 	LeagueID string        `json:"league_id"`
 	League   string        `json:"league"`
@@ -73,9 +70,7 @@ type PlayerValue struct {
 	Trend30Day   int    `json:"trend_30_day,omitempty" jsonschema:"value change over the last 30 days"`
 }
 
-// ValueSettings picks the FantasyCalc market that fits a league. Keeper and
-// guillotine leagues use redraft values; a league that can start two QBs
-// (QB and superflex slots) uses superflex values.
+// ValueSettings picks the FantasyCalc market for a league: redraft for keeper/guillotine, superflex when two QBs can start.
 func ValueSettings(l sleeper.League) fantasycalc.Settings {
 	qbs := 0
 	for _, slot := range l.RosterPositions {
@@ -91,10 +86,7 @@ func ValueSettings(l sleeper.League) fantasycalc.Settings {
 	}
 }
 
-// Values answers trade value questions in each league matching leagueQuery
-// (empty = all). With names, it values those players in every league and
-// says who has them; without, it values a whole roster: owner's (team or
-// display name), or mine when owner is empty.
+// Values values named players in each matching league, or else owner's roster (empty = mine).
 func (s *Service) Values(ctx context.Context, leagueQuery, owner string, names []string) (ValueReport, error) {
 	if s.values == nil {
 		return ValueReport{}, errors.New("trade values are not set up on this server")
@@ -234,9 +226,7 @@ func playerValue(p sleeper.Player, market map[string]fantasycalc.Value) PlayerVa
 	}
 }
 
-// findPlayers returns the players at a fantasy position whose name contains
-// query, ignoring case and punctuation ("jamarr" finds Ja'Marr Chase): an
-// exact name first, else up to maxMatches, active and best ranked first.
+// findPlayers matches query ignoring case and punctuation: an exact name first, else up to maxMatches.
 func findPlayers(players map[string]sleeper.Player, query string) []sleeper.Player {
 	q := foldName(query)
 	if q == "" {
@@ -269,7 +259,6 @@ func findPlayers(players map[string]sleeper.Player, query string) []sleeper.Play
 	return partial[:min(len(partial), maxMatches)]
 }
 
-// rank orders by search_rank with unranked players last.
 func rank(p sleeper.Player) int {
 	if p.SearchRank <= 0 {
 		return int(^uint(0) >> 1)
@@ -277,8 +266,6 @@ func rank(p sleeper.Player) int {
 	return p.SearchRank
 }
 
-// foldName lowercases a name and keeps only letters, digits and single
-// spaces.
 func foldName(s string) string {
 	var b strings.Builder
 	space := false
@@ -297,7 +284,6 @@ func foldName(s string) string {
 	return b.String()
 }
 
-// rosterValue sums the values of the given players.
 func rosterValue(ids []string, market map[string]fantasycalc.Value) int {
 	total := 0
 	for _, id := range ids {
@@ -306,10 +292,7 @@ func rosterValue(ids []string, market map[string]fantasycalc.Value) int {
 	return total
 }
 
-// valueRanking orders a league's teams by summed roster value, most valuable
-// first; tied teams share a rank. Empty rosters (teams cut from a guillotine
-// league) are left out. ranks maps roster IDs to their rank (team names can
-// be empty or shared).
+// valueRanking ranks teams by roster value, leaving out empty rosters; ranks is keyed by roster ID.
 func valueRanking(rosters []sleeper.Roster, users []sleeper.LeagueUser, market map[string]fantasycalc.Value, mineID int) (out []TeamValue, ranks map[int]int) {
 	sorted := slices.DeleteFunc(slices.Clone(rosters), func(r sleeper.Roster) bool { return len(r.Players) == 0 })
 	slices.SortStableFunc(sorted, func(a, b sleeper.Roster) int {

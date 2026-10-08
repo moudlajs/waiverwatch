@@ -44,9 +44,7 @@ type RosterPlayer struct {
 	Value      int    `json:"value,omitempty" jsonschema:"compare_rosters: FantasyCalc trade value"`
 }
 
-// Rosters returns the rosters matching leagueQuery (name fragment or ID;
-// empty = all leagues) and owner (team or display name; empty = mine). With
-// an owner but no league, leagues where nobody matches are left out.
+// Rosters returns the rosters matching leagueQuery (empty = all) and owner (empty = mine).
 func (s *Service) Rosters(ctx context.Context, leagueQuery, owner string) (RosterReport, error) {
 	_, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -132,14 +130,11 @@ func (s *Service) roster(ctx context.Context, l sleeper.League, userID, owner st
 	return out, nil
 }
 
-// notFoundError means no team in a league matched the owner query.
 type notFoundError struct{ msg string }
 
 func (e notFoundError) Error() string { return e.msg }
 
-// FindOwner finds the roster whose owner or co-owner matches query by team
-// name or display name: an exact match (ignoring case) first, else a single
-// partial match. The error lists the league's teams so the caller can retry.
+// FindOwner finds the roster whose owner or co-owner matches query: an exact name first, else a single partial match.
 func FindOwner(rosters []sleeper.Roster, users []sleeper.LeagueUser, query string) (sleeper.Roster, error) {
 	q := strings.ToLower(strings.TrimSpace(query))
 	names := func(u sleeper.LeagueUser) []string {
@@ -178,8 +173,6 @@ func FindOwner(rosters []sleeper.Roster, users []sleeper.LeagueUser, query strin
 	}
 }
 
-// split sorts a roster's players into starters (with their lineup slot),
-// bench, IR and taxi.
 func split(r sleeper.Roster, slots []string, players map[string]sleeper.Player) (starters, bench, ir, taxi []RosterPlayer) {
 	player := func(id, slot string) RosterPlayer {
 		p := Lookup(players, id)

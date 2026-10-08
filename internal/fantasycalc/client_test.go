@@ -48,7 +48,6 @@ func TestNormalise(t *testing.T) {
 	}
 }
 
-// fixture serves testdata/<name>.json for the query FantasyCalc would get.
 func fixture(t *testing.T, calls *atomic.Int32, status *atomic.Int32) *Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -10,7 +10,6 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/store"
 )
 
-// team makes a roster that has played games games scoring ppg a game.
 func team(id, wins, losses int, ppg float64) sleeper.Roster {
 	pf := ppg * float64(wins+losses)
 	return sleeper.Roster{RosterID: id, OwnerID: string(rune('a' + id)), Settings: sleeper.RosterSettings{

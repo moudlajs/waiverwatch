@@ -19,14 +19,12 @@ import (
 // DefaultBaseURL is the public Sleeper API. No key, no auth.
 const DefaultBaseURL = "https://api.sleeper.app/v1"
 
-// ErrNotFound is returned for unknown users, leagues and the like. Sleeper
-// usually answers those with 200 and a JSON null rather than a 404.
+// ErrNotFound is returned for unknown users, leagues and the like (Sleeper usually answers 200 with JSON null).
 var ErrNotFound = errors.New("not found")
 
 // Errors worded for people: tools pass them to Claude, which passes them on.
 var (
-	// ErrBusy: waiverwatch's own call budget toward Sleeper is used up for
-	// longer than a caller should wait.
+	// ErrBusy: waiverwatch's own call budget toward Sleeper is used up.
 	ErrBusy = errors.New("waiverwatch is busy right now (lots of people asking at once); try again in a minute")
 	// ErrRateLimited: Sleeper answered 429 Too Many Requests.
 	ErrRateLimited = errors.New("the Sleeper API is limiting requests right now; try again in a minute")
@@ -34,11 +32,9 @@ var (
 	ErrUnavailable = errors.New("the Sleeper API isn't responding right now; try again shortly")
 )
 
-// Sleeper asks apps to stay under 1000 calls a minute per IP and may block
-// above it. Every user of a hosted server shares its egress, so the client
-// holds all its calls to this budget, waiting at most budgetWait for room.
+// Sleeper may block above 1000 calls a minute per IP, shared by every user of a hosted server.
 const (
-	callsPerSecond = 10 // 600 a minute
+	callsPerSecond = 10
 	callBurst      = 50
 	budgetWait     = 10 * time.Second
 )
@@ -51,8 +47,7 @@ type Client struct {
 	cache  *cache
 }
 
-// New returns a client for baseURL, normally DefaultBaseURL. Tests pass an
-// httptest server URL instead.
+// New returns a client for baseURL, normally DefaultBaseURL.
 func New(baseURL string) *Client {
 	return &Client{
 		http:   &http.Client{Timeout: 10 * time.Second},
@@ -104,8 +99,7 @@ func (c *Client) Drafts(ctx context.Context, leagueID string) ([]Draft, error) {
 	return ds, nil
 }
 
-// DraftPicks returns every pick made in a draft, in order. final (the draft
-// is complete) lets the picks be reused for a day; they can't change.
+// DraftPicks returns every pick made in a draft, in order; final (draft complete) caches them for a day.
 func (c *Client) DraftPicks(ctx context.Context, draftID string, final bool) ([]Pick, error) {
 	ttl := ttlLive
 	if final {
@@ -146,8 +140,7 @@ func (c *Client) Matchups(ctx context.Context, leagueID string, week int) ([]Mat
 	return ms, nil
 }
 
-// TradedPicks returns a league's draft picks that have changed hands, for
-// past and future drafts.
+// TradedPicks returns a league's draft picks that have changed hands, past and future drafts.
 func (c *Client) TradedPicks(ctx context.Context, leagueID string) ([]TradedPick, error) {
 	var ps []TradedPick
 	if err := c.get(ctx, "/league/"+url.PathEscape(leagueID)+"/traded_picks", ttlLive, &ps); err != nil {
@@ -156,10 +149,7 @@ func (c *Client) TradedPicks(ctx context.Context, leagueID string) ([]TradedPick
 	return ps, nil
 }
 
-// Projections returns Sleeper's projected stats for one week, keyed by
-// player ID (team defenses by team abbreviation). Each player's stats include
-// the projected fantasy points pts_std, pts_half_ppr and pts_ppr. seasonType
-// is State.SeasonType: pre, regular or post. Undocumented, like the rest.
+// Projections returns projected stats (incl. pts_std, pts_half_ppr, pts_ppr) for one week, keyed by player ID.
 func (c *Client) Projections(ctx context.Context, seasonType, season string, week int) (map[string]map[string]float64, error) {
 	var ps map[string]map[string]float64
 	path := fmt.Sprintf("/projections/nfl/%s/%s/%d", url.PathEscape(seasonType), url.PathEscape(season), week)
@@ -190,8 +180,7 @@ func (c *Client) TrendingAdds(ctx context.Context, lookbackHours, limit int) ([]
 	return ts, nil
 }
 
-// Players returns the full NFL player dictionary, keyed by player ID. It is
-// ~15 MB; Sleeper asks callers to fetch it at most once a day.
+// Players returns the NFL player dictionary (~15 MB; Sleeper asks for at most one fetch a day).
 func (c *Client) Players(ctx context.Context) (map[string]Player, error) {
 	var ps map[string]Player
 	// Not cached here (ttl 0): league.Directory keeps it, decoded, for a day.
@@ -201,8 +190,7 @@ func (c *Client) Players(ctx context.Context) (map[string]Player, error) {
 	return ps, nil
 }
 
-// get decodes the JSON at base+path into dst, reusing a response up to ttl
-// old (0: always fetch). Errors are never cached.
+// get decodes base+path into dst, reusing a response up to ttl old (0: always fetch); errors are never cached.
 func (c *Client) get(ctx context.Context, path string, ttl time.Duration, dst any) error {
 	if ttl <= 0 {
 		raw, err := c.fetch(ctx, path)
@@ -214,11 +202,7 @@ func (c *Client) get(ctx context.Context, path string, ttl time.Duration, dst an
 	if raw, ok := c.cache.get(path); ok {
 		return decode(raw, dst)
 	}
-	// The fetch is shared by every caller waiting on this path, often other
-	// users' requests, so it must not die with whichever caller started it:
-	// it runs without that caller's cancellation (the HTTP client and budget
-	// wait have their own timeouts), and each caller only stops waiting when
-	// its own context ends.
+	// Detached: the shared fetch must not die with whichever caller started it.
 	shared := context.WithoutCancel(ctx)
 	ch := c.cache.flight.DoChan(path, func() (any, error) {
 		if raw, ok := c.cache.get(path); ok { // filled while we waited
@@ -242,7 +226,6 @@ func (c *Client) get(ctx context.Context, path string, ttl time.Duration, dst an
 	}
 }
 
-// fetch GETs base+path within the call budget and returns the raw JSON body.
 func (c *Client) fetch(ctx context.Context, path string) ([]byte, error) {
 	wait, cancel := context.WithTimeout(ctx, budgetWait)
 	err := c.budget.Wait(wait)

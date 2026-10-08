@@ -45,14 +45,13 @@ type TradeReport struct {
 
 // TradeAsset is a player or dynasty draft pick in a trade.
 type TradeAsset struct {
-	PlayerID string `json:"player_id"`
-	Name     string `json:"name"`
-	Position string `json:"position,omitempty" jsonschema:"PICK for draft picks"`
-	NFLTeam  string `json:"nfl_team,omitempty"`
-	Age      int    `json:"age,omitempty"`
-	Injury   string `json:"injury,omitempty" jsonschema:"e.g. Questionable, Out, IR"`
-	Team     string `json:"team,omitempty" jsonschema:"the fantasy team he (or the pick) is on now; empty for a free agent"`
-	// Picks only.
+	PlayerID     string `json:"player_id"`
+	Name         string `json:"name"`
+	Position     string `json:"position,omitempty" jsonschema:"PICK for draft picks"`
+	NFLTeam      string `json:"nfl_team,omitempty"`
+	Age          int    `json:"age,omitempty"`
+	Injury       string `json:"injury,omitempty" jsonschema:"e.g. Questionable, Out, IR"`
+	Team         string `json:"team,omitempty" jsonschema:"the fantasy team he (or the pick) is on now; empty for a free agent"`
 	OriginalTeam string `json:"original_team,omitempty" jsonschema:"picks: the team whose pick it originally was; its record sets where it lands"`
 	Projected    string `json:"projected,omitempty" jsonschema:"picks in the next draft: early, mid or late, projected from the original team's standing now"`
 	Value        int    `json:"value"`
@@ -67,9 +66,7 @@ type DepthChange struct {
 	After    string `json:"after"`
 }
 
-// EvaluateTrade values giving give for get in the league matching
-// leagueQuery. Without a league, it is the one league where every player in
-// give is on my roster.
+// EvaluateTrade values giving give for get; without a league, it uses the one where I hold all of give.
 func (s *Service) EvaluateTrade(ctx context.Context, leagueQuery string, give, get []string) (TradeReport, error) {
 	if s.values == nil {
 		return TradeReport{}, errors.New("trade values are not set up on this server")
@@ -100,9 +97,7 @@ func (s *Service) EvaluateTrade(ctx context.Context, leagueQuery string, give, g
 	return s.evaluate(ctx, leagues[0], user.UserID, give, get, players)
 }
 
-// leaguesWithMine narrows leagues to the single one where every player in
-// give is on my roster. Picks don't narrow anything; a give of picks alone
-// needs a league.
+// leaguesWithMine keeps the one league holding all of give; picks don't narrow it.
 func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League, userID string, give []string, players map[string]sleeper.Player) ([]sleeper.League, error) {
 	var named []string
 	for _, n := range give {
@@ -124,7 +119,7 @@ func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League,
 		}
 		mine, ok := MyRoster(rosters, userID)
 		if !ok {
-			return // not in this league's rosters: nothing of mine to trade
+			return
 		}
 		for _, n := range named {
 			// Ambiguous still counts: he is here, and evaluating says which ones match.
@@ -160,7 +155,6 @@ func (s *Service) leaguesWithMine(ctx context.Context, leagues []sleeper.League,
 	}
 }
 
-// trade is the league state one evaluation works from.
 type trade struct {
 	league  sleeper.League
 	market  map[string]fantasycalc.Value
@@ -168,7 +162,7 @@ type trade struct {
 	users   []sleeper.LeagueUser
 	players map[string]sleeper.Player
 	traded  []sleeper.TradedPick
-	source  string // set when the backup source's values are in use
+	source  string
 	mine    sleeper.Roster
 	seen    map[string]bool
 }
@@ -195,8 +189,7 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 		return out, fmt.Errorf("no roster owned by user %s in league %s", userID, l.LeagueID)
 	}
 
-	// Players first: the players I get name the partner, whose roster then
-	// settles ambiguous names and whose picks are the ones on offer.
+	// Players first: those I get name the partner, whose roster settles names and picks.
 	out.Give, out.Get = make([]TradeAsset, len(give)), make([]TradeAsset, len(get))
 	var picks []func() error
 	for i, n := range give {
@@ -327,7 +320,6 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 	return out, nil
 }
 
-// player makes a trade asset of a player, once per trade.
 func (t *trade) player(id string) (TradeAsset, error) {
 	pv := playerValue(Lookup(t.players, id), t.market)
 	if t.seen[id] {
@@ -341,9 +333,7 @@ func (t *trade) player(id string) (TradeAsset, error) {
 	return a, nil
 }
 
-// pick finds the one pick matching q held by one of holders, and values it:
-// by the named slot, else (next draft only) the slot its original team's
-// standing projects, else as a generic pick of its round.
+// pick values the one pick matching q: by slot, else projected slot (next draft only), else generic.
 func (t *trade) pick(q pickQuery, holders []int, side string) (TradeAsset, error) {
 	seasons := pickSeasons(t.market)
 	if len(seasons) == 0 {
@@ -400,8 +390,7 @@ func (t *trade) pick(q pickQuery, holders []int, side string) (TradeAsset, error
 	t.seen[id] = true
 
 	slot, projected := q.slot, ""
-	// The earliest draft FantasyCalc values is the next one: it drops a
-	// draft's picks once that draft is done.
+	// FantasyCalc drops a draft's picks once it is done, so the earliest season valued is the next draft.
 	if slot == "" && q.season == seasons[0] {
 		slot = projectSlot(t.rosters, p.origin)
 		projected = slot
@@ -429,8 +418,6 @@ func matching(team string) string {
 	return fmt.Sprintf(" matching %q", team)
 }
 
-// partners are the roster IDs the players resolved on the get side come
-// from; with none yet, every other team.
 func (t *trade) partners(get []TradeAsset) []int {
 	var ids []int
 	for _, a := range get {
@@ -474,8 +461,6 @@ func (t *trade) team(rosterID int) string {
 	return TeamName(t.users, t.roster(rosterID).OwnerID)
 }
 
-// ambiguous lists every player a name matches, with position, NFL team and
-// fantasy team, so the caller can pick one without another lookup.
 func (t *trade) ambiguous(side, query string, ids []string) error {
 	var names []string
 	for _, id := range ids {
@@ -489,8 +474,6 @@ func (t *trade) ambiguous(side, query string, ids []string) error {
 	return fmt.Errorf("%s: %q %w: %s", side, query, errAmbiguous, strings.Join(names, "; "))
 }
 
-// depthChange is my depth before and after the trade at the positions it
-// touches.
 func (t *trade) depthChange(give, get []TradeAsset) []DepthChange {
 	var out, in []string
 	var touched []string
@@ -532,7 +515,6 @@ func (t *trade) depthChange(give, get []TradeAsset) []DepthChange {
 	return changes
 }
 
-// countPlayers counts the assets that take a roster spot (not draft picks).
 func countPlayers(assets []TradeAsset) int {
 	n := 0
 	for _, a := range assets {
@@ -545,8 +527,6 @@ func countPlayers(assets []TradeAsset) int {
 
 var errAmbiguous = errors.New("matches more than one")
 
-// rosterMatches returns the players on roster whose name matches query: the
-// exact names if any, else every partial match.
 func rosterMatches(roster []string, query string, players map[string]sleeper.Player) []string {
 	q := foldName(query)
 	var exact, partial []string
@@ -564,12 +544,7 @@ func rosterMatches(roster []string, query string, players map[string]sleeper.Pla
 	return partial
 }
 
-// adjust sets each asset's Adjusted value. Two good players are not worth
-// one great one: a roster can only start so many, and the stud is the scarce
-// asset. So each side's best asset counts in full, and every other asset
-// counts value × √(value / top), where top is the best asset in the whole
-// trade. A 1-for-1 trade is unchanged; a 2-for-1 is judged as most trade
-// calculators and managers do.
+// adjust sets Adjusted: each side's best counts in full, others value × √(value / top), top being the trade's best.
 func adjust(sides ...[]TradeAsset) {
 	top := 0
 	for _, side := range sides {
@@ -595,8 +570,6 @@ func adjust(sides ...[]TradeAsset) {
 	}
 }
 
-// verdict words the outcome for me: within 5% is fair, within 15% a slight
-// edge, beyond that a clear one.
 func verdict(give, get int) string {
 	bigger := max(give, get)
 	if bigger == 0 {

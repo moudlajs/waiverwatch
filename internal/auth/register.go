@@ -11,38 +11,24 @@ import (
 	"time"
 )
 
-// Dynamic Client Registration (RFC 7591), for MCP clients without a Client
-// ID Metadata Document: Gemini (the app and the CLI) registers this way.
-//
-// Stateless like everything else here: the client_id is a signed token
-// carrying the registered redirect URIs and name, so registering stores
-// nothing and survives restarts. Registration is open, but the redirect URIs
-// are not: loopback (CLIs on the user's machine, any port) or HTTPS on a
-// host in redirectHosts. A token can only ever go back to one of those.
+// Stateless Dynamic Client Registration (RFC 7591), e.g. for Gemini: the client_id is a signed token.
+// Registration is open, but redirect URIs must be loopback or HTTPS on redirectHosts.
 
-// kindClient marks a registered client's ID.
 const kindClient = "client"
 
-// registeredPrefix starts every registered client_id, to tell them from
-// Claude's URL client IDs at a glance.
 const registeredPrefix = "reg."
 
-// clientTTL is how long a registered client_id stays valid. Clients
-// register once and keep the ID; long, so nobody has to reconnect.
 const clientTTL = 5 * 365 * 24 * time.Hour
 
-// Registration limits: generous for real clients, small for the signed ID.
 const (
 	maxRedirects  = 5
 	maxRedirect   = 512
 	maxClientName = 100
 )
 
-// redirectHosts are the HTTPS hosts a registered client may redirect to,
-// and their subdomains: Google's, for the Gemini app.
+// redirectHosts (and subdomains) are the only HTTPS hosts a registered client may redirect to.
 var redirectHosts = []string{"google.com"}
 
-// registration is the part of an RFC 7591 request waiverwatch reads.
 type registration struct {
 	RedirectURIs            []string `json:"redirect_uris"`
 	ClientName              string   `json:"client_name"`
@@ -81,7 +67,6 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// registeredClient reads a client_id issued by register.
 func (s *Server) registeredClient(clientID string) (clientMetadata, bool) {
 	token, ok := strings.CutPrefix(clientID, registeredPrefix)
 	if !ok {
@@ -94,7 +79,6 @@ func (s *Server) registeredClient(clientID string) (clientMetadata, bool) {
 	return clientMetadata{ClientID: clientID, ClientName: c.Name, RedirectURIs: c.RedirectURIs}, true
 }
 
-// checkRedirects allows loopback http URIs and HTTPS URIs on redirectHosts.
 func checkRedirects(uris []string) error {
 	if len(uris) == 0 || len(uris) > maxRedirects {
 		return fmt.Errorf("give 1 to %d redirect_uris", maxRedirects)
