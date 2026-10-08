@@ -7,9 +7,7 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// How long responses are reused. Every caller of a Client shares them, so
-// league mates asking about the same league share one fetch. The cache lives
-// in memory and is lost when the server scales to zero, which is fine.
+// How long responses are reused; shared by every caller of a Client.
 const (
 	ttlShared  = 5 * time.Minute  // NFL state, trending adds, projections: the same for everyone
 	ttlSlow    = 10 * time.Minute // username lookups, a user's leagues, draft lists
@@ -19,15 +17,14 @@ const (
 	cacheMaxBytes = 64 << 20 // well inside the 256 MiB container
 )
 
-// cache keeps raw Sleeper responses (JSON bytes, decoded afresh for each
-// caller, so no two callers share a value) until they expire.
+// cache keeps raw JSON responses, decoded afresh per caller so no two callers share a value.
 type cache struct {
 	mu      sync.Mutex
 	entries map[string]cacheEntry
 	size    int
 	max     int
 	now     func() time.Time
-	flight  singleflight.Group // concurrent misses for one path share a fetch
+	flight  singleflight.Group
 }
 
 type cacheEntry struct {

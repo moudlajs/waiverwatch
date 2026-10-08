@@ -89,8 +89,7 @@ func TestAnonID(t *testing.T) {
 	}
 }
 
-// The usage log must never contain who called: not the username, not the
-// Sleeper user id. Only the anonymous daily ID.
+// The usage log never names the caller (username or Sleeper user ID), only the anonymous daily ID.
 func TestUsageLogNamesNobody(t *testing.T) {
 	var buf strings.Builder
 	prev := slog.Default()

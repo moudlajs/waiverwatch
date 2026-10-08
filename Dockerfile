@@ -10,11 +10,9 @@ ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.buildVersion=${VERSION}" -o /waiverwatch . && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /killswitch ./cmd/killswitch
 
-# Static binary, CA certificates, no shell, non-root.
 FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /waiverwatch /waiverwatch
-# The billing kill switch (#51) ships in the same image; its Cloud Run
-# service runs it with --command /killswitch.
+# The billing kill switch (#51) ships in the same image, run with --command /killswitch.
 COPY --from=build /killswitch /killswitch
 ENV PORT=8080
 EXPOSE 8080

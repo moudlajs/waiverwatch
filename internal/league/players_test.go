@@ -14,7 +14,6 @@ import (
 
 var mahomes = sleeper.Player{PlayerID: "4046", FullName: "Patrick Mahomes", Position: "QB", Team: "KC"}
 
-// fakeFetch counts downloads and returns a one-player dictionary, or err.
 type fakeFetch struct {
 	calls atomic.Int32
 	err   error

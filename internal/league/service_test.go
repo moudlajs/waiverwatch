@@ -82,8 +82,7 @@ func TestTeamName(t *testing.T) {
 	}
 }
 
-// fakeSleeper serves a user "me" (ID 100) with a dynasty league L1 that
-// loads and a guillotine league L2 whose rosters are missing.
+// fakeSleeper: user "me" (ID 100), dynasty league L1, guillotine league L2 with missing rosters.
 func fakeSleeper(t *testing.T) *sleeper.Client {
 	t.Helper()
 	me := sleeper.LeagueUser{UserID: "100", DisplayName: "me"}

@@ -1,6 +1,4 @@
-// Package mcp exposes waiverwatch as MCP tools and serves them as a
-// transport. It knows MCP, not football, and never calls Sleeper itself:
-// every tool delegates to league.Service.
+// Package mcp exposes waiverwatch's league.Service as MCP tools over stdio or HTTP.
 package mcp
 
 import (
@@ -12,16 +10,13 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/league"
 )
 
-// Per signed-in user: plenty for a person talking to Claude, little for a
-// script. Local (stdio) use is not limited.
+// Per signed-in user; stdio is not limited.
 const (
 	toolCallsPerMinute = 30
 	toolCallBurst      = 10
 )
 
-// NewServer returns an MCP server with every waiverwatch tool registered.
-// usageKey keys the anonymous daily user IDs in the usage log (the hosted
-// signing key); nil logs none.
+// NewServer returns an MCP server with every tool; usageKey keys anonymous usage IDs (nil: none logged).
 func NewServer(svc *league.Service, version string, usageKey []byte) *sdk.Server {
 	return newServer(svc, version, newGate(toolCallsPerMinute, toolCallBurst, usageKey))
 }
@@ -225,15 +220,12 @@ var toolNames = []string{
 	"lineup_check", "season_outlook",
 }
 
-// Claude keeps a stored copy of a connector's tool list until the connector
-// is reconnected, so a chat may lack tools a release added. Tool results are
-// always live: this lets Claude notice.
+// Claude caches a connector's tool list until reconnect; this live note lets it notice new tools.
 const reconnectNote = "If any of these tools are missing from your tool list, waiverwatch was updated after this " +
 	"connector's tools were loaded: tell the user to reconnect the waiverwatch connector (claude.ai Settings > " +
 	"Connectors) and start a new chat. Don't improvise what a missing tool would return."
 
-// LeaguesOutput is list_leagues' answer: the overview plus what this server
-// offers.
+// LeaguesOutput is list_leagues' answer: the overview plus what this server offers.
 type LeaguesOutput struct {
 	league.Overview
 	Server ServerInfo `json:"server"`
@@ -284,7 +276,6 @@ type WaiverInput struct {
 	Limit    int    `json:"limit,omitempty" jsonschema:"targets per league, 1-25; default 5"`
 }
 
-// normalisePosition accepts common spellings: "rb", "DST", "D/ST", "PK".
 func normalisePosition(p string) string {
 	p = strings.ToUpper(strings.TrimSpace(p))
 	switch p {

@@ -16,10 +16,9 @@ type Players struct {
 	FetchedAt time.Time
 }
 
-// Store persists the player dictionary. Memory is the only implementation;
-// Cloud Run's disk is ephemeral, so anything durable would be a service.
+// Store persists the player dictionary; Cloud Run's disk is ephemeral, so durable means a service.
 type Store interface {
-	// Players returns the saved snapshot, or the zero value if there is none.
+	// Players returns the saved snapshot, or the zero value if none.
 	Players(ctx context.Context) (Players, error)
 	SavePlayers(ctx context.Context, p Players) error
 }

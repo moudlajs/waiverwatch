@@ -41,7 +41,6 @@ func (s *Server) authorizationServer(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-// authRequest is a validated /authorize request.
 type authRequest struct {
 	ClientID, ClientHost, ClientName string
 	SelfNamed                        bool // a registered client: its name is its own claim
@@ -49,8 +48,7 @@ type authRequest struct {
 	Scope, Resource                  string
 }
 
-// parseAuthorize validates an /authorize request. Its errors are shown to
-// the person, never sent to an unverified redirect URI.
+// parseAuthorize's errors are shown to the person, never sent to an unverified redirect URI.
 func (s *Server) parseAuthorize(ctx context.Context, v url.Values) (authRequest, error) {
 	req := authRequest{
 		ClientID: v.Get("client_id"), RedirectURI: v.Get("redirect_uri"), State: v.Get("state"),
@@ -81,7 +79,7 @@ func (s *Server) parseAuthorize(ctx context.Context, v url.Values) (authRequest,
 	}
 	req.ClientName = doc.ClientName
 	if strings.HasPrefix(req.ClientID, registeredPrefix) {
-		// A registered client names itself: lead with where the sign-in goes back to.
+		// A registered client's name is self-claimed: lead with where the sign-in goes back to.
 		req.SelfNamed = true
 		u, _ := url.Parse(req.RedirectURI)
 		req.ClientHost = u.Host
@@ -198,10 +196,7 @@ func (s *Server) token(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// issue answers a token request with a fresh access and refresh token.
-// Every refresh hands out a new refresh token, but tokens are stateless, so
-// earlier ones stay valid until they expire: this is not rotation with
-// revocation. Rotating the signing key is the way to revoke everything.
+// issue mints fresh tokens; old ones stay valid until expiry, so only a signing-key rotation revokes.
 func (s *Server) issue(w http.ResponseWriter, from claims) {
 	now := s.now()
 	w.Header().Set("Cache-Control", "no-store")
@@ -220,7 +215,6 @@ func (s *Server) issue(w http.ResponseWriter, from claims) {
 	})
 }
 
-// clientMetadata is the part of a Client ID Metadata Document we use.
 type clientMetadata struct {
 	ClientID     string   `json:"client_id"`
 	ClientName   string   `json:"client_name"`
@@ -232,7 +226,6 @@ type cachedDoc struct {
 	fetched time.Time
 }
 
-// clientDoc fetches (and caches for an hour) an allowed client's metadata.
 func (s *Server) clientDoc(ctx context.Context, clientID string) (clientMetadata, error) {
 	s.mu.Lock()
 	cached, ok := s.docs[clientID]
@@ -266,8 +259,7 @@ func (s *Server) clientDoc(ctx context.Context, clientID string) (clientMetadata
 	return doc, nil
 }
 
-// redirectAllowed matches uri exactly against registered, except that
-// loopback URIs (native apps such as Claude Code) match with any port.
+// redirectAllowed matches exactly, except loopback URIs (native apps) match with any port.
 func redirectAllowed(uri string, registered []string) bool {
 	if slices.Contains(registered, uri) {
 		return true
@@ -321,10 +313,7 @@ func page(w http.ResponseWriter, status int, d pageData) {
 	_ = signInPage.Execute(w, d)
 }
 
-// csp is the sign-in page's Content-Security-Policy. Browsers apply
-// form-action to the redirects that follow a form submission too, so the
-// validated redirect_uri's origin must be allowed, or the browser silently
-// blocks the way back to Claude after a successful sign-in.
+// csp: browsers apply form-action to the post-submit redirect too, so redirect_uri's origin must be allowed.
 func csp(redirectURI string) string {
 	formAction := "'self'"
 	if u, err := url.Parse(redirectURI); err == nil && u.Scheme != "" && u.Host != "" {

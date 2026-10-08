@@ -47,22 +47,16 @@ type SideValues struct {
 	TheirsStarters int    `json:"theirs_starters"`
 }
 
-// PositionCompare is both teams' players at one position: starters first
-// (with their lineup slot), then bench, then IR (slot "IR"). Taxi squads are
-// left out.
+// PositionCompare is both teams' players at one position, taxi squads left out.
 type PositionCompare struct {
-	Position string         `json:"position"`
-	Mine     []RosterPlayer `json:"mine"`
-	Theirs   []RosterPlayer `json:"theirs"`
-	// Trade values at this position, when values could be loaded.
-	MineValue   int `json:"mine_value,omitempty"`
-	TheirsValue int `json:"theirs_value,omitempty"`
+	Position    string         `json:"position"`
+	Mine        []RosterPlayer `json:"mine"`
+	Theirs      []RosterPlayer `json:"theirs"`
+	MineValue   int            `json:"mine_value,omitempty"`
+	TheirsValue int            `json:"theirs_value,omitempty"`
 }
 
-// Compare puts my roster next to another team's in each league matching
-// leagueQuery (empty = all). With no owner, the other team is this week's
-// opponent; with an owner, leagues they are not in are left out unless a
-// league was named.
+// Compare puts my roster next to owner's (default: this week's opponent) in leagues matching leagueQuery.
 func (s *Service) Compare(ctx context.Context, leagueQuery, owner string) (Comparisons, error) {
 	state, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -163,7 +157,7 @@ func (s *Service) compare(ctx context.Context, l sleeper.League, userID, owner s
 		settings := ValueSettings(l).Normalise()
 		market, note, err := s.market(ctx, settings)
 		if err != nil {
-			addNote(&out.Note, "no trade values: "+err.Error()) // the comparison itself still stands
+			addNote(&out.Note, "no trade values: "+err.Error())
 			return out, nil
 		}
 		addNote(&out.Note, note)
@@ -204,14 +198,12 @@ func teamRecord(r sleeper.Roster, users []sleeper.LeagueUser) *TeamRecord {
 	return tr
 }
 
-// sideBySide groups both rosters by position in Positions order, then any
-// other positions alphabetically.
 func sideBySide(mine, them sleeper.Roster, slots []string, players map[string]sleeper.Player) []PositionCompare {
 	group := func(r sleeper.Roster) map[string][]RosterPlayer {
 		starters, bench, ir, _ := split(r, slots, players)
 		byPos := make(map[string][]RosterPlayer)
 		for _, p := range starters {
-			if p.PlayerID != "" { // skip empty slots
+			if p.PlayerID != "" {
 				byPos[p.Position] = append(byPos[p.Position], p)
 			}
 		}

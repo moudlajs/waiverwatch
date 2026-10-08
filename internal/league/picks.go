@@ -11,9 +11,7 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// pickQuery is a draft pick as people name it: "2027 1st", "2027 round 2",
-// "2027 1st early", "2027 1st chgo" (a team: the pick's original team or
-// whoever holds it).
+// pickQuery is a pick as people name it: "2027 1st", "2027 round 2 early", "2027 1st chgo".
 type pickQuery struct {
 	season string
 	round  int
@@ -23,7 +21,6 @@ type pickQuery struct {
 
 var pickPattern = regexp.MustCompile(`^(20\d\d) (?:round )?(\d)(?:st|nd|rd|th)?(?: round)?(?: (.*))?$`)
 
-// parsePick reads a pick name; ok is false for anything else (a player).
 func parsePick(name string) (pickQuery, bool) {
 	m := pickPattern.FindStringSubmatch(foldName(name))
 	if m == nil {
@@ -45,18 +42,13 @@ func parsePick(name string) (pickQuery, bool) {
 	return q, round > 0
 }
 
-// draftPick is one draft pick in a league: whose it originally was and who holds
-// it now (roster IDs).
 type draftPick struct {
 	season         string
 	round          int
 	origin, holder int
 }
 
-// leaguePicks lists every pick in the given future drafts: each team's own
-// picks for rounds 1..rounds, moved to their current holder by trades.
-// Sleeper lists each traded pick once, with its current holder, however many
-// times it changed hands (checked 2026-10-06).
+// leaguePicks: Sleeper lists each traded pick once, with its current holder, however often it moved.
 func leaguePicks(rosters []sleeper.Roster, traded []sleeper.TradedPick, seasons []string, rounds int) []draftPick {
 	var out []draftPick
 	for _, season := range seasons {
@@ -75,7 +67,6 @@ func leaguePicks(rosters []sleeper.Roster, traded []sleeper.TradedPick, seasons 
 	return out
 }
 
-// pickSeasons are the drafts FantasyCalc values picks for, earliest first.
 func pickSeasons(market map[string]fantasycalc.Value) []string {
 	var out []string
 	for _, v := range market {
@@ -90,7 +81,6 @@ func pickSeasons(market map[string]fantasycalc.Value) []string {
 	return out
 }
 
-// ordinal is FantasyCalc's round name: 1st, 2nd, 3rd, 4th...
 func ordinal(n int) string {
 	switch n {
 	case 1:
@@ -103,9 +93,7 @@ func ordinal(n int) string {
 	return strconv.Itoa(n) + "th"
 }
 
-// projectSlot guesses where a pick in the next draft lands from its original
-// team's standing now: the bottom third picks early, the top third late.
-// Empty when the season hasn't started (no games played).
+// projectSlot guesses early/mid/late from the original team's standing; empty before any games.
 func projectSlot(rosters []sleeper.Roster, origin int) string {
 	played := false
 	for _, r := range rosters {
@@ -117,7 +105,7 @@ func projectSlot(rosters []sleeper.Roster, origin int) string {
 	rank, n := Standing(rosters, origin, false), len(rosters)
 	switch {
 	case rank == 0:
-		return "" // not in this league
+		return ""
 	case rank*3 <= n:
 		return "late"
 	case rank*3 > 2*n:
@@ -127,8 +115,6 @@ func projectSlot(rosters []sleeper.Roster, origin int) string {
 	}
 }
 
-// pickValue is a pick's FantasyCalc value: by slot ("2027 1st (Early)") when
-// slot is set and FantasyCalc values that slot, else the generic round.
 func pickValue(market map[string]fantasycalc.Value, season string, round int, slot string) (fantasycalc.Value, bool) {
 	base := season + " " + ordinal(round)
 	names := []string{base}
@@ -145,7 +131,6 @@ func pickValue(market map[string]fantasycalc.Value, season string, round int, sl
 	return fantasycalc.Value{}, false
 }
 
-// describePick names a pick for people: "2027 1st (CHGO's)".
 func describePick(p draftPick, team func(rosterID int) string) string {
 	s := fmt.Sprintf("%s %s (%s's", p.season, ordinal(p.round), team(p.origin))
 	if p.holder != p.origin {

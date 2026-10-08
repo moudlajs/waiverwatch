@@ -9,21 +9,17 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// A complete feed has points for at least minProjected players (team
-// defenses aside), or perTeam per team playing on a small slate (playoff
-// weeks). A real week has hundreds; Sleeper blanks them while it refreshes
-// mid-week, leaving only the defenses, which also tell how many teams play.
+// Sleeper blanks projections mid-week (only defenses remain); a feed below these counts is incomplete.
 const (
 	minProjected = 150
 	perTeam      = 12
 )
 
-// projectionCache keeps the last complete projections per week, to serve
-// while Sleeper's feed is blank. In memory: lost on scale-to-zero, fine.
+// projectionCache keeps the last complete projections per week, served while Sleeper's feed is blank.
 type projectionCache struct {
-	min  int // players needed for a complete feed; 0 means minProjected (tests lower it)
+	min  int // 0 means minProjected
 	mu   sync.Mutex
-	last map[string]projSnapshot // by season type/season/week
+	last map[string]projSnapshot
 }
 
 type projSnapshot struct {
@@ -31,10 +27,7 @@ type projSnapshot struct {
 	fetched time.Time
 }
 
-// complete checks a fetched feed. A complete one is remembered and returned
-// as is. An incomplete one is swapped for the last complete set for the same
-// week, with a note; failing that it is returned with a note and ok false,
-// so callers don't treat missing points as zeros.
+// complete returns a complete feed as is, else the week's last complete set; ok is false if neither.
 func (c *projectionCache) complete(key string, feed map[string]map[string]float64, players map[string]sleeper.Player, now time.Time) (proj map[string]map[string]float64, note string, ok bool) {
 	n, teams := 0, 0
 	for id, stats := range feed {
@@ -66,8 +59,7 @@ func (c *projectionCache) complete(key string, feed map[string]map[string]float6
 	return feed, "Sleeper's player projections for this week are missing right now (it refreshes them during the week); try again later", false
 }
 
-// hasPoints reports whether projected stats include fantasy points (players
-// on bye, and every player in a blank feed, have stats without them).
+// hasPoints reports whether stats include fantasy points (bye weeks and blank feeds lack them).
 func hasPoints(stats map[string]float64) bool {
 	for _, k := range []string{"pts_ppr", "pts_half_ppr", "pts_std"} {
 		if _, ok := stats[k]; ok {

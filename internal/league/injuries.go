@@ -6,8 +6,7 @@ import (
 	"slices"
 )
 
-// severity orders injury statuses, most serious first. Unlisted statuses
-// (e.g. COV, DNR) sort after these.
+// severity orders injury statuses, most serious first; unlisted ones sort last.
 var severity = []string{"Out", "IR", "PUP", "Sus", "Doubtful", "Questionable", "NA"}
 
 // InjuryReport is every injured player on the user's rosters.
@@ -36,9 +35,7 @@ type InjuryLeague struct {
 	Replacement *Target `json:"replacement,omitempty" jsonschema:"when starting: the best available player at his position in that league"`
 }
 
-// Injuries lists injured players on the user's rosters across all leagues,
-// most serious and most-started first. Where one is starting, it suggests
-// the best available replacement at his position in that league.
+// Injuries lists injured players on the user's rosters, with replacements for starters.
 func (s *Service) Injuries(ctx context.Context) (InjuryReport, error) {
 	_, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {

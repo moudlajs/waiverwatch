@@ -12,25 +12,19 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// fanOut caps concurrent requests to Sleeper when working across leagues.
 const fanOut = 8
 
-// Service answers questions about a Sleeper user's leagues. Data comes from
-// sleeper.Client, which keeps live data at most a minute (see its cache);
-// the player dictionary comes from Directory, trade values from values.
+// Service answers questions about a Sleeper user's leagues.
 type Service struct {
 	api         *sleeper.Client
 	players     *Directory
 	values      FetchValues
-	fallback    FetchValues // nil: no backup value source
+	fallback    FetchValues
 	projections projectionCache
 	defaultUser string
 }
 
-// NewService returns a Service. Calls answer for the user set on their
-// context with WithUser, else for defaultUser (the local, single-user case);
-// defaultUser may be empty when every call carries a user. values may be nil
-// when trade values aren't needed (tests).
+// NewService returns a Service answering for the user set by WithUser, else defaultUser.
 func NewService(api *sleeper.Client, players *Directory, values FetchValues, defaultUser string) *Service {
 	return &Service{api: api, players: players, values: values, defaultUser: defaultUser}
 }
@@ -76,9 +70,7 @@ type Summary struct {
 	Error         string  `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
 }
 
-// Overview lists every league the user is in this season with their record
-// and standing. A league that fails to load carries an Error instead of
-// failing the whole answer.
+// Overview lists the user's leagues this season with their record and standing.
 func (s *Service) Overview(ctx context.Context) (Overview, error) {
 	state, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -95,8 +87,6 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 	return out, nil
 }
 
-// myLeagues loads the current NFL state, the user, and their leagues for the
-// current season.
 func (s *Service) myLeagues(ctx context.Context) (sleeper.State, sleeper.User, []sleeper.League, error) {
 	state, err := s.api.State(ctx)
 	if err != nil {
@@ -120,15 +110,14 @@ func (s *Service) myLeagues(ctx context.Context) (sleeper.State, sleeper.User, [
 	return state, user, leagues, nil
 }
 
-// eachLeague runs fn for every league concurrently, at most fanOut at once.
-// fn reports its own errors; each call must only write to its own index.
+// eachLeague runs fn per league, fanOut at a time; each call must only write to its own index.
 func eachLeague(leagues []sleeper.League, fn func(i int, l sleeper.League)) {
 	var g errgroup.Group
 	g.SetLimit(fanOut)
 	for i, l := range leagues {
 		g.Go(func() error { fn(i, l); return nil })
 	}
-	_ = g.Wait() // fn never returns an error; see above
+	_ = g.Wait() // fn never returns an error
 }
 
 func (s *Service) summarise(ctx context.Context, l sleeper.League, userID string) (Summary, error) {
@@ -186,10 +175,7 @@ func TeamName(users []sleeper.LeagueUser, ownerID string) string {
 	return ""
 }
 
-// Standing is the 1-based rank of rosterID: by wins, then fewer losses, then
-// points for; by points for alone when byPoints (guillotine leagues, where
-// the weekly record means nothing). Tied teams share a rank. 0 if rosterID
-// is not in rosters.
+// Standing is the 1-based rank of rosterID (by points alone when byPoints); ties share a rank, 0 if absent.
 func Standing(rosters []sleeper.Roster, rosterID int, byPoints bool) int {
 	var me *sleeper.Roster
 	for i := range rosters {
@@ -209,7 +195,6 @@ func Standing(rosters []sleeper.Roster, rosterID int, byPoints bool) int {
 	return rank
 }
 
-// ahead reports whether a ranks strictly above b.
 func ahead(a, b sleeper.RosterSettings, byPoints bool) bool {
 	if !byPoints {
 		if a.Wins != b.Wins {

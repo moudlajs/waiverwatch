@@ -25,7 +25,6 @@ func depthPlayers(spec map[string]string) map[string]sleeper.Player {
 	return ps
 }
 
-// at returns the depth for one position, if listed.
 func at(ps []PositionDepth, position string) (PositionDepth, bool) {
 	for _, p := range ps {
 		if p.Position == position {
@@ -100,8 +99,7 @@ func TestDepthChart(t *testing.T) {
 	})
 
 	t.Run("most restrictive flex fills first", func(t *testing.T) {
-		// One spare WR and one spare RB. WRRB_FLEX could take either; REC_FLEX
-		// can only take the WR, so it must get it.
+		// One spare WR and one spare RB: REC_FLEX can only take the WR, so it must get it.
 		me := sleeper.Roster{Players: []string{"rb1", "rb2", "wr1", "wr2"}}
 		_, flex, _ := depthChart([]string{"RB", "WR", "WRRB_FLEX", "REC_FLEX"}, me, players)
 		for _, f := range flex {
@@ -159,8 +157,7 @@ func TestThinSpotsSkipStreamedPositions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// K with one kicker is thin but not worth reporting; DEF with none is
-	// short and is; TE with one is thin and is.
+	// A thin K isn't reported; a short DEF and a thin TE are.
 	want := []string{"Alpha: TE thin (1 healthy, 1 starting, 0 backups)", "Alpha: DEF short (0 healthy, 0 starting, 0 backups)"}
 	if !reflect.DeepEqual(r.ThinSpots, want) {
 		t.Errorf("thin spots = %q\nwant %q", r.ThinSpots, want)
@@ -185,9 +182,7 @@ func TestDepthChartKeepsUnknownPlayers(t *testing.T) {
 }
 
 func TestFillFlexFindsTheBestAssignment(t *testing.T) {
-	// The review's case: REC_FLEX (WR/TE) and WRRB_FLEX (WR/RB) share WR.
-	// Spares: one WR, one TE, no RB. Filling REC_FLEX first with the WR
-	// would strand WRRB_FLEX; the right answer fills both.
+	// Spares WR+TE, no RB: giving REC_FLEX the WR would strand WRRB_FLEX.
 	filled, used := fillFlex(
 		map[string]int{"REC_FLEX": 1, "WRRB_FLEX": 1},
 		map[string]int{"WR": 1, "TE": 1},
@@ -199,7 +194,6 @@ func TestFillFlexFindsTheBestAssignment(t *testing.T) {
 		t.Errorf("used = %v", used)
 	}
 
-	// Through depthChart: nothing reported short.
 	players := depthPlayers(map[string]string{"wr1": "WR", "wr2": "WR", "rb1": "RB", "te1": "TE", "te2": "TE"})
 	me := sleeper.Roster{Players: []string{"wr1", "wr2", "rb1", "te1", "te2"}}
 	_, flex, _ := depthChart([]string{"WR", "RB", "TE", "WRRB_FLEX", "REC_FLEX"}, me, players)
@@ -211,8 +205,7 @@ func TestFillFlexFindsTheBestAssignment(t *testing.T) {
 }
 
 func TestFillFlexKeepsBackupsSpread(t *testing.T) {
-	// One FLEX slot. RB has 1 spare, WR has 2: the flex should take a WR,
-	// leaving a backup at both positions.
+	// RB has 1 spare, WR has 2: the flex takes a WR, leaving a backup at both.
 	_, used := fillFlex(map[string]int{"FLEX": 1}, map[string]int{"RB": 1, "WR": 2})
 	if used["WR"] != 1 || used["RB"] != 0 {
 		t.Errorf("used = %v, want the WR spare used", used)

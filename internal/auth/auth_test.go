@@ -43,9 +43,7 @@ func fakeLookup(_ context.Context, name string) (Identity, error) {
 	return Identity{}, ErrNoSuchUser
 }
 
-// setup runs a fake client metadata host and the auth server behind a mux
-// with a protected /mcp that echoes the signed-in username. It returns the
-// auth server's URL, the client_id, and the server.
+// setup serves client metadata and the auth server, with a protected /mcp echoing the username.
 func setup(t *testing.T, allowed ...string) (string, string, *Server) {
 	t.Helper()
 	var clientID string
@@ -84,8 +82,6 @@ func authorizeParams(clientID string) url.Values {
 
 var noRedirect = &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 
-// signIn posts the sign-in form and returns the status and, on success, where
-// it redirects.
 func signIn(t *testing.T, base string, form url.Values) (int, *url.URL) {
 	t.Helper()
 	resp, err := noRedirect.PostForm(base+"/authorize", form)
@@ -115,7 +111,6 @@ func mcpStatus(t *testing.T, base, bearer string) (int, string) {
 	return status, header
 }
 
-// mcpCall returns the status, WWW-Authenticate header and body of a POST /mcp.
 func mcpCall(t *testing.T, base, bearer string) (int, string, string) {
 	t.Helper()
 	req, _ := http.NewRequest(http.MethodPost, base+"/mcp", nil)
@@ -197,8 +192,7 @@ func TestFullFlow(t *testing.T) {
 		t.Errorf("code reuse: %d %v", status, body)
 	}
 
-	// 7. The access token opens /mcp for the signed-in user (canonical
-	// username); the refresh token does not.
+	// 7. The access token opens /mcp as the canonical username; the refresh token does not.
 	if status, _, body := mcpCall(t, base, access); status != http.StatusOK || body != "moudlajs" {
 		t.Errorf("with access token: %d, user %q", status, body)
 	}

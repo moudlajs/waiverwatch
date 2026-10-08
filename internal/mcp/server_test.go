@@ -16,8 +16,6 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/store"
 )
 
-// connect runs the server against a fake Sleeper for username and returns a
-// connected client session.
 func connect(t *testing.T, username string) *sdk.ClientSession {
 	t.Helper()
 	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
@@ -163,8 +161,7 @@ func TestTrendingPlayers(t *testing.T) {
 	if err := json.Unmarshal(raw, &r); err != nil {
 		t.Fatal(err)
 	}
-	// Defaults applied and a lower-case position accepted. My L1 roster is
-	// empty, so Mahomes is available there.
+	// Defaults applied, lower-case position accepted; my L1 roster is empty, so Mahomes is available.
 	if r.LookbackHours != 24 || len(r.Players) != 1 || r.Players[0].Name != "Patrick Mahomes" || len(r.Players[0].AvailableIn) != 1 {
 		t.Errorf("unexpected report %+v", r)
 	}

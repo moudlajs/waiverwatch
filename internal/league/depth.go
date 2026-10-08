@@ -10,11 +10,9 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
-// unavailable are injury statuses that keep a player out of a lineup.
-// Questionable players can usually play and count, but are flagged.
+// unavailable statuses keep a player out of a lineup; Questionable is only flagged.
 var unavailable = []string{"Out", "Doubtful", "IR", "PUP", "Sus", "NA", "COV", "DNR"}
 
-// Depth statuses.
 const (
 	depthOK    = "ok"    // at least one healthy backup
 	depthThin  = "thin"  // exactly enough: one injury leaves a hole
@@ -23,8 +21,6 @@ const (
 
 // DepthReport is the user's positional depth in each league.
 type DepthReport struct {
-	// ThinSpots lists every thin or short position or flex group across
-	// leagues, e.g. "Dynasty 2025: RB short (1 healthy for 2 slots)".
 	ThinSpots []string     `json:"thin_spots"`
 	Leagues   []DepthChart `json:"leagues"`
 }
@@ -36,9 +32,7 @@ type DepthChart struct {
 	Kind      string          `json:"kind"`
 	Positions []PositionDepth `json:"positions"`
 	Flex      []FlexDepth     `json:"flex,omitempty"`
-	// Unresolved are rostered player IDs the player dictionary doesn't know
-	// yet (it refreshes daily), so their position is unknown and they aren't
-	// counted: depth may be understated right after a pickup.
+	// Unresolved IDs aren't in the daily-refreshed dictionary yet, so they aren't counted.
 	Unresolved []string `json:"unresolved,omitempty"`
 	Note       string   `json:"note,omitempty"`
 	Error      string   `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
@@ -64,8 +58,7 @@ type FlexDepth struct {
 	Status string `json:"status" jsonschema:"ok (an eligible spare is left after filling it), thin (none left) or short (can't be filled)"`
 }
 
-// Depth reports, for leagues matching leagueQuery (empty = all), whether the
-// user has healthy starters and backups at each position the league starts.
+// Depth reports healthy starters and backups per position in leagues matching leagueQuery.
 func (s *Service) Depth(ctx context.Context, leagueQuery string) (DepthReport, error) {
 	_, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -94,8 +87,7 @@ func (s *Service) Depth(ctx context.Context, leagueQuery string) (DepthReport, e
 				ld.Note = "some players are too new for waiverwatch's player list (updated daily) and aren't counted; depth may be understated"
 			}
 			for _, pd := range ld.Positions {
-				// Kickers and defenses are streamed, not backed up: only an
-				// empty slot is worth reporting.
+				// Kickers and defenses are streamed: only an empty slot is worth reporting.
 				streamed := pd.Position == "K" || pd.Position == "DEF"
 				if pd.Status == depthShort || (pd.Status == depthThin && !streamed) {
 					out.ThinSpots = append(out.ThinSpots, fmt.Sprintf("%s: %s %s (%d healthy, %d starting, %d backups)",
@@ -114,10 +106,7 @@ func (s *Service) Depth(ctx context.Context, leagueQuery string) (DepthReport, e
 	return out, nil
 }
 
-// depthChart works out, for one roster, how the starting slots can be filled
-// by healthy players and what is left over.
 func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Player) ([]PositionDepth, []FlexDepth, []string) {
-	// Starting slots, dedicated and flex.
 	dedicated := map[string]int{}
 	flexCount := map[string]int{}
 	for _, s := range slots {
@@ -128,7 +117,6 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 		}
 	}
 
-	// Who can start: on the roster, not on IR or the taxi squad.
 	benched := map[string]bool{}
 	for _, id := range append(slices.Clone(me.Reserve), me.Taxi...) {
 		benched[id] = true
@@ -148,7 +136,7 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 		p := players[id]
 		pd, ok := byPos[p.Position]
 		if !ok {
-			continue // a position this league doesn't start (IDP, K without a K slot)
+			continue
 		}
 		switch {
 		case benched[id] || slices.Contains(unavailable, p.InjuryStatus):
@@ -165,7 +153,6 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 		}
 	}
 
-	// Spares after dedicated slots fill the flex slots.
 	spare := map[string]int{}
 	for pos, pd := range byPos {
 		spare[pos] = max(0, pd.Healthy-pd.Slots)
@@ -178,8 +165,6 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 	for pos, n := range flexUsed {
 		spare[pos] -= n
 	}
-	// Grade each flex group once every group is filled: it has a backup if
-	// any eligible position still has a spare.
 	for i := range flex {
 		left := 0
 		for _, pos := range flexSlots[flex[i].Slot] {
@@ -197,8 +182,7 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 		pd.Backups = spare[pos]
 		pd.Starting = min(pd.Healthy, pd.Slots) + flexUsed[pos]
 		pd.Status = status(pd.Healthy, pd.Slots, pd.Backups)
-		// A flex-only position with nobody left over isn't a hole by itself;
-		// the flex group reports it.
+		// A flex-only position with no spare isn't a hole by itself; the flex group reports it.
 		if pd.Slots == 0 && pd.Status == depthThin {
 			pd.Status = depthOK
 		}
@@ -207,19 +191,15 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 	return out, flex, unresolved
 }
 
-// fillFlex assigns spare players to flex slots so that as many slots as
-// possible are filled. It is a bipartite matching (augmenting paths):
-// filling one flex kind at a time can strand a slot when two kinds share a
-// position. Positions with the most spares are drawn on first, keeping
-// backups where they're scarce. Rosters are tiny, so this is cheap.
+// fillFlex is a bipartite matching: filling one flex kind at a time can strand a slot when kinds share a position.
 func fillFlex(flexCount, spare map[string]int) (filled, used map[string]int) {
-	var slotKinds []string // one entry per flex slot
+	var slotKinds []string
 	for _, kind := range slices.Sorted(maps.Keys(flexCount)) {
 		for range flexCount[kind] {
 			slotKinds = append(slotKinds, kind)
 		}
 	}
-	var units []string // one entry per spare player, by position
+	var units []string
 	order := slices.Clone(Positions)
 	slices.SortStableFunc(order, func(a, b string) int { return cmp.Compare(spare[b], spare[a]) })
 	for _, pos := range order {
@@ -251,7 +231,7 @@ func fillFlex(flexCount, spare map[string]int) (filled, used map[string]int) {
 	}
 
 	filled, used = map[string]int{}, map[string]int{}
-	slotPos := make([]string, len(slotKinds)) // position filling each slot, "" if none
+	slotPos := make([]string, len(slotKinds))
 	for u, slot := range owner {
 		if slot >= 0 {
 			filled[slotKinds[slot]]++
@@ -260,9 +240,7 @@ func fillFlex(flexCount, spare map[string]int) (filled, used map[string]int) {
 		}
 	}
 
-	// Rebalance: a slot that took a position's last spare moves to another
-	// eligible position with two or more left, so as few positions as
-	// possible end up without a backup.
+	// Rebalance so as few positions as possible end up without a backup.
 	for changed := true; changed; {
 		changed = false
 		for slot, pos := range slotPos {
@@ -283,7 +261,6 @@ func fillFlex(flexCount, spare map[string]int) (filled, used map[string]int) {
 	return filled, used
 }
 
-// status grades filling need slots from have players with spare left over.
 func status(have, need, spare int) string {
 	switch {
 	case have < need:
@@ -295,7 +272,6 @@ func status(have, need, spare int) string {
 	}
 }
 
-// flexEligible reports whether pos can fill any of the league's flex slots.
 func flexEligible(pos string, flex map[string]int) bool {
 	for kind := range flex {
 		if slices.Contains(flexSlots[kind], pos) {

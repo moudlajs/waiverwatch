@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
-# One-time (and safely re-runnable) Google Cloud setup for waiverwatch.
-#
-# Creates what the release workflow needs to deploy to Cloud Run, with no
-# keys stored anywhere: GitHub Actions signs in through Workload Identity
-# Federation, only from this repository's main branch. Also creates the
-# token signing key, readable only by the runtime service account.
-#
-# Prerequisites: a project with billing linked, `gcloud auth login` done,
-# and `gh auth login` for writing the repository variables.
-#
+# One-time, re-runnable Google Cloud setup for waiverwatch (needs gcloud and gh logged in).
+# Keyless deploys: GitHub Actions uses Workload Identity Federation, main branch only.
 #   deploy/setup.sh <project-id> <billing-account-id>
 set -euo pipefail
 
@@ -26,8 +18,7 @@ BUDGET_CZK=25                # about $1: any spend at all means something is wro
 gc() { gcloud --project "$PROJECT" --quiet "$@"; }
 say() { printf '\n== %s\n' "$*"; }
 
-# retry runs a command up to 6 times, 10s apart. New service accounts and
-# freshly enabled APIs take a while to be usable in IAM policies.
+# New service accounts and APIs take a while to be usable in IAM policies.
 retry() {
   local n
   for n in 1 2 3 4 5 6; do
@@ -90,9 +81,7 @@ retry gc iam service-accounts add-iam-policy-binding "$RUNTIME_EMAIL" \
   --member "serviceAccount:$DEPLOY_EMAIL" --role roles/iam.serviceAccountUser >/dev/null
 
 say "Secrets (OAuth sign-in)"
-# The token signing key: random, generated once straight into Secret
-# Manager, never printed. (Sign-in itself needs no secret: people sign in
-# with their Sleeper username, docs/multi-user.md.)
+# The signing key is generated straight into Secret Manager and never printed.
 if ! gc secrets describe waiverwatch-signing-key >/dev/null 2>&1; then
   gc secrets create waiverwatch-signing-key --replication-policy automatic
 fi
@@ -128,12 +117,7 @@ if ! grep -qx waiverwatch <<<"$budgets"; then
 fi
 
 say "Billing kill switch (#51)"
-# The budget publishes to TOPIC; a push subscription delivers each message
-# to the private waiverwatch-killswitch service (only PUSH_SA may invoke
-# it). When actual cost reaches the budget, it unlinks the project's
-# billing, which stops every paid service. KILLSWITCH_DRY_RUN=1 deploys it
-# in log-only mode. It runs the latest release's image, so run this after
-# a release that contains /killswitch.
+# Budget -> TOPIC -> push (only PUSH_SA may invoke) -> killswitch; needs a release containing /killswitch.
 TOPIC=billing-budget
 KILL_SA=killswitch
 PUSH_SA=killswitch-push
@@ -145,11 +129,7 @@ for sa in "$KILL_SA:billing kill switch" "$PUSH_SA:Pub/Sub push to the kill swit
     gc iam service-accounts create "$name" --display-name "${sa#*:}"
   fi
 done
-# Unlinking billing needs resourcemanager.projects.deleteBillingAssignment,
-# which Project Billing Manager on this project grants. Nothing on the
-# billing account itself.
-# Reading billing info first needs resourcemanager.projects.get, which only
-# roles/browser (read-only project metadata) adds.
+# billing.projectManager grants the unlink; roles/browser adds projects.get to read billing info first.
 for role in roles/billing.projectManager roles/browser; do
   retry gc projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$KILL_EMAIL" \
     --role "$role" --condition None >/dev/null

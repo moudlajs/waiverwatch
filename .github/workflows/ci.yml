@@ -13,8 +13,7 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Job names are the required status checks in the main ruleset.
-# Renaming one here means updating the ruleset too.
+# Job names are required status checks in the main ruleset: rename both together.
 jobs:
   lint:
     name: lint

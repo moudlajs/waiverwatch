@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-// countingServer answers every path with body and counts requests per path.
 func countingServer(t *testing.T, status int, body string) (*Client, *sync.Map) {
 	t.Helper()
 	var hits sync.Map
@@ -147,8 +146,7 @@ func TestCacheSizeLimit(t *testing.T) {
 	}
 }
 
-// Two users need the same path at once; the first one's request is
-// cancelled mid-fetch. The second must still get the data.
+// Two callers share a fetch and the first cancels mid-fetch: the second still gets the data.
 func TestSharedFetchSurvivesTheLeadersCancellation(t *testing.T) {
 	release := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

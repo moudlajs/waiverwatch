@@ -12,8 +12,7 @@ import (
 	"time"
 )
 
-// The fixtures are made up in DynastyProcess's file formats (their data is
-// GPL-3; this repository is MIT).
+// Fixtures are made up in DynastyProcess's formats: their data is GPL-3, this repo is MIT.
 func fixture(t *testing.T, calls, status *atomic.Int32) *Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

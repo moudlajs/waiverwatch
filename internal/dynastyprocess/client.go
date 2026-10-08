@@ -1,7 +1,5 @@
-// Package dynastyprocess is a read-only client for DynastyProcess's open
-// dynasty values (github.com/dynastyprocess/data, refreshed weekly), joined
-// to Sleeper player IDs through their ID table. It knows HTTP and CSV,
-// nothing about leagues or MCP.
+// Package dynastyprocess is a read-only client for DynastyProcess's open dynasty values,
+// joined to Sleeper IDs through their ID table. It knows HTTP and CSV, nothing about leagues or MCP.
 package dynastyprocess
 
 import (
@@ -25,11 +23,9 @@ const DefaultBaseURL = "https://raw.githubusercontent.com/dynastyprocess/data/ma
 // MaxAge is how long fetched values are reused; the data changes weekly.
 const MaxAge = 6 * time.Hour
 
-// retryWait is how long a stale copy is served without asking again after a
-// failed refresh.
+// retryWait: after a failed refresh, serve the stale copy this long before retrying.
 const retryWait = time.Minute
 
-// maxBody caps a file; the ID table is ~3 MB.
 const maxBody = 16 << 20
 
 // ErrUnavailable is worded for people.
@@ -41,7 +37,7 @@ type Player struct {
 	Name      string
 	Position  string
 	Team      string
-	Value1QB  int // value in 1QB leagues
+	Value1QB  int
 	Value2QB  int // value in superflex and 2QB leagues
 }
 
@@ -63,8 +59,7 @@ func New(baseURL string) *Client {
 	return &Client{http: &http.Client{Timeout: 15 * time.Second}, base: baseURL, now: time.Now}
 }
 
-// Values returns every valued player keyed by Sleeper player ID. If a
-// refresh fails but an older copy exists, the older copy is returned.
+// Values returns every valued player keyed by Sleeper ID, serving a stale copy if a refresh fails.
 func (c *Client) Values(ctx context.Context) (map[string]Player, error) {
 	c.mu.Lock()
 	cur, fetched, retryAfter := c.bySleeper, c.fetched, c.retryAfter
@@ -73,7 +68,7 @@ func (c *Client) Values(ctx context.Context) (map[string]Player, error) {
 		return cur, nil
 	}
 
-	shared := context.WithoutCancel(ctx) // shared by every waiting caller
+	shared := context.WithoutCancel(ctx) // must not die with whichever caller started it
 	ch := c.flight.DoChan("values", func() (any, error) {
 		byID, err := c.fetch(shared)
 		if err != nil {
@@ -122,7 +117,7 @@ func (c *Client) fetch(ctx context.Context) (map[string]Player, error) {
 	for _, row := range values {
 		id, ok := sleeperOf[row["fp_id"]]
 		if !ok {
-			continue // can't be joined to Sleeper
+			continue
 		}
 		v1, err1 := strconv.Atoi(row["value_1qb"])
 		v2, err2 := strconv.Atoi(row["value_2qb"])
@@ -140,7 +135,6 @@ func (c *Client) fetch(ctx context.Context) (map[string]Player, error) {
 // known reports whether a CSV cell holds an ID (R writes missing ones as NA).
 func known(s string) bool { return s != "" && s != "NA" }
 
-// table downloads a CSV file and returns its rows keyed by header.
 func (c *Client) table(ctx context.Context, name string) ([]map[string]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+"/"+name, nil)
 	if err != nil {

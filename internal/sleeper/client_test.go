@@ -14,8 +14,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// fixtures maps request paths to files in testdata/. The files are real
-// Sleeper responses with names and IDs replaced.
+// fixtures maps paths to testdata/ files: real Sleeper responses with names and IDs replaced.
 var fixtures = map[string]string{
 	"/user/testuser":                  "user.json",
 	"/user/100/leagues/nfl/2026":      "leagues.json",
@@ -61,9 +60,7 @@ func newTestClient(t *testing.T) *Client {
 		case name == "500":
 			http.Error(w, "boom", http.StatusInternalServerError)
 		case name == "slow":
-			// Slower than the caller's 50ms deadline. The shared fetch keeps
-			// going after the caller gives up, so don't hang until the
-			// client's 10s timeout either.
+			// Outlasts the 50ms deadline but not the client's 10s timeout: the shared fetch keeps going.
 			select {
 			case <-r.Context().Done():
 			case <-time.After(300 * time.Millisecond):

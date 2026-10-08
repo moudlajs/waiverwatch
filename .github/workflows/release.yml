@@ -19,15 +19,12 @@ jobs:
       - id: release
         uses: googleapis/release-please-action@v5
         with:
-          # A PR opened with the default GITHUB_TOKEN does not trigger CI, so
-          # the release PR could never satisfy the required checks. The PAT
-          # makes it a normal PR. Falls back to GITHUB_TOKEN if unset.
+          # PRs opened by GITHUB_TOKEN don't trigger CI, so a PAT lets the release PR pass required checks.
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Called directly rather than on `release: published`, because events
-  # created by GITHUB_TOKEN do not trigger other workflows.
+  # Called directly: events created by GITHUB_TOKEN don't trigger other workflows.
   deploy:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'

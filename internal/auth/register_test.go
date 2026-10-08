@@ -24,8 +24,7 @@ func registerClient(t *testing.T, base string, body any) (int, map[string]any) {
 	return resp.StatusCode, out
 }
 
-// TestRegisteredFlow signs in the way Gemini CLI does: discover, register
-// with a loopback redirect, authorize with PKCE, exchange, call /mcp.
+// TestRegisteredFlow signs in like Gemini CLI: register a loopback redirect, then PKCE.
 func TestRegisteredFlow(t *testing.T) {
 	base, _, _ := setup(t)
 

@@ -17,10 +17,7 @@ import (
 	"github.com/moudlajs/waiverwatch/internal/league"
 )
 
-// gate runs before every tool call: it picks the Sleeper user the call
-// answers for (from the verified access token) and enforces that user's
-// rate limit. Without a token (stdio) the Service's default user applies
-// and nothing is limited.
+// gate picks each tool call's Sleeper user from the verified token and rate-limits per user (stdio: unlimited).
 type gate struct {
 	perMinute int
 	burst     int
@@ -39,8 +36,7 @@ func newGate(perMinute, burst int, usageKey []byte) *gate {
 	return &gate{perMinute: perMinute, burst: burst, usageKey: usageKey, users: make(map[string]*userLimit)}
 }
 
-// limited wraps a tool so that the gate runs first, and logs one anonymous
-// usage line per call (tool, outcome, duration, daily anonymous user ID).
+// limited runs the gate before a tool and logs one anonymous usage line per call.
 func limited[In, Out any](g *gate, h func(ctx context.Context, in In) (Out, error)) sdk.ToolHandlerFor[In, Out] {
 	return func(ctx context.Context, req *sdk.CallToolRequest, in In) (*sdk.CallToolResult, Out, error) {
 		start := time.Now()
@@ -63,8 +59,6 @@ func limited[In, Out any](g *gate, h func(ctx context.Context, in In) (Out, erro
 	}
 }
 
-// enter picks the call's user and applies their limit. anon is the user's
-// anonymous usage ID for today ("" locally).
 func (g *gate) enter(ctx context.Context, req *sdk.CallToolRequest, now time.Time) (_ context.Context, anon string, _ error) {
 	if req == nil || req.Extra == nil {
 		return ctx, "", nil
@@ -80,10 +74,7 @@ func (g *gate) enter(ctx context.Context, req *sdk.CallToolRequest, now time.Tim
 	return league.WithUser(ctx, id.Username), anon, nil
 }
 
-// anonID is a user's anonymous usage ID for the UTC day of now: a keyed
-// hash, so it can't be turned back into a Sleeper user without the key, and
-// it changes every day, so days can't be linked. It exists only to count
-// distinct users per day.
+// anonID is a keyed, daily-rotating hash: not reversible to a Sleeper user, and days can't be linked.
 func (g *gate) anonID(userID string, now time.Time) string {
 	if len(g.usageKey) == 0 || userID == "" {
 		return ""
@@ -93,8 +84,7 @@ func (g *gate) anonID(userID string, now time.Time) string {
 	return hex.EncodeToString(m.Sum(nil)[:8])
 }
 
-// allow takes one call from user's allowance. Users idle for 10 minutes are
-// forgotten once the map grows, so it can't grow without bound.
+// allow evicts users idle 10+ minutes once the map is large, so it stays bounded.
 func (g *gate) allow(user string, now time.Time) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()

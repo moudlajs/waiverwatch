@@ -138,8 +138,7 @@ func TestHTTPRequiresSignIn(t *testing.T) {
 	}
 }
 
-// Two signed-in users, one server with no default user: each tool call
-// answers for the user in its own token.
+// With no default user, each tool call answers for the user in its own token.
 func TestToolsAnswerForTheSignedInUser(t *testing.T) {
 	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
 		"/state/nfl":               sleeper.State{Season: "2026", Week: 3},

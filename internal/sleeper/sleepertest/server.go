@@ -9,9 +9,7 @@ import (
 	"testing"
 )
 
-// Routes maps a request path (without query) to the value served as JSON.
-// A nil value is served as JSON null, which is how Sleeper answers unknown
-// users and leagues. Unlisted paths get a 404.
+// Routes maps a path (without query) to JSON; nil serves null like Sleeper's unknown IDs, unlisted paths 404.
 type Routes map[string]any
 
 // NewServer serves routes and returns its base URL for sleeper.New.
