@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/moudlajs/waiverwatch/compare/v0.24.0...v0.24.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* bump Go to 1.27.2 for net/http security fixes ([#127](https://github.com/moudlajs/waiverwatch/issues/127)) ([9016c78](https://github.com/moudlajs/waiverwatch/commit/9016c784924b0af0ab1f32b8119cacf2639aaee5)), closes [#126](https://github.com/moudlajs/waiverwatch/issues/126)
+
 ## [0.24.0](https://github.com/moudlajs/waiverwatch/compare/v0.23.0...v0.24.0) (2026-10-07)
 
 
