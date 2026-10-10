@@ -25,7 +25,7 @@ jobs:
           go-version-file: go.mod
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.13
+          version: v2.14
       - name: go.mod is tidy
         run: go mod tidy -diff
       - name: shellcheck
