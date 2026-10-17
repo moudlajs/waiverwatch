@@ -2615,7 +2615,7 @@
                 "type": "integer"
               },
               "result": {
-                "description": "win, loss, tie, bye (no opponent), survived or cut (guillotine), or eliminated (cut in an earlier week)",
+                "description": "win, loss, tie, bye (no opponent); guillotine: survived, cut, tied_last (tied for the lowest score: the league's tie-break decided) or eliminated (cut in an earlier week)",
                 "type": "string"
               },
               "should_have_sat": {

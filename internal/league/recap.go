@@ -30,7 +30,7 @@ type WeekResult struct {
 	LeagueID       string        `json:"league_id"`
 	League         string        `json:"league"`
 	Kind           string        `json:"kind"`
-	Result         string        `json:"result" jsonschema:"win, loss, tie, bye (no opponent), survived or cut (guillotine), or eliminated (cut in an earlier week)"`
+	Result         string        `json:"result" jsonschema:"win, loss, tie, bye (no opponent); guillotine: survived, cut, tied_last (tied for the lowest score: the league's tie-break decided) or eliminated (cut in an earlier week)"`
 	Points         float64       `json:"points"`
 	Opponent       string        `json:"opponent,omitempty"`
 	OpponentPoints float64       `json:"opponent_points,omitempty"`
@@ -62,6 +62,9 @@ func (s *Service) WeekRecap(ctx context.Context, week int, leagueQuery string) (
 	}
 	if leagues, err = matchLeagues(leagues, leagueQuery); err != nil {
 		return Recap{}, err
+	}
+	if week < 0 {
+		return Recap{}, fmt.Errorf("week %d isn't an NFL week", week)
 	}
 	if week == 0 {
 		week = state.Week - 1
@@ -193,8 +196,19 @@ func (s *Service) recap(ctx context.Context, l sleeper.League, userID string, we
 				out.Rank++
 			}
 		}
-		out.Result = "survived"
-		if out.Alive > 1 && out.Rank == out.Alive {
+		lowest := alive[len(alive)-1].Points
+		tied := 0
+		for _, m := range alive {
+			if m.Points == lowest {
+				tied++
+			}
+		}
+		switch {
+		case out.Alive < 2 || me.Points > lowest:
+			out.Result = "survived"
+		case tied > 1:
+			out.Result = "tied_last"
+		default:
 			out.Result = "cut"
 		}
 		return out, nil

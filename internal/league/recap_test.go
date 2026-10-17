@@ -117,4 +117,28 @@ func TestWeekRecapBeforeAnyWeek(t *testing.T) {
 			t.Errorf("week %d: got %+v, err %v; want a note and no leagues", week, r, err)
 		}
 	}
+	if _, err := svc.WeekRecap(context.Background(), -3, ""); err == nil {
+		t.Error("week -3: want an error")
+	}
+}
+
+func TestWeekRecapGuillotineTie(t *testing.T) {
+	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
+		"/state/nfl": sleeper.State{Season: "2026", Week: 6},
+		"/user/me":   sleeper.User{UserID: "100"},
+		"/user/100/leagues/nfl/2026": []sleeper.League{
+			{LeagueID: "G", Name: "G", RosterPositions: []string{"QB"}, Settings: sleeper.LeagueSettings{Type: 3}},
+		},
+		"/league/G/rosters": []sleeper.Roster{{RosterID: 1, OwnerID: "100"}, {RosterID: 2}, {RosterID: 3}},
+		"/league/G/users":   []sleeper.LeagueUser{{UserID: "100"}},
+		"/league/G/matchups/5": []sleeper.Matchup{
+			{RosterID: 1, Points: 20, Starters: []string{"a"}}, {RosterID: 2, Points: 20, Starters: []string{"b"}},
+			{RosterID: 3, Points: 30, Starters: []string{"c"}},
+		},
+		"/players/nfl": map[string]sleeper.Player{},
+	}))
+	r, err := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me").WeekRecap(context.Background(), 0, "")
+	if err != nil || r.Leagues[0].Result != "tied_last" {
+		t.Errorf("got %+v, err %v; want tied_last", r.Leagues, err)
+	}
 }
