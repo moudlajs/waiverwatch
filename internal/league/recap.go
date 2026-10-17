@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 
@@ -44,7 +45,7 @@ type WeekResult struct {
 	Error          string        `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
 }
 
-// RecapPlayer is a player and what he scored that week.
+// RecapPlayer is a player and their points that week.
 type RecapPlayer struct {
 	Slot     string  `json:"slot,omitempty"`
 	Name     string  `json:"name"`
@@ -70,7 +71,11 @@ func (s *Service) WeekRecap(ctx context.Context, week int, leagueQuery string) (
 		out.Note = "no week has been played yet this season"
 		return out, nil
 	}
-	if week >= state.Week {
+	if week > state.Week {
+		out.Note = fmt.Sprintf("week %d hasn't been played yet", week)
+		return out, nil
+	}
+	if week == state.Week {
 		out.Note = "this week isn't finished: results and bench points can still change"
 	}
 	players, err := s.players.Players(ctx)
@@ -143,8 +148,13 @@ func (s *Service) recap(ctx context.Context, l sleeper.League, userID string, we
 		}
 	}
 	// IR and taxi as they are now: Sleeper doesn't keep them per week.
+	roster := me.Players
+	if len(roster) == 0 { // older matchups may lack players: everyone who scored is on the roster
+		roster = slices.Collect(maps.Keys(me.PlayersPoints))
+		slices.Sort(roster)
+	}
 	var pool []string
-	for _, id := range me.Players {
+	for _, id := range roster {
 		if !slices.Contains(mine.Reserve, id) && !slices.Contains(mine.Taxi, id) {
 			pool = append(pool, id)
 		}

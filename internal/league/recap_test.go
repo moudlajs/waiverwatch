@@ -87,14 +87,34 @@ func TestWeekRecap(t *testing.T) {
 	}
 }
 
+func TestWeekRecapWithoutPlayersList(t *testing.T) {
+	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
+		"/state/nfl":                 sleeper.State{Season: "2026", Week: 6},
+		"/user/me":                   sleeper.User{UserID: "100"},
+		"/user/100/leagues/nfl/2026": []sleeper.League{{LeagueID: "L", Name: "L", RosterPositions: []string{"RB", "BN"}}},
+		"/league/L/rosters":          []sleeper.Roster{{RosterID: 1, OwnerID: "100"}},
+		"/league/L/users":            []sleeper.LeagueUser{{UserID: "100"}},
+		"/league/L/matchups/5": []sleeper.Matchup{{RosterID: 1, Points: 3, Starters: []string{"rb1"},
+			PlayersPoints: map[string]float64{"rb1": 3, "rb2": 9}}},
+		"/players/nfl": map[string]sleeper.Player{"rb1": {Position: "RB"}, "rb2": {Position: "RB"}},
+	}))
+	r, err := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me").WeekRecap(context.Background(), 0, "")
+	if err != nil || len(r.Leagues) != 1 || r.Leagues[0].Best != 9 || r.Leagues[0].LeftOnBench != 6 {
+		t.Errorf("got %+v, err %v; want the bench found from players_points", r.Leagues, err)
+	}
+}
+
 func TestWeekRecapBeforeAnyWeek(t *testing.T) {
 	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
 		"/state/nfl":                 sleeper.State{Season: "2026", Week: 1},
 		"/user/me":                   sleeper.User{UserID: "100"},
 		"/user/100/leagues/nfl/2026": []sleeper.League{{LeagueID: "L", Name: "L"}},
 	}))
-	r, err := NewService(api, nil, nil, "me").WeekRecap(context.Background(), 0, "")
-	if err != nil || r.Note == "" || len(r.Leagues) != 0 {
-		t.Errorf("got %+v, err %v; want a note and no leagues", r, err)
+	svc := NewService(api, nil, nil, "me")
+	for _, week := range []int{0, 5} { // no week played yet; a future week
+		r, err := svc.WeekRecap(context.Background(), week, "")
+		if err != nil || r.Note == "" || len(r.Leagues) != 0 || r.Ties != 0 {
+			t.Errorf("week %d: got %+v, err %v; want a note and no leagues", week, r, err)
+		}
 	}
 }
