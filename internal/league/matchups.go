@@ -69,11 +69,7 @@ func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 		week = state.Week
 	}
 	out := Week{Season: state.Season, Week: week, Leagues: make([]Game, len(leagues))}
-	// Off-season (or unknown): ask for the regular season's week.
-	seasonType := state.SeasonType
-	if seasonType == "" || seasonType == "off" {
-		seasonType = "regular"
-	}
+	seasonType := projectionSeason(state)
 	var (
 		proj    map[string]map[string]float64
 		projErr error

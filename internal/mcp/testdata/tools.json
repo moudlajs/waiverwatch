@@ -1570,6 +1570,111 @@
       "type": "object"
     }
   },
+  "player_exposure": {
+    "in": {
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "description": "leagues counted (eliminated guillotine teams are skipped)",
+          "type": "integer"
+        },
+        "nfl_teams": {
+          "description": "NFL teams by how many of my starters they supply this week, most first",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nfl_team": {
+                "type": "string"
+              },
+              "on_bye": {
+                "type": "boolean"
+              },
+              "starters": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "nfl_team",
+              "starters"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "note": {
+          "type": "string"
+        },
+        "players": {
+          "description": "players I have in two or more leagues, or start in any, most started first",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "injury": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "nfl_team": {
+                "type": "string"
+              },
+              "on_bye": {
+                "description": "the player's NFL team has no game projected this week",
+                "type": "boolean"
+              },
+              "position": {
+                "type": "string"
+              },
+              "rostered": {
+                "description": "leagues where the player is on my roster",
+                "type": "integer"
+              },
+              "starting": {
+                "description": "leagues where the player is in my lineup this week",
+                "type": "integer"
+              },
+              "starting_in": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "rostered",
+              "starting"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "week": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "week",
+        "leagues",
+        "players",
+        "nfl_teams"
+      ],
+      "type": "object"
+    }
+  },
   "player_values": {
     "in": {
       "additionalProperties": false,
