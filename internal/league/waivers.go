@@ -92,10 +92,7 @@ func (s *Service) WaiverTargets(ctx context.Context, position, leagueQuery strin
 		adds[t.PlayerID] = t.Count
 	}
 	var notes []string
-	seasonType := state.SeasonType
-	if seasonType == "" || seasonType == "off" {
-		seasonType = "regular"
-	}
+	seasonType := projectionSeason(state)
 	proj, err := s.api.Projections(ctx, seasonType, state.Season, state.Week)
 	if err != nil {
 		notes = append(notes, "no projections: "+err.Error())

@@ -69,6 +69,14 @@ func hasPoints(stats map[string]float64) bool {
 	return false
 }
 
+// projectionSeason is the season type to ask projections for; off-season or unknown asks for the regular season.
+func projectionSeason(state sleeper.State) string {
+	if state.SeasonType == "" || state.SeasonType == "off" {
+		return "regular"
+	}
+	return state.SeasonType
+}
+
 func weekKey(seasonType, season string, week int) string {
 	return fmt.Sprintf("%s/%s/%d", seasonType, season, week)
 }

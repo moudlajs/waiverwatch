@@ -51,10 +51,7 @@ func (s *Service) PlayerExposure(ctx context.Context) (Exposure, error) {
 	}
 	out := Exposure{Week: state.Week, Players: []ExposedPlayer{}, NFLTeams: []NFLTeamExposure{}}
 
-	seasonType := state.SeasonType
-	if seasonType == "" || seasonType == "off" {
-		seasonType = "regular"
-	}
+	seasonType := projectionSeason(state)
 	var playing map[string]bool
 	if proj, err := s.api.Projections(ctx, seasonType, state.Season, state.Week); err != nil {
 		out.Note = "byes unknown: no projections (" + err.Error() + ")"

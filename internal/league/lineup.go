@@ -64,10 +64,7 @@ func (s *Service) LineupCheck(ctx context.Context, leagueQuery string) (LineupRe
 	if err != nil {
 		return LineupReport{}, err
 	}
-	seasonType := state.SeasonType
-	if seasonType == "" || seasonType == "off" {
-		seasonType = "regular"
-	}
+	seasonType := projectionSeason(state)
 	feed, err := s.api.Projections(ctx, seasonType, state.Season, state.Week)
 	if err != nil {
 		return LineupReport{}, fmt.Errorf("checking lineups needs this week's projections: %w", err)
