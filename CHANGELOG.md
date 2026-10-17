@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/moudlajs/waiverwatch/compare/v0.27.0...v0.28.0) (2026-10-17)
+
+
+### Features
+
+* **mcp:** player_exposure tool across leagues ([#148](https://github.com/moudlajs/waiverwatch/issues/148)) ([d6ed678](https://github.com/moudlajs/waiverwatch/commit/d6ed678b50e57a451e3e3bffd28c16ab27af502c)), closes [#132](https://github.com/moudlajs/waiverwatch/issues/132)
+
 ## [0.27.0](https://github.com/moudlajs/waiverwatch/compare/v0.26.0...v0.27.0) (2026-10-17)
 
 
