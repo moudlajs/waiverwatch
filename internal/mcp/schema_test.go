@@ -42,10 +42,15 @@ func currentSchemas(t *testing.T) map[string]toolSchemas {
 	}
 	out := make(map[string]toolSchemas, len(res.Tools))
 	for _, tl := range res.Tools {
-		in, _ := json.Marshal(tl.InputSchema)
+		in, err := json.Marshal(tl.InputSchema)
+		if err != nil {
+			t.Fatal(err)
+		}
 		var o []byte
 		if tl.OutputSchema != nil {
-			o, _ = json.Marshal(tl.OutputSchema)
+			if o, err = json.Marshal(tl.OutputSchema); err != nil {
+				t.Fatal(err)
+			}
 		}
 		out[tl.Name] = toolSchemas{In: in, Out: o}
 	}
@@ -57,7 +62,10 @@ func currentSchemas(t *testing.T) map[string]toolSchemas {
 func TestToolSchemasAreStable(t *testing.T) {
 	got := currentSchemas(t)
 	if *update {
-		b, _ := json.MarshalIndent(got, "", "  ")
+		b, err := json.MarshalIndent(got, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(goldenTools, append(b, '\n'), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -75,7 +83,7 @@ func TestToolSchemasAreStable(t *testing.T) {
 		g, ok := got[name]
 		switch {
 		case !ok:
-			t.Errorf("tool %s was removed: connected users still see it", name)
+			t.Errorf("tool %s was removed: connected users still see it until they reconnect (#139)", name)
 		case !jsonEqual(g.Out, w.Out):
 			t.Errorf("tool %s: output schema changed; connectors that cached it will reject its answers (#139). "+
 				"Report new data in an existing text field such as a note, or in a new tool", name)
