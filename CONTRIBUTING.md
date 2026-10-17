@@ -80,7 +80,7 @@ Hosted on Google Cloud Run (`europe-west1`), project `waiverwatch-509716`.
 - **Billing kill switch** (#51): Google Cloud has no hard spending cap, so
   the budget publishes to Pub/Sub and the private `waiverwatch-killswitch`
   service unlinks the project's billing once actual cost reaches the budget
-  (25 CZK/month). Everything stops, including the connector. Cost data lags
+  (75 CZK/month). Everything stops, including the connector. Cost data lags
   by hours, so it caps the damage rather than every cent. To recover, find
   the cause, then re-link billing:
   `gcloud billing projects link waiverwatch-509716 --billing-account <id>`.

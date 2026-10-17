@@ -16,10 +16,10 @@ import (
 // HTTPHandler serves s over stateless Streamable HTTP at /mcp (OAuth-protected if signIn is set) and /health.
 // Not /healthz: Cloud Run reserves it.
 func HTTPHandler(s *sdk.Server, version string, signIn *auth.Server, limit rate.Limit, burst int) http.Handler {
-	var mcpHandler http.Handler = sdk.NewStreamableHTTPHandler(
+	mcpHandler := logRequests(sdk.NewStreamableHTTPHandler(
 		func(*http.Request) *sdk.Server { return s },
 		&sdk.StreamableHTTPOptions{Stateless: true, JSONResponse: true, Logger: slog.Default()},
-	)
+	))
 	mux := http.NewServeMux()
 	if signIn != nil {
 		signIn.Routes(mux)
