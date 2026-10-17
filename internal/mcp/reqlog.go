@@ -15,10 +15,20 @@ import (
 func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		attrs := []any{
+			"http", r.Method,
+			"accept", r.Header.Get("Accept"),
+			"protocol", r.Header.Get("MCP-Protocol-Version"),
+			"session", r.Header.Get("Mcp-Session-Id") != "",
+			"last_event", r.Header.Get("Last-Event-ID") != "",
+		}
+		// Logged before the body is read, so a client that never finishes sending still shows up.
+		slog.Info("mcp request start", attrs...)
 		methods := "-"
 		if r.Method == http.MethodPost && r.Body != nil {
 			// Peek at most 1 MiB, then hand on the original stream: what was read, then the rest.
 			peek, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+			methods = "read_error"
 			if err == nil {
 				methods = rpcMethods(peek)
 			}
@@ -27,17 +37,10 @@ func logRequests(next http.Handler) http.Handler {
 				io.Closer
 			}{io.MultiReader(bytes.NewReader(peek), r.Body), r.Body}
 		}
-		attrs := []any{
-			"http", r.Method, "rpc", methods,
-			"accept", r.Header.Get("Accept"),
-			"protocol", r.Header.Get("MCP-Protocol-Version"),
-			"session", r.Header.Get("Mcp-Session-Id") != "",
-			"last_event", r.Header.Get("Last-Event-ID") != "",
-		}
-		slog.Info("mcp request start", attrs...)
+		bodyMS := time.Since(start).Milliseconds()
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(sw, r)
-		slog.Info("mcp request end", append(attrs, "status", sw.status, "streamed", sw.flushed,
+		slog.Info("mcp request end", append(attrs, "rpc", methods, "body_ms", bodyMS, "status", sw.status, "streamed", sw.flushed,
 			"canceled", r.Context().Err() != nil, "ms", time.Since(start).Milliseconds())...)
 	})
 }

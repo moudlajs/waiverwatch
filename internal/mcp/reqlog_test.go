@@ -3,6 +3,7 @@ package mcp
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -72,7 +73,7 @@ func TestLogRequestsRecordsTheCall(t *testing.T) {
 
 	log := logs.String()
 	for _, want := range []string{`"msg":"mcp request start"`, `"msg":"mcp request end"`, `"rpc":"tools/call"`,
-		`"status":202`, `"streamed":true`, `"session":true`, `"last_event":false`, `"canceled":false`} {
+		`"status":202`, `"body_ms":`, `"streamed":true`, `"session":true`, `"last_event":false`, `"canceled":false`} {
 		if !strings.Contains(log, want) {
 			t.Errorf("log lacks %s: %s", want, log)
 		}
@@ -81,6 +82,31 @@ func TestLogRequestsRecordsTheCall(t *testing.T) {
 		if strings.Contains(log, secret) {
 			t.Errorf("log contains %q: %s", secret, log)
 		}
+	}
+}
+
+// stalledBody records whether the start line was already logged when the handler first read it.
+type stalledBody struct {
+	logs     *strings.Builder
+	sawStart bool
+}
+
+func (b *stalledBody) Read([]byte) (int, error) {
+	b.sawStart = strings.Contains(b.logs.String(), "mcp request start")
+	return 0, errors.New("client went away")
+}
+
+func TestLogRequestsStartsBeforeTheBodyArrives(t *testing.T) {
+	logs := captureLogs(t)
+	body := &stalledBody{logs: logs}
+	h := logRequests(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/mcp", body))
+
+	if !body.sawStart {
+		t.Error("the start line must be logged before the body is read")
+	}
+	if !strings.Contains(logs.String(), `"rpc":"read_error"`) {
+		t.Errorf("want rpc read_error: %s", logs.String())
 	}
 }
 
