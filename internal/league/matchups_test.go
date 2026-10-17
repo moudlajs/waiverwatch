@@ -120,10 +120,56 @@ func TestSurvival(t *testing.T) {
 					mine = r
 				}
 			}
-			if got := survival(ms, rosters, mine); *got != tt.want {
+			if got := survival(ms, rosters, mine, nil, ""); *got != tt.want {
 				t.Errorf("got %+v, want %+v", *got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSurvivalProjected(t *testing.T) {
+	full := []string{"p"}
+	rosters := []sleeper.Roster{
+		{RosterID: 1, Players: full}, {RosterID: 2, Players: full}, {RosterID: 3, Players: full},
+		{RosterID: 4, Players: full}, {RosterID: 5}, // 5 was cut earlier
+	}
+	// Live points (all 0 before kickoff) say nothing; projections rank 3 > 1 > 2 > 4.
+	ms := []sleeper.Matchup{
+		{RosterID: 1, Starters: []string{"a", "0"}},
+		{RosterID: 2, Starters: []string{"b"}},
+		{RosterID: 3, Starters: []string{"c"}},
+		{RosterID: 4, Starters: []string{"d"}},
+		{RosterID: 5},
+	}
+	proj := map[string]map[string]float64{
+		"a": {"pts_ppr": 100.004}, "b": {"pts_ppr": 90}, "c": {"pts_ppr": 120}, "d": {"pts_ppr": 70},
+	}
+	tests := []struct {
+		name string
+		me   int
+		want ProjectedSurvival
+	}{
+		{"safe", 3, ProjectedSurvival{Points: 120, Rank: 1, Margin: 50}},
+		{"second, empty slot counts 0", 1, ProjectedSurvival{Points: 100, Rank: 2, Margin: 30}},
+		{"second to last is at risk", 2, ProjectedSurvival{Points: 90, Rank: 3, Margin: 20, AtRisk: true}},
+		{"projected last", 4, ProjectedSurvival{Points: 70, Rank: 4, Margin: -20, AtRisk: true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := survival(ms, rosters, rosters[tt.me-1], proj, "pts_ppr")
+			if got.Projected == nil || *got.Projected != tt.want {
+				t.Errorf("got %+v, want %+v", got.Projected, tt.want)
+			}
+		})
+	}
+
+	// Two teams left: only projected last is at risk.
+	two := rosters[:2]
+	if p := survival(ms, two, two[0], proj, "pts_ppr").Projected; p == nil || p.AtRisk {
+		t.Errorf("leader of the final two: %+v", p)
+	}
+	if p := survival(ms, two, two[1], proj, "pts_ppr").Projected; p == nil || !p.AtRisk {
+		t.Errorf("last of the final two: %+v", p)
 	}
 }
 
@@ -142,7 +188,7 @@ func TestMatchups(t *testing.T) {
 		"/league/H/matchups/2":            []sleeper.Matchup{{RosterID: 1, MatchupID: 7, Points: 99, Starters: []string{"4046"}, StartersPoints: []float64{99}}, {RosterID: 2, MatchupID: 7, Points: 80}},
 		"/league/G/rosters":               []sleeper.Roster{{RosterID: 1, OwnerID: "100", Players: []string{"4046"}}, {RosterID: 2, OwnerID: "200", Players: []string{"1"}}},
 		"/league/G/users":                 []sleeper.LeagueUser{me},
-		"/league/G/matchups/2":            []sleeper.Matchup{{RosterID: 1, MatchupID: 1, Points: 50}, {RosterID: 2, MatchupID: 2, Points: 40}},
+		"/league/G/matchups/2":            []sleeper.Matchup{{RosterID: 1, MatchupID: 1, Points: 50, Starters: []string{"4046"}}, {RosterID: 2, MatchupID: 2, Points: 40, Starters: []string{"1"}}},
 		"/league/X/rosters":               []sleeper.Roster{{RosterID: 1, OwnerID: "100"}},
 		"/league/X/users":                 []sleeper.LeagueUser{me},
 		"/players/nfl":                    map[string]sleeper.Player{"4046": {PlayerID: "4046", FullName: "Patrick Mahomes"}},
@@ -169,8 +215,11 @@ func TestMatchups(t *testing.T) {
 	}
 
 	g := w.Leagues[1]
-	if g.Opponent != nil || g.Survival == nil || *g.Survival != (Survival{Alive: 2, Rank: 1, Margin: 10}) {
+	if g.Opponent != nil || g.Survival == nil || g.Survival.Alive != 2 || g.Survival.Rank != 1 || g.Survival.Margin != 10 {
 		t.Errorf("guillotine = %+v, survival %+v", g, g.Survival)
+	}
+	if p := g.Survival.Projected; p == nil || *p != (ProjectedSurvival{Points: 21, Rank: 1, Margin: 21}) {
+		t.Errorf("guillotine projected = %+v", p)
 	}
 
 	if x := w.Leagues[2]; x.Error == "" || x.Me != nil {
@@ -180,17 +229,26 @@ func TestMatchups(t *testing.T) {
 
 func TestMatchupsWithoutProjections(t *testing.T) {
 	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
-		"/state/nfl":                 sleeper.State{Season: "2026", Week: 3},
-		"/user/me":                   sleeper.User{UserID: "100"},
-		"/user/100/leagues/nfl/2026": []sleeper.League{{LeagueID: "H", Name: "H", RosterPositions: []string{"QB"}}},
-		"/league/H/rosters":          []sleeper.Roster{{RosterID: 1, OwnerID: "100"}},
-		"/league/H/users":            []sleeper.LeagueUser{{UserID: "100", DisplayName: "me"}},
-		"/league/H/matchups/3":       []sleeper.Matchup{{RosterID: 1, Points: 12}},
-		"/players/nfl":               map[string]sleeper.Player{},
+		"/state/nfl": sleeper.State{Season: "2026", Week: 3},
+		"/user/me":   sleeper.User{UserID: "100"},
+		"/user/100/leagues/nfl/2026": []sleeper.League{
+			{LeagueID: "H", Name: "H", RosterPositions: []string{"QB"}},
+			{LeagueID: "G", Name: "G", RosterPositions: []string{"QB"}, Settings: sleeper.LeagueSettings{Type: 3}},
+		},
+		"/league/H/rosters":    []sleeper.Roster{{RosterID: 1, OwnerID: "100"}},
+		"/league/H/users":      []sleeper.LeagueUser{{UserID: "100", DisplayName: "me"}},
+		"/league/H/matchups/3": []sleeper.Matchup{{RosterID: 1, Points: 12}},
+		"/league/G/rosters":    []sleeper.Roster{{RosterID: 1, OwnerID: "100", Players: []string{"x"}}, {RosterID: 2, Players: []string{"y"}}},
+		"/league/G/users":      []sleeper.LeagueUser{{UserID: "100", DisplayName: "me"}},
+		"/league/G/matchups/3": []sleeper.Matchup{{RosterID: 1, Points: 12}, {RosterID: 2, Points: 10}},
+		"/players/nfl":         map[string]sleeper.Player{},
 		// No projections route: Sleeper fails for them.
 	}))
 	w, err := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me").Matchups(context.Background(), 0)
 	if err != nil || w.Leagues[0].Me == nil || w.Leagues[0].Me.Points != 12 || !strings.Contains(w.Note, "no projections") {
 		t.Errorf("got %+v, err %v; want live points and a note", w, err)
+	}
+	if sv := w.Leagues[1].Survival; sv == nil || sv.Margin != 2 || sv.Projected != nil {
+		t.Errorf("guillotine without projections: %+v, want live margin and no projected", sv)
 	}
 }
