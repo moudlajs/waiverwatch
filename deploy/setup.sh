@@ -13,7 +13,7 @@ RUNTIME_SA=waiverwatch-run   # identity the service runs as: no project roles, r
 DEPLOY_SA=github-deploy      # identity GitHub Actions deploys as
 POOL=github
 PROVIDER=github-oidc
-BUDGET_CZK=25                # about $1: any spend at all means something is wrong
+BUDGET_CZK=75                # about $3; raised from 25 while #129 finds the hanging requests
 
 gc() { gcloud --project "$PROJECT" --quiet "$@"; }
 say() { printf '\n== %s\n' "$*"; }
