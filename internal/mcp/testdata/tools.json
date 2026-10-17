@@ -2549,5 +2549,217 @@
       ],
       "type": "object"
     }
+  },
+  "week_recap": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
+          "type": "string"
+        },
+        "week": {
+          "description": "NFL week (1-18); omit for last week",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "alive": {
+                "description": "guillotine: teams still alive that week",
+                "type": "integer"
+              },
+              "best": {
+                "description": "the best lineup in hindsight from that week's roster and actual points",
+                "type": "number"
+              },
+              "could_have_won": {
+                "description": "a loss the best lineup would have won",
+                "type": "boolean"
+              },
+              "error": {
+                "description": "set when this league could not be loaded; the others are still valid",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "left_on_bench": {
+                "description": "best minus what my starters scored",
+                "type": "number"
+              },
+              "opponent": {
+                "type": "string"
+              },
+              "opponent_points": {
+                "type": "number"
+              },
+              "points": {
+                "type": "number"
+              },
+              "rank": {
+                "description": "guillotine: my rank among teams still alive that week, 1 is best",
+                "type": "integer"
+              },
+              "result": {
+                "description": "win, loss, tie, bye (no opponent); guillotine: survived, cut, tied_last (tied for the lowest score: the league's tie-break decided) or eliminated (cut in an earlier week)",
+                "type": "string"
+              },
+              "should_have_sat": {
+                "description": "starters the best lineup sits, with the slot they held",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "points": {
+                      "type": "number"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "slot": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "points"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "should_have_started": {
+                "description": "bench players the best lineup starts, with the slot they'd take",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "points": {
+                      "type": "number"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "slot": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "points"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "top_scorer": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "nfl_team": {
+                    "type": "string"
+                  },
+                  "points": {
+                    "type": "number"
+                  },
+                  "position": {
+                    "type": "string"
+                  },
+                  "slot": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "points"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              }
+            },
+            "required": [
+              "league_id",
+              "league",
+              "kind",
+              "result",
+              "points",
+              "best",
+              "left_on_bench"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "left_on_bench": {
+          "description": "points my best possible lineups would have added, summed over leagues",
+          "type": "number"
+        },
+        "losses": {
+          "type": "integer"
+        },
+        "note": {
+          "type": "string"
+        },
+        "season": {
+          "type": "string"
+        },
+        "ties": {
+          "type": "integer"
+        },
+        "week": {
+          "type": "integer"
+        },
+        "wins": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "season",
+        "week",
+        "leagues",
+        "wins",
+        "losses",
+        "ties",
+        "left_on_bench"
+      ],
+      "type": "object"
+    }
   }
 }

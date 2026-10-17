@@ -14,6 +14,9 @@ league"); Claude matches league names loosely.
   make and the points they're worth.
 - *"Who's hurt on my teams, and who can I pick up instead?"*
 - *"Compare me with my opponent in my 12-team league."*
+- *"How did last week go, and what did I leave on my bench?"* Wins and
+  losses everywhere, your top scorer, the best lineup in hindsight, who
+  should have started, and losses a better lineup would have won.
 
 ## Waivers
 
@@ -68,4 +71,5 @@ size, PPR.
 | `trade_targets` | per league: your thin positions, the spare players you can afford to trade, and players on other teams they can buy, each with the cheapest offer |
 | `season_outlook` | per head-to-head league: remaining schedule with win chances, schedule difficulty, expected wins and playoff chance (simulated) |
 | `trending_players` | the most-added players on Sleeper, with the leagues where you can still claim each one |
+| `week_recap` | a finished week (last week by default) in every league: result, top scorer, points left on the bench with the swaps that would have scored them, and losses the best lineup would have won |
 | `waiver_targets` | per league: the best free agents you can actually start there, ranked by trade value and projection, your waiver priority or FAAB left, and a suggested FAAB bid |
