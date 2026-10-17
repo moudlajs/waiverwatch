@@ -81,6 +81,12 @@ fine, it's the transport).
   stored); rotating the signing key signs everyone out. HTTP mode refuses to
   start without `WAIVERWATCH_BASE_URL` and `WAIVERWATCH_SIGNING_KEY`;
   `WAIVERWATCH_NO_AUTH=1` (with `WAIVERWATCH_USER`) is for local testing only.
+- **Tool schemas are frozen once shipped** (#139). claude.ai caches each
+  tool's input and output schema until the user reconnects and rejects
+  answers that don't match, so a new output field breaks the tool for every
+  connected user. Add data to an existing text field (a `note`) or ship a new
+  tool; new optional inputs are fine. `TestToolSchemasAreStable` enforces it
+  against `internal/mcp/testdata/tools.json` (`-update` after adding a tool).
 - **Tools are coarse.** One call returning a useful chunk beats several
   chatty ones. Work across all of the user's leagues by default.
 - Fan out per-league requests concurrently (`errgroup`), with a

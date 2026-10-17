@@ -1,0 +1,2553 @@
+{
+  "compare_rosters": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
+          "type": "string"
+        },
+        "owner": {
+          "description": "team name or owner display name; get_roster: omit for my own team, compare_rosters: omit for this week's opponent",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "description": "set when this league could not be loaded or the owner was not found; the others are still valid",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "me": {
+                "additionalProperties": false,
+                "properties": {
+                  "owner": {
+                    "type": "string"
+                  },
+                  "points_for": {
+                    "type": "number"
+                  },
+                  "record": {
+                    "description": "wins-losses-ties",
+                    "type": "string"
+                  },
+                  "team": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "team",
+                  "record",
+                  "points_for"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "note": {
+                "type": "string"
+              },
+              "positions": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "mine": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "injury": {
+                            "type": "string"
+                          },
+                          "injury_part": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "nfl_team": {
+                            "type": "string"
+                          },
+                          "player_id": {
+                            "type": "string"
+                          },
+                          "position": {
+                            "type": "string"
+                          },
+                          "slot": {
+                            "description": "starters only: the lineup slot, e.g. QB, FLEX",
+                            "type": "string"
+                          },
+                          "value": {
+                            "description": "compare_rosters: FantasyCalc trade value",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "player_id",
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "mine_value": {
+                      "type": "integer"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "theirs": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "injury": {
+                            "type": "string"
+                          },
+                          "injury_part": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "nfl_team": {
+                            "type": "string"
+                          },
+                          "player_id": {
+                            "type": "string"
+                          },
+                          "position": {
+                            "type": "string"
+                          },
+                          "slot": {
+                            "description": "starters only: the lineup slot, e.g. QB, FLEX",
+                            "type": "string"
+                          },
+                          "value": {
+                            "description": "compare_rosters: FantasyCalc trade value",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "player_id",
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "theirs_value": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "position",
+                    "mine",
+                    "theirs"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "them": {
+                "additionalProperties": false,
+                "properties": {
+                  "owner": {
+                    "type": "string"
+                  },
+                  "points_for": {
+                    "type": "number"
+                  },
+                  "record": {
+                    "description": "wins-losses-ties",
+                    "type": "string"
+                  },
+                  "team": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "team",
+                  "record",
+                  "points_for"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "value": {
+                "additionalProperties": false,
+                "description": "FantasyCalc trade values of both rosters; missing when values couldn't be loaded",
+                "properties": {
+                  "market": {
+                    "description": "where these values come from: the FantasyCalc market, or the backup source",
+                    "type": "string"
+                  },
+                  "mine": {
+                    "description": "my whole roster, taxi squad included (per-position totals leave taxi out)",
+                    "type": "integer"
+                  },
+                  "mine_starters": {
+                    "description": "my current starters only",
+                    "type": "integer"
+                  },
+                  "theirs": {
+                    "type": "integer"
+                  },
+                  "theirs_starters": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "market",
+                  "mine",
+                  "theirs",
+                  "mine_starters",
+                  "theirs_starters"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              }
+            },
+            "required": [
+              "league_id",
+              "league",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "week": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "week",
+        "leagues"
+      ],
+      "type": "object"
+    }
+  },
+  "draft_results": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
+          "type": "string"
+        },
+        "player": {
+          "description": "only picks whose player name contains this, e.g. Walker; omit for all my picks",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "drafts": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "picks": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "cost": {
+                            "description": "auction drafts: the price paid",
+                            "type": "integer"
+                          },
+                          "keeper": {
+                            "type": "boolean"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "nfl_team": {
+                            "type": "string"
+                          },
+                          "pick_no": {
+                            "description": "overall pick number",
+                            "type": "integer"
+                          },
+                          "player_id": {
+                            "type": "string"
+                          },
+                          "position": {
+                            "type": "string"
+                          },
+                          "round": {
+                            "type": "integer"
+                          },
+                          "still_mine": {
+                            "description": "on my roster in this league today",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "round",
+                          "pick_no",
+                          "player_id",
+                          "name",
+                          "still_mine"
+                        ],
+                        "type": "object"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "rounds": {
+                      "type": "integer"
+                    },
+                    "season": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "snake, linear or auction",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "season",
+                    "type",
+                    "status",
+                    "rounds",
+                    "picks"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "error": {
+                "description": "set when this league could not be loaded; the others are still valid",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "league_id",
+              "league",
+              "kind",
+              "drafts"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "leagues_searched": {
+          "type": "integer"
+        },
+        "my_picks": {
+          "description": "picks listed; with a player filter, how many times I drafted him",
+          "type": "integer"
+        },
+        "player": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "leagues_searched",
+        "my_picks",
+        "leagues"
+      ],
+      "type": "object"
+    }
+  },
+  "evaluate_trade": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "get": {
+          "description": "players (or picks) I get",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "give": {
+          "description": "players I give (name or part of it, must be on my roster) and picks (2027 1st, 2028 2nd CHGO)",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit to use the one league where I have everything I give",
+          "type": "string"
+        }
+      },
+      "required": [
+        "give",
+        "get"
+      ],
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "depth": {
+          "description": "my depth before and after at the positions the trade touches",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "after": {
+                "type": "string"
+              },
+              "before": {
+                "description": "ok, thin or short, with healthy players and backups",
+                "type": "string"
+              },
+              "position": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "position",
+              "before",
+              "after"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "get": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "adjusted": {
+                "description": "what he counts for after the consolidation adjustment",
+                "type": "integer"
+              },
+              "age": {
+                "type": "integer"
+              },
+              "injury": {
+                "description": "e.g. Questionable, Out, IR",
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "nfl_team": {
+                "type": "string"
+              },
+              "original_team": {
+                "description": "picks: the team whose pick it originally was; its record sets where it lands",
+                "type": "string"
+              },
+              "player_id": {
+                "type": "string"
+              },
+              "position": {
+                "description": "PICK for draft picks",
+                "type": "string"
+              },
+              "projected": {
+                "description": "picks in the next draft: early, mid or late, projected from the original team's standing now",
+                "type": "string"
+              },
+              "team": {
+                "description": "the fantasy team he (or the pick) is on now; empty for a free agent",
+                "type": "string"
+              },
+              "unrated": {
+                "description": "FantasyCalc doesn't rate him; counted as 0",
+                "type": "boolean"
+              },
+              "value": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "player_id",
+              "name",
+              "value",
+              "adjusted"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "get_adjusted": {
+          "description": "get side after the consolidation adjustment",
+          "type": "integer"
+        },
+        "get_value": {
+          "description": "summed value of what I get",
+          "type": "integer"
+        },
+        "give": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "adjusted": {
+                "description": "what he counts for after the consolidation adjustment",
+                "type": "integer"
+              },
+              "age": {
+                "type": "integer"
+              },
+              "injury": {
+                "description": "e.g. Questionable, Out, IR",
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "nfl_team": {
+                "type": "string"
+              },
+              "original_team": {
+                "description": "picks: the team whose pick it originally was; its record sets where it lands",
+                "type": "string"
+              },
+              "player_id": {
+                "type": "string"
+              },
+              "position": {
+                "description": "PICK for draft picks",
+                "type": "string"
+              },
+              "projected": {
+                "description": "picks in the next draft: early, mid or late, projected from the original team's standing now",
+                "type": "string"
+              },
+              "team": {
+                "description": "the fantasy team he (or the pick) is on now; empty for a free agent",
+                "type": "string"
+              },
+              "unrated": {
+                "description": "FantasyCalc doesn't rate him; counted as 0",
+                "type": "boolean"
+              },
+              "value": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "player_id",
+              "name",
+              "value",
+              "adjusted"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "give_adjusted": {
+          "description": "give side after the consolidation adjustment",
+          "type": "integer"
+        },
+        "give_value": {
+          "description": "summed value of what I give",
+          "type": "integer"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "league": {
+          "type": "string"
+        },
+        "league_id": {
+          "type": "string"
+        },
+        "leans": {
+          "description": "who the trade favors: me, partner or even",
+          "type": "string"
+        },
+        "margin": {
+          "description": "get_adjusted minus give_adjusted: positive means I win the trade",
+          "type": "integer"
+        },
+        "margin_pct": {
+          "description": "margin as a percentage of the bigger adjusted side",
+          "type": "number"
+        },
+        "market": {
+          "description": "where these values come from: the FantasyCalc market, or the backup source",
+          "type": "string"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "partner": {
+          "description": "the team the players and picks I get come from; several when more than one",
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "verdict": {
+          "description": "fair (within 5%), slight (within 15%) or clear edge",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "league_id",
+        "league",
+        "kind",
+        "market",
+        "give",
+        "get",
+        "give_value",
+        "get_value",
+        "give_adjusted",
+        "get_adjusted",
+        "margin",
+        "margin_pct",
+        "leans",
+        "verdict"
+      ],
+      "type": "object"
+    }
+  },
+  "get_matchups": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "week": {
+          "description": "NFL week (1-18); omit for the current week",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "description": "set when this league could not be loaded; the others are still valid",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "me": {
+                "additionalProperties": false,
+                "properties": {
+                  "points": {
+                    "type": "number"
+                  },
+                  "projected": {
+                    "description": "the starters' projected points for the whole week (Sleeper's projections)",
+                    "type": "number"
+                  },
+                  "starters": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "injury": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "nfl_team": {
+                          "type": "string"
+                        },
+                        "points": {
+                          "type": "number"
+                        },
+                        "position": {
+                          "type": "string"
+                        },
+                        "projected": {
+                          "description": "Sleeper's projected points for the whole game in this league's standard, half or full PPR scoring (custom bonuses like TE premium aren't included); 0 or missing on a bye",
+                          "type": "number"
+                        },
+                        "slot": {
+                          "description": "lineup slot, e.g. QB, RB, FLEX, SUPER_FLEX",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "slot",
+                        "name",
+                        "points"
+                      ],
+                      "type": "object"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "team": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "team",
+                  "points",
+                  "starters"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "opponent": {
+                "additionalProperties": false,
+                "description": "this week's opponent; absent on a bye and in guillotine leagues",
+                "properties": {
+                  "points": {
+                    "type": "number"
+                  },
+                  "projected": {
+                    "description": "the starters' projected points for the whole week (Sleeper's projections)",
+                    "type": "number"
+                  },
+                  "starters": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "injury": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "nfl_team": {
+                          "type": "string"
+                        },
+                        "points": {
+                          "type": "number"
+                        },
+                        "position": {
+                          "type": "string"
+                        },
+                        "projected": {
+                          "description": "Sleeper's projected points for the whole game in this league's standard, half or full PPR scoring (custom bonuses like TE premium aren't included); 0 or missing on a bye",
+                          "type": "number"
+                        },
+                        "slot": {
+                          "description": "lineup slot, e.g. QB, RB, FLEX, SUPER_FLEX",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "slot",
+                        "name",
+                        "points"
+                      ],
+                      "type": "object"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "team": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "team",
+                  "points",
+                  "starters"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "survival": {
+                "additionalProperties": false,
+                "description": "guillotine leagues only: the lowest score among surviving teams is eliminated",
+                "properties": {
+                  "alive": {
+                    "description": "teams still in the league",
+                    "type": "integer"
+                  },
+                  "eliminated": {
+                    "type": "boolean"
+                  },
+                  "margin": {
+                    "description": "my points minus the lowest other surviving team; negative means I am currently last",
+                    "type": "number"
+                  },
+                  "rank": {
+                    "description": "this week's rank by points among surviving teams, 1 is best",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "eliminated",
+                  "alive",
+                  "margin"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              }
+            },
+            "required": [
+              "league_id",
+              "name",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "note": {
+          "type": "string"
+        },
+        "season": {
+          "type": "string"
+        },
+        "week": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "season",
+        "week",
+        "leagues"
+      ],
+      "type": "object"
+    }
+  },
+  "get_roster": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
+          "type": "string"
+        },
+        "owner": {
+          "description": "team name or owner display name; get_roster: omit for my own team, compare_rosters: omit for this week's opponent",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "rosters": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bench": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "injury": {
+                      "type": "string"
+                    },
+                    "injury_part": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "player_id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "slot": {
+                      "description": "starters only: the lineup slot, e.g. QB, FLEX",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "compare_rosters: FantasyCalc trade value",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "player_id",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "error": {
+                "description": "set when this league could not be loaded or the owner was not found; the others are still valid",
+                "type": "string"
+              },
+              "ir": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "injury": {
+                      "type": "string"
+                    },
+                    "injury_part": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "player_id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "slot": {
+                      "description": "starters only: the lineup slot, e.g. QB, FLEX",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "compare_rosters: FantasyCalc trade value",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "player_id",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "owner": {
+                "type": "string"
+              },
+              "starters": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "injury": {
+                      "type": "string"
+                    },
+                    "injury_part": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "player_id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "slot": {
+                      "description": "starters only: the lineup slot, e.g. QB, FLEX",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "compare_rosters: FantasyCalc trade value",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "player_id",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "taxi": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "injury": {
+                      "type": "string"
+                    },
+                    "injury_part": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "player_id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "slot": {
+                      "description": "starters only: the lineup slot, e.g. QB, FLEX",
+                      "type": "string"
+                    },
+                    "value": {
+                      "description": "compare_rosters: FantasyCalc trade value",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "player_id",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "team": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "league_id",
+              "league",
+              "kind",
+              "starters",
+              "bench"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "rosters"
+      ],
+      "type": "object"
+    }
+  },
+  "injury_report": {
+    "in": {
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "failed_leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "league",
+              "error"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "players": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "body_part": {
+                "type": "string"
+              },
+              "leagues": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "league": {
+                      "type": "string"
+                    },
+                    "on_ir": {
+                      "type": "boolean"
+                    },
+                    "replacement": {
+                      "additionalProperties": false,
+                      "description": "when starting: the best available player at his position in that league",
+                      "properties": {
+                        "adds": {
+                          "description": "adds across Sleeper in the last 24h (only the top 100 trending are counted)",
+                          "type": "integer"
+                        },
+                        "bid": {
+                          "description": "FAAB leagues, players with a trade value: a suggested bid, value/100 percent of my remaining budget plus 5 points when he's trending hard, at most half; a starting point, not a rule",
+                          "type": [
+                            "null",
+                            "integer"
+                          ]
+                        },
+                        "injury": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "nfl_team": {
+                          "type": "string"
+                        },
+                        "player_id": {
+                          "type": "string"
+                        },
+                        "position": {
+                          "type": "string"
+                        },
+                        "projected": {
+                          "description": "Sleeper's projected points this week in this league's scoring",
+                          "type": "number"
+                        },
+                        "search_rank": {
+                          "description": "Sleeper's overall player rank, lower is better",
+                          "type": "integer"
+                        },
+                        "value": {
+                          "description": "FantasyCalc trade value in this league's format: rest-of-season worth",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "player_id",
+                        "name",
+                        "position",
+                        "nfl_team"
+                      ],
+                      "type": [
+                        "null",
+                        "object"
+                      ]
+                    },
+                    "starting": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "league",
+                    "starting",
+                    "on_ir"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "nfl_team": {
+                "type": "string"
+              },
+              "player_id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "string"
+              },
+              "starting_in": {
+                "description": "how many of my lineups he is currently in",
+                "type": "integer"
+              },
+              "status": {
+                "description": "Out, IR, PUP, Sus(pended), Doubtful, Questionable, NA...",
+                "type": "string"
+              }
+            },
+            "required": [
+              "player_id",
+              "name",
+              "position",
+              "status",
+              "leagues",
+              "starting_in"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "players"
+      ],
+      "type": "object"
+    }
+  },
+  "lineup_check": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "bench": {
+                "description": "current starters the best lineup sits, with the slot they hold now",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "injury": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "projected": {
+                      "type": "number"
+                    },
+                    "slot": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slot",
+                    "name",
+                    "projected"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "best": {
+                "description": "the best lineup's projected points",
+                "type": "number"
+              },
+              "error": {
+                "description": "set when this league could not be loaded; the others are still valid",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "problems": {
+                "description": "empty slots, starters who are out or on bye, questionable starters",
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "projected": {
+                "description": "my current starters' projected points (out or on bye counts 0)",
+                "type": "number"
+              },
+              "start": {
+                "description": "bench players the best lineup starts, with the slot they'd take",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "injury": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "projected": {
+                      "type": "number"
+                    },
+                    "slot": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slot",
+                    "name",
+                    "projected"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "status": {
+                "description": "ok, or fix when there are problems or a better lineup",
+                "type": "string"
+              }
+            },
+            "required": [
+              "league_id",
+              "league",
+              "kind",
+              "status",
+              "problems",
+              "projected",
+              "best"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "note": {
+          "type": "string"
+        },
+        "week": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "week",
+        "leagues"
+      ],
+      "type": "object"
+    }
+  },
+  "list_leagues": {
+    "in": {
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "description": "set when this league could not be loaded; the others are still valid",
+                "type": "string"
+              },
+              "kind": {
+                "description": "redraft, keeper, dynasty or guillotine (survival: lowest score each week is eliminated)",
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "losses": {
+                "type": "integer"
+              },
+              "my_team": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "points_against": {
+                "type": "number"
+              },
+              "points_for": {
+                "type": "number"
+              },
+              "standing": {
+                "description": "1 is first. By wins then points, or by points in guillotine leagues",
+                "type": "integer"
+              },
+              "status": {
+                "type": "string"
+              },
+              "teams": {
+                "type": "integer"
+              },
+              "ties": {
+                "type": "integer"
+              },
+              "wins": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "league_id",
+              "name",
+              "kind",
+              "status",
+              "teams",
+              "wins",
+              "losses",
+              "ties",
+              "points_for",
+              "points_against"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "season": {
+          "type": "string"
+        },
+        "server": {
+          "additionalProperties": false,
+          "properties": {
+            "note": {
+              "type": "string"
+            },
+            "tools": {
+              "description": "every tool this server has",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "version",
+            "tools",
+            "note"
+          ],
+          "type": "object"
+        },
+        "week": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "season",
+        "week",
+        "leagues",
+        "server"
+      ],
+      "type": "object"
+    }
+  },
+  "player_values": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
+          "type": "string"
+        },
+        "owner": {
+          "description": "only without players: team name or owner display name whose roster to value; omit for mine",
+          "type": "string"
+        },
+        "players": {
+          "description": "player names (or parts, e.g. Gibbs); omit to value a whole roster",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "description": "set when this league could not be loaded or the owner was not found; the others are still valid",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "market": {
+                "description": "where these values come from: the FantasyCalc market (e.g. dynasty superflex 10-team PPR), or the backup source",
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "owner": {
+                "type": "string"
+              },
+              "players": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "mine": {
+                      "description": "named players: he is on my team",
+                      "type": "boolean"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "overall_rank": {
+                      "type": "integer"
+                    },
+                    "player_id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "position_rank": {
+                      "type": "integer"
+                    },
+                    "team": {
+                      "description": "named players: the fantasy team he is on in this league; empty for a free agent",
+                      "type": "string"
+                    },
+                    "tier": {
+                      "description": "1 is the top tier",
+                      "type": "integer"
+                    },
+                    "trend_30_day": {
+                      "description": "value change over the last 30 days",
+                      "type": "integer"
+                    },
+                    "unrated": {
+                      "description": "FantasyCalc doesn't rate him (kickers, defenses, deep bench): no market value, not proven worthless",
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "trade value, up to ~11000; 0 when unrated",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "player_id",
+                    "name",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "rank": {
+                "description": "roster values: this roster's rank by total value in the league, 1 is the most valuable",
+                "type": "integer"
+              },
+              "ranking": {
+                "description": "roster values: every team in the league by total value",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "mine": {
+                      "type": "boolean"
+                    },
+                    "rank": {
+                      "description": "1 is the most valuable roster; tied teams share a rank",
+                      "type": "integer"
+                    },
+                    "team": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "rank",
+                    "team",
+                    "total"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "team": {
+                "description": "roster values: whose roster",
+                "type": "string"
+              },
+              "total": {
+                "description": "roster values: the roster's summed value",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "league_id",
+              "league",
+              "kind",
+              "market",
+              "players"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "not_found": {
+          "description": "player names that matched no NFL player",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "leagues"
+      ],
+      "type": "object"
+    }
+  },
+  "position_depth": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "description": "set when this league could not be loaded; the others are still valid",
+                "type": "string"
+              },
+              "flex": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "filled": {
+                      "description": "slots covered by healthy players beyond the dedicated slots",
+                      "type": "integer"
+                    },
+                    "slot": {
+                      "description": "FLEX, SUPER_FLEX, WRRB_FLEX or REC_FLEX",
+                      "type": "string"
+                    },
+                    "slots": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "description": "ok (an eligible spare is left after filling it), thin (none left) or short (can't be filled)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slot",
+                    "slots",
+                    "filled",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "positions": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "backups": {
+                      "description": "healthy players left after filling this position's slots and the flex slots",
+                      "type": "integer"
+                    },
+                    "healthy": {
+                      "description": "players who can start: not IR/taxi, not Out/Doubtful/IR/PUP/suspended",
+                      "type": "integer"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "questionable": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "slots": {
+                      "description": "dedicated starting slots for this position (flex counted separately)",
+                      "type": "integer"
+                    },
+                    "starting": {
+                      "description": "healthy players needed to start here: its own slots plus the flex slots it fills",
+                      "type": "integer"
+                    },
+                    "status": {
+                      "description": "ok (a healthy backup), thin (no backup) or short (slots can't all be filled)",
+                      "type": "string"
+                    },
+                    "unavailable": {
+                      "description": "hurt or suspended players at this position, with status",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "position",
+                    "slots",
+                    "healthy",
+                    "starting",
+                    "backups",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "unresolved": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              }
+            },
+            "required": [
+              "league_id",
+              "league",
+              "kind",
+              "positions"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "thin_spots": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "thin_spots",
+        "leagues"
+      ],
+      "type": "object"
+    }
+  },
+  "season_outlook": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "description": "set when this league could not be loaded; the others are still valid",
+                "type": "string"
+              },
+              "expected_wins": {
+                "description": "average final wins across simulated seasons (with a weekly median game, two results a week)",
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "league": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "playoff_chance": {
+                "description": "percent of simulated seasons in which I make the playoffs",
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "playoff_teams": {
+                "type": "integer"
+              },
+              "record": {
+                "description": "wins-losses-ties now",
+                "type": "string"
+              },
+              "schedule": {
+                "description": "my remaining regular-season games",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "opponent": {
+                      "type": "string"
+                    },
+                    "ppg": {
+                      "description": "opponent's points per game so far",
+                      "type": "number"
+                    },
+                    "record": {
+                      "type": "string"
+                    },
+                    "week": {
+                      "type": "integer"
+                    },
+                    "win_pct": {
+                      "description": "percent of simulated games I win",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "week",
+                    "opponent",
+                    "record",
+                    "ppg",
+                    "win_pct"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "schedule_rating": {
+                "description": "harder, average or easier: remaining opponents' points per game against the league's",
+                "type": "string"
+              },
+              "standing": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "league_id",
+              "league"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "method": {
+          "type": "string"
+        },
+        "week": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "week",
+        "leagues",
+        "method"
+      ],
+      "type": "object"
+    }
+  },
+  "trade_targets": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
+          "type": "string"
+        },
+        "limit": {
+          "description": "targets per league, 1-20; default 5",
+          "type": "integer"
+        },
+        "position": {
+          "description": "look for this position (QB, RB, WR, TE) even if it isn't thin; omit for my thin positions",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "description": "set when this league could not be loaded; the others are still valid",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "market": {
+                "type": "string"
+              },
+              "needs": {
+                "description": "positions I'm targeting, with why (thin: no backup, short: can't fill the lineup)",
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "note": {
+                "type": "string"
+              },
+              "spares": {
+                "description": "my healthy players beyond what my lineup needs, at positions with depth to spare: what I can offer, most valuable first",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "mine": {
+                      "description": "named players: he is on my team",
+                      "type": "boolean"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "overall_rank": {
+                      "type": "integer"
+                    },
+                    "player_id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "position_rank": {
+                      "type": "integer"
+                    },
+                    "team": {
+                      "description": "named players: the fantasy team he is on in this league; empty for a free agent",
+                      "type": "string"
+                    },
+                    "tier": {
+                      "description": "1 is the top tier",
+                      "type": "integer"
+                    },
+                    "trend_30_day": {
+                      "description": "value change over the last 30 days",
+                      "type": "integer"
+                    },
+                    "unrated": {
+                      "description": "FantasyCalc doesn't rate him (kickers, defenses, deep bench): no market value, not proven worthless",
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "trade value, up to ~11000; 0 when unrated",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "player_id",
+                    "name",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "targets": {
+                "description": "players on other teams at the needed positions I can afford: mutual fits first (my offer fills their thin spot), then most valuable",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "mine": {
+                      "description": "named players: he is on my team",
+                      "type": "boolean"
+                    },
+                    "mutual": {
+                      "description": "the offer includes a player at a position his team needs: a deal that helps both sides",
+                      "type": "boolean"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "offer": {
+                      "description": "one or two of my spares that match his value: the cheapest from positions his team needs when that works, else the cheapest overall",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "offer_value": {
+                      "description": "the offer's value after the 2-for-1 adjustment evaluate_trade uses",
+                      "type": "integer"
+                    },
+                    "overall_rank": {
+                      "type": "integer"
+                    },
+                    "player_id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "position_rank": {
+                      "type": "integer"
+                    },
+                    "team": {
+                      "description": "named players: the fantasy team he is on in this league; empty for a free agent",
+                      "type": "string"
+                    },
+                    "they_need": {
+                      "description": "positions where his team is thin or short",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "tier": {
+                      "description": "1 is the top tier",
+                      "type": "integer"
+                    },
+                    "trend_30_day": {
+                      "description": "value change over the last 30 days",
+                      "type": "integer"
+                    },
+                    "unrated": {
+                      "description": "FantasyCalc doesn't rate him (kickers, defenses, deep bench): no market value, not proven worthless",
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "description": "trade value, up to ~11000; 0 when unrated",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "player_id",
+                    "name",
+                    "value",
+                    "offer",
+                    "offer_value"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              }
+            },
+            "required": [
+              "league_id",
+              "league",
+              "kind",
+              "needs",
+              "spares",
+              "targets"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "leagues"
+      ],
+      "type": "object"
+    }
+  },
+  "trending_players": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "players to return, 1-100; default 25",
+          "type": "integer"
+        },
+        "lookback_hours": {
+          "description": "how far back to count adds; default 24",
+          "type": "integer"
+        },
+        "position": {
+          "description": "only this position: QB, RB, WR, TE, K or DEF",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "failed_leagues": {
+          "description": "leagues whose rosters could not be loaded; availability there is unknown",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "type": "string"
+              },
+              "league": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "league",
+              "error"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "lookback_hours": {
+          "type": "integer"
+        },
+        "players": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "adds": {
+                "description": "adds across all Sleeper leagues in the lookback window",
+                "type": "integer"
+              },
+              "available_in": {
+                "description": "my leagues where no team rosters this player",
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "injury": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "nfl_team": {
+                "type": "string"
+              },
+              "on_my_roster_in": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "player_id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "player_id",
+              "name",
+              "position",
+              "adds",
+              "available_in"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "lookback_hours",
+        "players"
+      ],
+      "type": "object"
+    }
+  },
+  "waiver_targets": {
+    "in": {
+      "additionalProperties": false,
+      "properties": {
+        "league": {
+          "description": "only leagues whose name contains this (case-insensitive), or a league ID; omit for all",
+          "type": "string"
+        },
+        "limit": {
+          "description": "targets per league, 1-25; default 5",
+          "type": "integer"
+        },
+        "position": {
+          "description": "only this position: QB, RB, WR, TE, K or DEF; omit for all",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "out": {
+      "additionalProperties": false,
+      "properties": {
+        "leagues": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "description": "set when this league could not be loaded; the others are still valid",
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "league_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "targets": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "adds": {
+                      "description": "adds across Sleeper in the last 24h (only the top 100 trending are counted)",
+                      "type": "integer"
+                    },
+                    "bid": {
+                      "description": "FAAB leagues, players with a trade value: a suggested bid, value/100 percent of my remaining budget plus 5 points when he's trending hard, at most half; a starting point, not a rule",
+                      "type": [
+                        "null",
+                        "integer"
+                      ]
+                    },
+                    "injury": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nfl_team": {
+                      "type": "string"
+                    },
+                    "player_id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "string"
+                    },
+                    "projected": {
+                      "description": "Sleeper's projected points this week in this league's scoring",
+                      "type": "number"
+                    },
+                    "search_rank": {
+                      "description": "Sleeper's overall player rank, lower is better",
+                      "type": "integer"
+                    },
+                    "value": {
+                      "description": "FantasyCalc trade value in this league's format: rest-of-season worth",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "player_id",
+                    "name",
+                    "position",
+                    "nfl_team"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "waivers": {
+                "additionalProperties": false,
+                "properties": {
+                  "faab_budget": {
+                    "type": "integer"
+                  },
+                  "faab_remaining": {
+                    "description": "FAAB leagues: my budget left",
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "priority": {
+                    "description": "my waiver position, 1 claims first",
+                    "type": "integer"
+                  },
+                  "type": {
+                    "description": "faab, rolling (waiver priority) or reverse_standings",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "league_id",
+              "name",
+              "kind",
+              "waivers",
+              "targets"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "position": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "leagues"
+      ],
+      "type": "object"
+    }
+  }
+}
