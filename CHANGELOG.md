@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/moudlajs/waiverwatch/compare/v0.25.1...v0.26.0) (2026-10-17)
+
+
+### Features
+
+* **mcp:** guillotine projected cut line in the matchups note ([#142](https://github.com/moudlajs/waiverwatch/issues/142)) ([3105806](https://github.com/moudlajs/waiverwatch/commit/310580687e3415f986a35d26b211a9143db18052)), closes [#134](https://github.com/moudlajs/waiverwatch/issues/134)
+
 ## [0.25.1](https://github.com/moudlajs/waiverwatch/compare/v0.25.0...v0.25.1) (2026-10-17)
 
 
