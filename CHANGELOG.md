@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/moudlajs/waiverwatch/compare/v0.26.0...v0.27.0) (2026-10-17)
+
+
+### Features
+
+* **mcp:** week_recap tool with points left on the bench ([#146](https://github.com/moudlajs/waiverwatch/issues/146)) ([b0e27b9](https://github.com/moudlajs/waiverwatch/commit/b0e27b9045b6643fcdea392443be08017ce9701e)), closes [#133](https://github.com/moudlajs/waiverwatch/issues/133)
+
 ## [0.26.0](https://github.com/moudlajs/waiverwatch/compare/v0.25.1...v0.26.0) (2026-10-17)
 
 
