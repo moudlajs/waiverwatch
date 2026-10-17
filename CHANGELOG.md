@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.2](https://github.com/moudlajs/waiverwatch/compare/v0.24.1...v0.24.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* **mcp:** log /mcp requests to find calls held until the timeout ([#130](https://github.com/moudlajs/waiverwatch/issues/130)) ([65d2525](https://github.com/moudlajs/waiverwatch/commit/65d252546078ff240a58f4ff042092913c91ec4b)), closes [#129](https://github.com/moudlajs/waiverwatch/issues/129)
+
 ## [0.24.1](https://github.com/moudlajs/waiverwatch/compare/v0.24.0...v0.24.1) (2026-10-10)
 
 
