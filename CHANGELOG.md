@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/moudlajs/waiverwatch/compare/v0.25.0...v0.25.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **mcp:** revert guillotine projected cut line ([#140](https://github.com/moudlajs/waiverwatch/issues/140)) ([d15cead](https://github.com/moudlajs/waiverwatch/commit/d15cead6c899e415a63d770f9414e968acb1a34f)), closes [#139](https://github.com/moudlajs/waiverwatch/issues/139)
+
 ## [0.25.0](https://github.com/moudlajs/waiverwatch/compare/v0.24.2...v0.25.0) (2026-10-17)
 
 
