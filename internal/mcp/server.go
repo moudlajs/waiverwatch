@@ -214,6 +214,17 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		return svc.WeekRecap(ctx, in.Week, in.League)
 	}))
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "player_exposure",
+		Description: "Which players and NFL teams do my lineups depend on across all leagues? Players I roster in two or " +
+			"more leagues or start anywhere, most started first: in how many leagues I roster and start each (and which), " +
+			"injury and bye this week. Plus the NFL teams supplying the most of my starters, so one injury, bye or bad " +
+			"game that hits several leagues at once stands out.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, limited(g, func(ctx context.Context, _ struct{}) (league.Exposure, error) {
+		return svc.PlayerExposure(ctx)
+	}))
+
 	return s
 }
 
@@ -228,7 +239,7 @@ type TargetsInput struct {
 var toolNames = []string{
 	"list_leagues", "get_matchups", "trending_players", "waiver_targets", "get_roster", "injury_report",
 	"compare_rosters", "draft_results", "position_depth", "player_values", "evaluate_trade", "trade_targets",
-	"lineup_check", "season_outlook", "week_recap",
+	"lineup_check", "season_outlook", "week_recap", "player_exposure",
 }
 
 // Claude caches a connector's tool list until reconnect; this live note lets it notice new tools.

@@ -73,15 +73,7 @@ func (s *Service) LineupCheck(ctx context.Context, leagueQuery string) (LineupRe
 		return LineupReport{}, fmt.Errorf("checking lineups needs this week's projections: %w", err)
 	}
 	proj, projNote, complete := s.projections.complete(weekKey(seasonType, state.Season, state.Week), feed, players, time.Now())
-	// Byes come from anyone projected: team defenses stay even in a blank feed.
-	wk := week{proj: proj, playing: make(map[string]bool), complete: complete}
-	for id, stats := range proj {
-		if hasPoints(stats) {
-			if team := players[id].Team; team != "" {
-				wk.playing[team] = true
-			}
-		}
-	}
+	wk := week{proj: proj, playing: playingTeams(proj, players), complete: complete}
 
 	if len(wk.playing) == 0 {
 		// Off-season or a week without projections yet: everyone would look on bye.
@@ -192,6 +184,19 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 		}
 	}
 	return problems, start, bench, current, best
+}
+
+// playingTeams are the NFL teams with anyone projected; team defenses stay even in a blank feed.
+func playingTeams(proj map[string]map[string]float64, players map[string]sleeper.Player) map[string]bool {
+	playing := make(map[string]bool)
+	for id, stats := range proj {
+		if hasPoints(stats) {
+			if team := players[id].Team; team != "" {
+				playing[team] = true
+			}
+		}
+	}
+	return playing
 }
 
 type seat struct{ slot, id string }
