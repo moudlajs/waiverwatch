@@ -43,8 +43,7 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		Description: "This week's game in every league, with live points and Sleeper's projected points: my lineup and my " +
 			"opponent's, starter by starter (slot, name, position, NFL team, injury, points, projected) and each side's " +
 			"projected total. Projections are for the whole game, not what's left of it. Guillotine leagues have no opponent; they report my rank " +
-			"among surviving teams and my margin over the lowest one, live and by projections, flagging when I'm projected " +
-			"in the bottom two (most useful before kickoff).",
+			"among surviving teams and my margin over the lowest one.",
 		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
 	}, limited(g, func(ctx context.Context, in MatchupsInput) (league.Week, error) {
 		w, err := svc.Matchups(ctx, in.Week)

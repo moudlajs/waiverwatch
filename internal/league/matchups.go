@@ -51,19 +51,10 @@ type Starter struct {
 
 // Survival is the user's position in a guillotine league this week.
 type Survival struct {
-	Eliminated bool               `json:"eliminated"`
-	Alive      int                `json:"alive" jsonschema:"teams still in the league"`
-	Rank       int                `json:"rank,omitempty" jsonschema:"this week's rank by points among surviving teams, 1 is best"`
-	Margin     float64            `json:"margin" jsonschema:"my points minus the lowest other surviving team; negative means I am currently last"`
-	Projected  *ProjectedSurvival `json:"projected,omitempty" jsonschema:"where Sleeper's projections put me this week; absent without projections"`
-}
-
-// ProjectedSurvival ranks every surviving team by its starters' whole-game projections (#134).
-type ProjectedSurvival struct {
-	Points float64 `json:"points" jsonschema:"my starters' projected points for the whole week"`
-	Rank   int     `json:"rank" jsonschema:"projected rank among surviving teams, 1 is best"`
-	Margin float64 `json:"margin" jsonschema:"my projected points minus the lowest other surviving team's; negative means projected last"`
-	AtRisk bool    `json:"at_risk" jsonschema:"projected in the bottom two (with two teams left: projected last); check the lineup. Whole-game projections: most useful before kickoff"`
+	Eliminated bool    `json:"eliminated"`
+	Alive      int     `json:"alive" jsonschema:"teams still in the league"`
+	Rank       int     `json:"rank,omitempty" jsonschema:"this week's rank by points among surviving teams, 1 is best"`
+	Margin     float64 `json:"margin" jsonschema:"my points minus the lowest other surviving team; negative means I am currently last"`
 }
 
 // Matchups returns the user's matchup in every league for week (0 = current).
@@ -147,7 +138,7 @@ func (s *Service) matchup(ctx context.Context, l sleeper.League, userID string, 
 	out.Me = side(me, TeamName(users, mine.OwnerID), l.RosterPositions, players, proj, key)
 
 	if l.Kind() == "guillotine" {
-		out.Survival = survival(matchups, rosters, mine, proj, key)
+		out.Survival = survival(matchups, rosters, mine)
 		return out, nil
 	}
 	if opp, ok := Opponent(matchups, me); ok {
@@ -221,12 +212,12 @@ func projectionKey(rec float64) string {
 }
 
 // survival ranks mine among rosters that still have players (Sleeper empties eliminated teams).
-func survival(ms []sleeper.Matchup, rosters []sleeper.Roster, mine sleeper.Roster, proj map[string]map[string]float64, key string) *Survival {
+func survival(ms []sleeper.Matchup, rosters []sleeper.Roster, mine sleeper.Roster) *Survival {
 	if len(mine.Players) == 0 {
 		return &Survival{Eliminated: true, Alive: alive(rosters)}
 	}
-	var me sleeper.Matchup
-	var others []sleeper.Matchup
+	var myPts float64
+	var others []float64
 	for _, r := range rosters {
 		if len(r.Players) == 0 {
 			continue
@@ -236,45 +227,24 @@ func survival(ms []sleeper.Matchup, rosters []sleeper.Roster, mine sleeper.Roste
 			continue // no entry this week: counting it as 0 would fake a lower last place
 		}
 		if r.RosterID == mine.RosterID {
-			me = m
+			myPts = m.Points
 		} else {
-			others = append(others, m)
+			others = append(others, m.Points)
 		}
 	}
 	out := &Survival{Alive: alive(rosters), Rank: 1}
 	if len(others) == 0 {
 		return out
 	}
-	out.Rank, out.Margin = standing(me.Points, others, func(m sleeper.Matchup) float64 { return m.Points })
-	if proj != nil {
-		pts := func(m sleeper.Matchup) float64 { return projectedTotal(m, proj, key) }
-		p := &ProjectedSurvival{Points: math.Round(pts(me)*100) / 100}
-		p.Rank, p.Margin = standing(pts(me), others, pts)
-		n := len(others) + 1
-		p.AtRisk = p.Rank == n || (n > 2 && p.Rank == n-1)
-		out.Projected = p
-	}
-	return out
-}
-
-// standing is my rank (1 is best) and margin over the lowest of others by score.
-func standing(mine float64, others []sleeper.Matchup, score func(sleeper.Matchup) float64) (int, float64) {
-	rank, lowest := 1, score(others[0])
-	for _, m := range others {
-		if score(m) > mine {
-			rank++
+	lowest := others[0]
+	for _, p := range others {
+		if p > myPts {
+			out.Rank++
 		}
-		lowest = min(lowest, score(m))
+		lowest = min(lowest, p)
 	}
-	return rank, math.Round((mine-lowest)*100) / 100
-}
-
-func projectedTotal(m sleeper.Matchup, proj map[string]map[string]float64, key string) float64 {
-	var total float64
-	for _, id := range m.Starters {
-		total += proj[id][key]
-	}
-	return total
+	out.Margin = math.Round((myPts-lowest)*100) / 100
+	return out
 }
 
 func alive(rosters []sleeper.Roster) int {

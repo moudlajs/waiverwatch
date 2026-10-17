@@ -7,8 +7,7 @@ league"); Claude matches league names loosely.
 
 - *"How are my matchups this week?"* Live and projected scores, starter by
   starter, for you and your opponent. Survival (guillotine) leagues show your
-  rank and how far you are above last place, live and projected, with a
-  warning when you're projected in the bottom two.
+  rank and how far you are above last place.
 - *"Is my lineup right in every league?"* Empty slots, starters who are out or
   on bye, and bench players projected to beat a starter, with the changes to
   make and the points they're worth.
@@ -56,7 +55,7 @@ size, PPR.
 | Tool | Returns |
 |---|---|
 | `list_leagues` | every league this season: type, size, your team, record, points, standing |
-| `get_matchups` | this week (or any week) in every league: live and projected score, your and your opponent's starters with injuries and projections; guillotine rank and margin over last place, live and projected, with a bottom-two warning |
+| `get_matchups` | this week (or any week) in every league: live and projected score, your and your opponent's starters with injuries and projections; guillotine rank and margin over last place |
 | `lineup_check` | per league this week: empty slots, starters out or on bye, questionable starters, and the best lineup by projections (flex-aware) as start/bench changes |
 | `get_roster` | a team's starters (by slot), bench, IR and taxi with injuries: yours, or any owner by name |
 | `compare_rosters` | your roster next to this week's opponent (or any owner), position by position, with records and trade values (totals, starters, per position) |
