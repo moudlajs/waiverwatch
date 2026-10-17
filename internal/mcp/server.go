@@ -203,6 +203,17 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		return svc.SeasonOutlook(ctx, in.League)
 	}))
 
+	sdk.AddTool(s, &sdk.Tool{
+		Name: "week_recap",
+		Description: "How did my week go? For a finished week (last week by default) in every league: win, loss or tie " +
+			"against whom (guillotine: survived or cut, and my rank), my top scorer, and points left on the bench: the " +
+			"best lineup in hindsight from that week's actual points, who should have started instead, and losses the " +
+			"best lineup would have won. Totals across leagues.",
+		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: ptr(true)},
+	}, limited(g, func(ctx context.Context, in RecapInput) (league.Recap, error) {
+		return svc.WeekRecap(ctx, in.Week, in.League)
+	}))
+
 	return s
 }
 
@@ -217,7 +228,7 @@ type TargetsInput struct {
 var toolNames = []string{
 	"list_leagues", "get_matchups", "trending_players", "waiver_targets", "get_roster", "injury_report",
 	"compare_rosters", "draft_results", "position_depth", "player_values", "evaluate_trade", "trade_targets",
-	"lineup_check", "season_outlook",
+	"lineup_check", "season_outlook", "week_recap",
 }
 
 // Claude caches a connector's tool list until reconnect; this live note lets it notice new tools.
@@ -250,6 +261,12 @@ type ValuesInput struct {
 	Players []string `json:"players,omitempty" jsonschema:"player names (or parts, e.g. Gibbs); omit to value a whole roster"`
 	League  string   `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
 	Owner   string   `json:"owner,omitempty" jsonschema:"only without players: team name or owner display name whose roster to value; omit for mine"`
+}
+
+// RecapInput is week_recap's arguments.
+type RecapInput struct {
+	Week   int    `json:"week,omitempty" jsonschema:"NFL week (1-18); omit for last week"`
+	League string `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
 }
 
 // DepthInput is position_depth's, lineup_check's and season_outlook's arguments.

@@ -103,6 +103,7 @@ type Matchup struct {
 	RosterID       int                `json:"roster_id"`
 	MatchupID      int                `json:"matchup_id"`
 	Points         float64            `json:"points"`
+	Players        []string           `json:"players"` // that week's roster
 	Starters       []string           `json:"starters"`
 	StartersPoints []float64          `json:"starters_points"`
 	PlayersPoints  map[string]float64 `json:"players_points"`

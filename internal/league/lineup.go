@@ -149,60 +149,31 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 		return LineupPlayer{Slot: slot, Name: p.Name(), Position: p.Position, NFLTeam: p.Team, Injury: p.InjuryStatus, Projected: pts(id)}
 	}
 
-	type seat struct{ slot, id string }
-	var seats []seat
+	seats := seatsOf(slots, r.Starters)
 	holes := 0
-	for i, slot := range slots {
-		if slot == "BN" || slot == "IR" || slot == "TAXI" {
-			continue
-		}
-		id := "0" // Sleeper may list fewer starters than slots: the rest are empty
-		if i < len(r.Starters) {
-			id = r.Starters[i]
-		}
-		if !known(slot) {
-			continue
-		}
-		seats = append(seats, seat{slot, id})
-		switch out, why := out(id); {
-		case id == "0" || id == "":
+	for _, st := range seats {
+		switch out, why := out(st.id); {
+		case st.id == "0" || st.id == "":
 			holes++
-			problems = append(problems, slot+" slot is empty")
+			problems = append(problems, st.slot+" slot is empty")
 		case out:
 			holes++
-			problems = append(problems, fmt.Sprintf("%s (%s) is %s", Lookup(players, id).Name(), slot, why))
+			problems = append(problems, fmt.Sprintf("%s (%s) is %s", Lookup(players, st.id).Name(), st.slot, why))
 		default:
-			current += pts(id)
-			if Lookup(players, id).InjuryStatus == "Questionable" {
-				problems = append(problems, fmt.Sprintf("%s (%s) is questionable", Lookup(players, id).Name(), slot))
+			current += pts(st.id)
+			if Lookup(players, st.id).InjuryStatus == "Questionable" {
+				problems = append(problems, fmt.Sprintf("%s (%s) is questionable", Lookup(players, st.id).Name(), st.slot))
 			}
 		}
 	}
 
-	// Greedy: dedicated slots, then flex most to least restrictive; not a guaranteed optimum.
 	var pool []string
 	for _, id := range r.Players {
 		if gone, _ := out(id); !gone && !slices.Contains(r.Reserve, id) && !slices.Contains(r.Taxi, id) {
 			pool = append(pool, id)
 		}
 	}
-	slices.SortStableFunc(pool, func(a, b string) int { return cmp.Compare(pts(b), pts(a)) })
-	order := make([]int, len(seats))
-	for i := range order {
-		order[i] = i
-	}
-	slices.SortStableFunc(order, func(a, b int) int { return cmp.Compare(len(eligible(seats[a].slot)), len(eligible(seats[b].slot))) })
-	chosen := make(map[int]string)
-	used := make(map[string]bool)
-	for _, i := range order {
-		for _, id := range pool {
-			if !used[id] && slices.Contains(eligible(seats[i].slot), Lookup(players, id).Position) {
-				chosen[i], used[id] = id, true
-				best += pts(id)
-				break
-			}
-		}
-	}
+	chosen, used, best := fill(seats, pool, players, pts)
 	current, best = math.Round(current*100)/100, math.Round(best*100)/100
 
 	starting := make(map[string]bool)
@@ -221,6 +192,46 @@ func checkLineup(slots []string, r sleeper.Roster, players map[string]sleeper.Pl
 		}
 	}
 	return problems, start, bench, current, best
+}
+
+type seat struct{ slot, id string }
+
+// seatsOf pairs each starting slot with its starter; Sleeper may list fewer starters than slots.
+func seatsOf(slots, starters []string) []seat {
+	var seats []seat
+	for i, slot := range slots {
+		if slot == "BN" || slot == "IR" || slot == "TAXI" || !known(slot) {
+			continue
+		}
+		id := "0"
+		if i < len(starters) {
+			id = starters[i]
+		}
+		seats = append(seats, seat{slot, id})
+	}
+	return seats
+}
+
+// fill is greedy: dedicated slots, then flex most to least restrictive; not a guaranteed optimum.
+func fill(seats []seat, pool []string, players map[string]sleeper.Player, pts func(id string) float64) (chosen map[int]string, used map[string]bool, best float64) {
+	pool = slices.Clone(pool)
+	slices.SortStableFunc(pool, func(a, b string) int { return cmp.Compare(pts(b), pts(a)) })
+	order := make([]int, len(seats))
+	for i := range order {
+		order[i] = i
+	}
+	slices.SortStableFunc(order, func(a, b int) int { return cmp.Compare(len(eligible(seats[a].slot)), len(eligible(seats[b].slot))) })
+	chosen, used = make(map[int]string), make(map[string]bool)
+	for _, i := range order {
+		for _, id := range pool {
+			if !used[id] && slices.Contains(eligible(seats[i].slot), Lookup(players, id).Position) {
+				chosen[i], used[id] = id, true
+				best += pts(id)
+				break
+			}
+		}
+	}
+	return chosen, used, best
 }
 
 func eligible(slot string) []string {

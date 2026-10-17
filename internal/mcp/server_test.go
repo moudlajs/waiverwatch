@@ -78,7 +78,7 @@ func TestListLeagues(t *testing.T) {
 		names = append(names, tl.Name)
 	}
 	slices.Sort(names)
-	if want := []string{"compare_rosters", "draft_results", "evaluate_trade", "get_matchups", "get_roster", "injury_report", "lineup_check", "list_leagues", "player_values", "position_depth", "season_outlook", "trade_targets", "trending_players", "waiver_targets"}; !slices.Equal(names, want) {
+	if want := []string{"compare_rosters", "draft_results", "evaluate_trade", "get_matchups", "get_roster", "injury_report", "lineup_check", "list_leagues", "player_values", "position_depth", "season_outlook", "trade_targets", "trending_players", "waiver_targets", "week_recap"}; !slices.Equal(names, want) {
 		t.Fatalf("tools = %v, want %v", names, want)
 	}
 
