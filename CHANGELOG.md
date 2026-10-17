@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.25.0](https://github.com/moudlajs/waiverwatch/compare/v0.24.2...v0.25.0) (2026-10-17)
+
+
+### Features
+
+* **mcp:** guillotine projected cut line ([#138](https://github.com/moudlajs/waiverwatch/issues/138)) ([b364b05](https://github.com/moudlajs/waiverwatch/commit/b364b058a24b37fd88899a6eb26ded57f59bef53)), closes [#134](https://github.com/moudlajs/waiverwatch/issues/134)
+
+
+### Documentation
+
+* compact README, move details to docs/ ([#136](https://github.com/moudlajs/waiverwatch/issues/136)) ([ab73969](https://github.com/moudlajs/waiverwatch/commit/ab73969e7b2009d1ab2db1c3506c6f5cbdac1174)), closes [#135](https://github.com/moudlajs/waiverwatch/issues/135)
+
 ## [0.24.2](https://github.com/moudlajs/waiverwatch/compare/v0.24.1...v0.24.2) (2026-10-17)
 
 
