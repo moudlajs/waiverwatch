@@ -28,6 +28,8 @@ type Game struct {
 	Opponent *Side     `json:"opponent,omitempty" jsonschema:"this week's opponent; absent on a bye and in guillotine leagues"`
 	Survival *Survival `json:"survival,omitempty" jsonschema:"guillotine leagues only: the lowest score among surviving teams is eliminated"`
 	Error    string    `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
+
+	cutNote string // guillotine projection, reported in Week.Note: new output fields break cached connectors (#139)
 }
 
 // Side is one team's lineup and live score.
@@ -107,6 +109,9 @@ func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 		}
 		out.Leagues[i] = m
 	})
+	for _, g := range out.Leagues {
+		addNote(&out.Note, g.cutNote)
+	}
 	return out, nil
 }
 
@@ -139,6 +144,7 @@ func (s *Service) matchup(ctx context.Context, l sleeper.League, userID string, 
 
 	if l.Kind() == "guillotine" {
 		out.Survival = survival(matchups, rosters, mine)
+		out.cutNote = cutLine(l.Name, matchups, rosters, mine, proj, key)
 		return out, nil
 	}
 	if opp, ok := Opponent(matchups, me); ok {
@@ -245,6 +251,54 @@ func survival(ms []sleeper.Matchup, rosters []sleeper.Roster, mine sleeper.Roste
 	}
 	out.Margin = math.Round((myPts-lowest)*100) / 100
 	return out
+}
+
+// cutLine says where the starters' whole-game projections put me among surviving teams (#134).
+func cutLine(league string, ms []sleeper.Matchup, rosters []sleeper.Roster, mine sleeper.Roster, proj map[string]map[string]float64, key string) string {
+	if proj == nil || len(mine.Players) == 0 {
+		return ""
+	}
+	var me float64
+	var others []float64
+	for _, r := range rosters {
+		m, ok := find(ms, r.RosterID)
+		if len(r.Players) == 0 || !ok {
+			continue
+		}
+		if r.RosterID == mine.RosterID {
+			me = projectedTotal(m, proj, key)
+		} else {
+			others = append(others, projectedTotal(m, proj, key))
+		}
+	}
+	if len(others) == 0 {
+		return ""
+	}
+	rank, lowest := 1, others[0]
+	for _, p := range others {
+		if p > me {
+			rank++
+		}
+		lowest = min(lowest, p)
+	}
+	n := len(others) + 1
+	where := fmt.Sprintf("%.1f pts above the lowest projected team", me-lowest)
+	if rank == n {
+		where = fmt.Sprintf("%.1f pts behind the next team", lowest-me)
+	}
+	note := fmt.Sprintf("%s: projected %s of %d by Sleeper's whole-game projections (%.1f pts), %s", league, ordinal(rank), n, me, where)
+	if rank == n || (n > 2 && rank == n-1) {
+		note += "; at risk of the cut, check the lineup"
+	}
+	return note
+}
+
+func projectedTotal(m sleeper.Matchup, proj map[string]map[string]float64, key string) float64 {
+	var total float64
+	for _, id := range m.Starters {
+		total += proj[id][key]
+	}
+	return total
 }
 
 func alive(rosters []sleeper.Roster) int {
