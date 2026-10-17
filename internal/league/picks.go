@@ -82,13 +82,14 @@ func pickSeasons(market map[string]fantasycalc.Value) []string {
 }
 
 func ordinal(n int) string {
-	switch n {
-	case 1:
-		return "1st"
-	case 2:
-		return "2nd"
-	case 3:
-		return "3rd"
+	switch {
+	case n%100 >= 11 && n%100 <= 13:
+	case n%10 == 1:
+		return strconv.Itoa(n) + "st"
+	case n%10 == 2:
+		return strconv.Itoa(n) + "nd"
+	case n%10 == 3:
+		return strconv.Itoa(n) + "rd"
 	}
 	return strconv.Itoa(n) + "th"
 }
