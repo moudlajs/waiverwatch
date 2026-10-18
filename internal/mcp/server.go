@@ -25,6 +25,9 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 	s := sdk.NewServer(&sdk.Implementation{Name: "waiverwatch", Version: version}, &sdk.ServerOptions{
 		Instructions: "Sleeper fantasy football data for the signed-in Sleeper user across all their leagues, fetched " +
 			"live on every call. Start with list_leagues to see the leagues, records and standings.",
+		// No listChanged: the tools never change while running, and the SDK would otherwise park
+		// every subscriptions/listen until Cloud Run's 60 s timeout (#150).
+		Capabilities: &sdk.ServerCapabilities{Tools: &sdk.ToolCapabilities{}},
 	})
 
 	sdk.AddTool(s, &sdk.Tool{
