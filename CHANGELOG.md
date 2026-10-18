@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.1](https://github.com/moudlajs/waiverwatch/compare/v0.28.0...v0.28.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **mcp:** answer subscriptions/listen at once instead of holding it 60 s ([#151](https://github.com/moudlajs/waiverwatch/issues/151)) ([4185825](https://github.com/moudlajs/waiverwatch/commit/41858259f33a4e83fbbbfc163fb244f348ec0860))
+
 ## [0.28.0](https://github.com/moudlajs/waiverwatch/compare/v0.27.0...v0.28.0) (2026-10-17)
 
 
