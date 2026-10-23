@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.29.0](https://github.com/moudlajs/waiverwatch/compare/v0.28.1...v0.29.0) (2026-10-23)
+
+
+### Features
+
+* **lineup:** flag players on IR who are no longer IR-eligible ([#159](https://github.com/moudlajs/waiverwatch/issues/159)) ([569ee1b](https://github.com/moudlajs/waiverwatch/commit/569ee1b4fa5df4fd2f60403e502093c8b86ad0e4))
+* **matchups:** note opponent starters who won't play ([#160](https://github.com/moudlajs/waiverwatch/issues/160)) ([ea912d0](https://github.com/moudlajs/waiverwatch/commit/ea912d0e33909ba641edb6a0be3817bb77754b8f))
+
+
+### Bug Fixes
+
+* bump Go to 1.27.3 for crypto/x509 security fix ([#162](https://github.com/moudlajs/waiverwatch/issues/162)) ([d2ca713](https://github.com/moudlajs/waiverwatch/commit/d2ca7138ba9543087801af02416b1dbefe1c9e09))
+* **depth:** superflex starts the lone QB, never offered as a spare ([#158](https://github.com/moudlajs/waiverwatch/issues/158)) ([8565980](https://github.com/moudlajs/waiverwatch/commit/8565980c4e900d0c6131fa0149b69453762461b2))
+* **values:** superflex market for any SUPER_FLEX slot ([#157](https://github.com/moudlajs/waiverwatch/issues/157)) ([24d15c1](https://github.com/moudlajs/waiverwatch/commit/24d15c17fa3358b39f3f6e215c7b68bb4f8fbfac))
+
 ## [0.28.1](https://github.com/moudlajs/waiverwatch/compare/v0.28.0...v0.28.1) (2026-10-18)
 
 
