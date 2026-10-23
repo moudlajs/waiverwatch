@@ -162,7 +162,7 @@ func (s *Service) compare(ctx context.Context, l sleeper.League, userID, owner s
 		}
 		addNote(&out.Note, note)
 		out.Value = &SideValues{
-			Market:         marketLabel(settings, note),
+			Market:         marketLabel(l, settings, note),
 			Mine:           rosterValue(mine.Players, market),
 			Theirs:         rosterValue(them.Players, market),
 			MineStarters:   rosterValue(mine.Starters, market),

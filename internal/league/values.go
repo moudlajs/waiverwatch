@@ -70,11 +70,14 @@ type PlayerValue struct {
 	Trend30Day   int    `json:"trend_30_day,omitempty" jsonschema:"value change over the last 30 days"`
 }
 
-// ValueSettings picks the FantasyCalc market for a league: redraft for keeper/guillotine, superflex when two QBs can start.
+// ValueSettings picks the FantasyCalc market for a league: redraft for keeper/guillotine, superflex for any SUPER_FLEX or 2+ QB slots.
 func ValueSettings(l sleeper.League) fantasycalc.Settings {
 	qbs := 0
 	for _, slot := range l.RosterPositions {
-		if slot == "QB" || slot == "SUPER_FLEX" {
+		switch slot {
+		case "SUPER_FLEX":
+			qbs = max(qbs, 2)
+		case "QB":
 			qbs++
 		}
 	}
@@ -168,7 +171,7 @@ func (s *Service) leagueValues(ctx context.Context, l sleeper.League, userID, ow
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
-	out.Market = marketLabel(settings, source)
+	out.Market = marketLabel(l, settings, source)
 	addNote(&out.Note, redraftNote(l, source))
 	addNote(&out.Note, source)
 	mine, ok := MyRoster(rosters, userID)

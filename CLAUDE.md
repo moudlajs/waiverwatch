@@ -163,8 +163,9 @@ Trade values, public, no key, undocumented. One endpoint:
 - Markets (checked 2026-10-06): `numQbs` 1 or 2, `numTeams` 8/10/12/14
   (16+ silently returns the 12-team values), `ppr` 0/0.5/1; anything else 404s.
   `fantasycalc.Settings.Normalise` maps leagues onto these (bigger leagues:
-  14). `league.ValueSettings` derives them: dynasty only for `settings.type`
-  2; 2 QBs when `QB` + `SUPER_FLEX` slots ≥ 2; PPR from `scoring_settings.rec`.
+  14, and the market label says "approximate"). `league.ValueSettings`
+  derives them: dynasty only for `settings.type` 2; 2 QBs for any
+  `SUPER_FLEX` slot or 2+ `QB` slots (#153); PPR from `scoring_settings.rec`.
 - ~150 KB redraft, ~330 KB dynasty. Cached per market for 3 h; on a failed
   refresh the stale copy is served.
 - **Backup:** when FantasyCalc fails, `Service.market` falls back to

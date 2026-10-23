@@ -23,8 +23,10 @@ func TestValueSettings(t *testing.T) {
 			fantasycalc.Settings{QBs: 1, Teams: 12, PPR: 1}},
 		{"superflex dynasty without a QB slot", sleeper.League{TotalRosters: 10, RosterPositions: []string{"RB", "SUPER_FLEX", "SUPER_FLEX"}, Settings: sleeper.LeagueSettings{Type: 2}},
 			fantasycalc.Settings{Dynasty: true, QBs: 2, Teams: 10}},
-		{"one superflex slot only", sleeper.League{TotalRosters: 32, RosterPositions: []string{"RB", "WR", "SUPER_FLEX"}, Scoring: sleeper.Scoring{Rec: 0.5}},
-			fantasycalc.Settings{QBs: 1, Teams: 32, PPR: 0.5}},
+		{"one superflex slot only", sleeper.League{TotalRosters: 32, RosterPositions: []string{"RB", "WR", "FLEX", "FLEX", "SUPER_FLEX"}, Scoring: sleeper.Scoring{Rec: 0.5}},
+			fantasycalc.Settings{QBs: 2, Teams: 32, PPR: 0.5}},
+		{"2QB without superflex", sleeper.League{TotalRosters: 12, RosterPositions: []string{"QB", "QB", "RB"}},
+			fantasycalc.Settings{QBs: 2, Teams: 12}},
 		{"keeper is not dynasty", sleeper.League{TotalRosters: 12, RosterPositions: []string{"QB"}, Settings: sleeper.LeagueSettings{Type: 1}},
 			fantasycalc.Settings{QBs: 1, Teams: 12}},
 	}
@@ -147,7 +149,7 @@ func TestValues(t *testing.T) {
 		if dyn.Value != 3000 || dyn.Team != "Rival FC" || dyn.Mine {
 			t.Errorf("dynasty: %+v", dyn)
 		}
-		if red.Value != 5000 || !red.Mine || r.Leagues[1].Market != "redraft 1QB 14-team PPR" {
+		if red.Value != 5000 || !red.Mine || r.Leagues[1].Market != "redraft 1QB 14-team PPR (approximate: 32-team league, FantasyCalc goes up to 14)" {
 			t.Errorf("redraft: %+v in %q", red, r.Leagues[1].Market)
 		}
 	})

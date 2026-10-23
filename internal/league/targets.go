@@ -88,7 +88,7 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
-	out.Market = marketLabel(settings, source)
+	out.Market = marketLabel(l, settings, source)
 	addNote(&out.Note, source)
 	mine, ok := MyRoster(rosters, userID)
 	if !ok {

@@ -3,6 +3,7 @@ package league
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"log/slog"
 	"slices"
 
@@ -34,7 +35,10 @@ func (s *Service) market(ctx context.Context, settings fantasycalc.Settings) (ma
 	return nil, "", err
 }
 
-func marketLabel(settings fantasycalc.Settings, note string) string {
+func marketLabel(l sleeper.League, settings fantasycalc.Settings, note string) string {
+	if note == "" && l.TotalRosters > settings.Teams {
+		return fmt.Sprintf("%s (approximate: %d-team league, FantasyCalc goes up to %d)", settings, l.TotalRosters, settings.Teams)
+	}
 	if note == "" {
 		return settings.String()
 	}
