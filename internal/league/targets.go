@@ -44,10 +44,13 @@ type TradeTarget struct {
 	Mutual     bool     `json:"mutual,omitempty" jsonschema:"the offer includes a player at a position his team needs: a deal that helps both sides"`
 }
 
-// TradeTargets finds players on other teams who fill my thin positions, priced against my spares.
-func (s *Service) TradeTargets(ctx context.Context, leagueQuery, position string, limit int) (TargetReport, error) {
+// TradeTargets finds players on other teams who fill my thin positions, priced against my spares; exclude drops positions from both.
+func (s *Service) TradeTargets(ctx context.Context, leagueQuery, position string, exclude []string, limit int) (TargetReport, error) {
 	if s.values == nil {
 		return TargetReport{}, errors.New("trade values are not set up on this server")
+	}
+	if position != "" && slices.Contains(exclude, position) {
+		return TargetReport{}, fmt.Errorf("%s is both asked for and excluded", position)
 	}
 	_, user, leagues, err := s.myLeagues(ctx)
 	if err != nil {
@@ -62,7 +65,7 @@ func (s *Service) TradeTargets(ctx context.Context, leagueQuery, position string
 	}
 	out := TargetReport{Source: ValueSource, Leagues: make([]TargetBoard, len(leagues))}
 	eachLeague(leagues, func(i int, l sleeper.League) {
-		b, err := s.targets(ctx, l, user.UserID, position, limit, players)
+		b, err := s.targets(ctx, l, user.UserID, position, exclude, limit, players)
 		if err != nil {
 			b.Error = err.Error()
 		}
@@ -71,7 +74,7 @@ func (s *Service) TradeTargets(ctx context.Context, leagueQuery, position string
 	return out, nil
 }
 
-func (s *Service) targets(ctx context.Context, l sleeper.League, userID, position string, limit int, players map[string]sleeper.Player) (TargetBoard, error) {
+func (s *Service) targets(ctx context.Context, l sleeper.League, userID, position string, exclude []string, limit int, players map[string]sleeper.Player) (TargetBoard, error) {
 	settings := ValueSettings(l).Normalise()
 	out := TargetBoard{LeagueID: l.LeagueID, League: l.Name, Kind: l.Kind(), Market: settings.String(),
 		Needs: []string{}, Spares: []PlayerValue{}, Targets: []TradeTarget{}}
@@ -104,6 +107,7 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 	for _, pd := range depth {
 		streamed := pd.Position == "K" || pd.Position == "DEF"
 		switch {
+		case slices.Contains(exclude, pd.Position):
 		case position != "" && pd.Position == position:
 			needs = append(needs, pd.Position)
 			out.Needs = append(out.Needs, fmt.Sprintf("%s (asked for; %s, %d backups)", pd.Position, pd.Status, pd.Backups))
@@ -119,7 +123,7 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 
 	// Spares: healthy players beyond the lineup's needs at positions with backups.
 	for _, pd := range depth {
-		if pd.Backups == 0 || slices.Contains(needs, pd.Position) {
+		if pd.Backups == 0 || slices.Contains(needs, pd.Position) || slices.Contains(exclude, pd.Position) {
 			continue
 		}
 		var healthy []PlayerValue
@@ -138,6 +142,9 @@ func (s *Service) targets(ctx context.Context, l sleeper.League, userID, positio
 	}
 	slices.SortStableFunc(out.Spares, func(a, b PlayerValue) int { return cmp.Compare(b.Value, a.Value) })
 	switch {
+	case len(needs) == 0 && len(exclude) > 0:
+		addNote(&out.Note, "no thin spots outside the excluded positions (name a position to look anyway)")
+		return out, nil
 	case len(needs) == 0:
 		addNote(&out.Note, "no thin spots: every position has a healthy backup (name a position to look anyway)")
 		return out, nil

@@ -71,7 +71,7 @@ size, PPR.
 | `injury_report` | your injured players across all leagues, where they start for you, and a free replacement in each of those leagues |
 | `player_values` | trade values (FantasyCalc, from real trades) fitted to each league's format: named players and who has them, or a whole roster with its total and the league's team value ranking |
 | `evaluate_trade` | "is this trade fair?": both sides valued for that league (players, and dynasty picks checked against who holds them), 2-for-1 adjusted, who it leans to and by how much, your depth before and after |
-| `trade_targets` | per league: your thin positions, the spare players you can afford to trade, and players on other teams they can buy, each with the cheapest offer |
+| `trade_targets` | per league: your thin positions, the spare players you can afford to trade, and players on other teams they can buy, each with the cheapest offer; `exclude_positions` (e.g. QB) keeps a position out of both |
 | `season_outlook` | per head-to-head league: remaining schedule with win chances, schedule difficulty, expected wins and playoff chance (simulated) |
 | `trending_players` | the most-added players on Sleeper, with the leagues where you can still claim each one |
 | `player_exposure` | the players you roster in two or more leagues or start anywhere, with starts per league, injuries and byes, and the NFL teams supplying the most of your starters |

@@ -157,7 +157,14 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 	for pos, pd := range byPos {
 		spare[pos] = max(0, pd.Healthy-pd.Slots)
 	}
-	filled, flexUsed := fillFlex(flexCount, spare)
+	// Superflex starts a QB whenever there is one, so spare QBs take SUPER_FLEX before the matching (#154).
+	sfQBs := min(spare["QB"], flexCount["SUPER_FLEX"])
+	rest, restSpare := maps.Clone(flexCount), maps.Clone(spare)
+	rest["SUPER_FLEX"] -= sfQBs
+	restSpare["QB"] -= sfQBs
+	filled, flexUsed := fillFlex(rest, restSpare)
+	filled["SUPER_FLEX"] += sfQBs
+	flexUsed["QB"] += sfQBs
 	var flex []FlexDepth
 	for _, kind := range slices.Sorted(maps.Keys(flexCount)) {
 		flex = append(flex, FlexDepth{Slot: kind, Slots: flexCount[kind], Filled: filled[kind]})
@@ -182,8 +189,8 @@ func depthChart(slots []string, me sleeper.Roster, players map[string]sleeper.Pl
 		pd.Backups = spare[pos]
 		pd.Starting = min(pd.Healthy, pd.Slots) + flexUsed[pos]
 		pd.Status = status(pd.Healthy, pd.Slots, pd.Backups)
-		// A flex-only position with no spare isn't a hole by itself; the flex group reports it.
-		if pd.Slots == 0 && pd.Status == depthThin {
+		// A flex-only position with no spare isn't a hole by itself; the flex group reports it. QB in superflex is.
+		if pd.Slots == 0 && pd.Status == depthThin && (pos != "QB" || flexCount["SUPER_FLEX"] == 0) {
 			pd.Status = depthOK
 		}
 		out = append(out, *pd)

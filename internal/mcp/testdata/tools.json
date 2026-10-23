@@ -2164,6 +2164,16 @@
     "in": {
       "additionalProperties": false,
       "properties": {
+        "exclude_positions": {
+          "description": "positions to leave out of both my spares and the targets, e.g. [\"QB\"] to keep every QB",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "league": {
           "description": "league name fragment (case-insensitive) or ID; omit for all leagues",
           "type": "string"
