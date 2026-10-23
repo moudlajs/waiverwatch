@@ -128,6 +128,9 @@ GET /projections/nfl/{season_type}/{season}/{week} -> projected stats by player
 - Guillotine leagues (`settings.type` 3) have no head-to-head: each team has
   its own `matchup_id`, and eliminated teams keep a roster with no players.
 - An empty lineup slot is the starter ID `"0"`.
+- IR eligibility is per league: `settings.reserve_allow_out`, `_doubtful`,
+  `_sus`, `_na`, `_cov`, `_dnr` (1 allows it); the `IR` status always may.
+  A player left on IR without an allowed status blocks roster moves (#155).
 - `/players/nfl/trending/add` returns at most 100 players whatever `limit`
   says. A roster's `players` already includes its taxi and IR players.
 - `settings.waiver_type`: 0 rolling priority, 1 reverse standings, 2 FAAB

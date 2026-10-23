@@ -110,6 +110,13 @@ func (s *Service) lineup(ctx context.Context, l sleeper.League, userID string, p
 	key := projectionKey(l.Scoring.Rec)
 	pts := func(id string) float64 { return wk.proj[id][key] }
 	out.Problems, out.Start, out.Bench, out.Projected, out.Best = checkLineup(l.RosterPositions, mine, players, wk, pts)
+	for _, id := range mine.Reserve {
+		if illegalIR(l, mine, players, id) {
+			p := players[id]
+			out.Problems = append(out.Problems, fmt.Sprintf("%s (%s, %s) is on IR but not IR-eligible in this league: Sleeper blocks adds, drops and trades until he's moved off IR",
+				p.Name(), p.Position, cmp.Or(p.InjuryStatus, "healthy")))
+		}
+	}
 	if !wk.complete { // missing points aren't zeros: no swaps, no totals
 		out.Start, out.Bench, out.Projected, out.Best = nil, nil, 0, 0
 	}
