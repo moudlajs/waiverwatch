@@ -31,7 +31,7 @@ type Game struct {
 	Survival *Survival `json:"survival,omitempty" jsonschema:"guillotine leagues only: the lowest score among surviving teams is eliminated"`
 	Error    string    `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
 
-	note string // guillotine cut line or idle opponent starters, reported in Week.Note: new output fields break cached connectors (#139)
+	note string // guillotine cut line, reported in Week.Note: new output fields break cached connectors (#139)
 }
 
 // Side is one team's lineup and live score.
@@ -100,21 +100,25 @@ func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 		addNote(&out.Note, note)
 	}
 
-	playing := playingTeams(proj, players)
 	eachLeague(leagues, func(i int, l sleeper.League) {
-		m, err := s.matchup(ctx, l, user.UserID, week, players, proj, playing)
+		m, err := s.matchup(ctx, l, user.UserID, week, players, proj)
 		if err != nil {
 			m.Error = err.Error()
 		}
 		out.Leagues[i] = m
 	})
+	playing := playingTeams(proj, players)
 	for _, g := range out.Leagues {
 		addNote(&out.Note, g.note)
+		// Injuries are today's, so only the current week can say who won't play.
+		if g.Opponent != nil && week == state.Week {
+			addNote(&out.Note, idleNote(g.Name, g.Opponent, playing))
+		}
 	}
 	return out, nil
 }
 
-func (s *Service) matchup(ctx context.Context, l sleeper.League, userID string, week int, players map[string]sleeper.Player, proj map[string]map[string]float64, playing map[string]bool) (Game, error) {
+func (s *Service) matchup(ctx context.Context, l sleeper.League, userID string, week int, players map[string]sleeper.Player, proj map[string]map[string]float64) (Game, error) {
 	out := Game{LeagueID: l.LeagueID, Name: l.Name, Kind: l.Kind()}
 
 	var (
@@ -154,7 +158,6 @@ func (s *Service) matchup(ctx context.Context, l sleeper.League, userID string, 
 			}
 		}
 		out.Opponent = side(opp, TeamName(users, owner), l.RosterPositions, players, proj, key)
-		out.note = idleNote(l.Name, out.Opponent, playing)
 	}
 	return out, nil
 }

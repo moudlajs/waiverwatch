@@ -277,6 +277,11 @@ func TestMatchupsNoteIdleOpponentStarters(t *testing.T) {
 			{RosterID: 1, MatchupID: 1, Starters: []string{"q1", "r1"}},
 			{RosterID: 2, MatchupID: 1, Starters: []string{"q2", "r2"}},
 		},
+		"/league/H/matchups/2": []sleeper.Matchup{
+			{RosterID: 1, MatchupID: 1, Starters: []string{"q1", "r1"}},
+			{RosterID: 2, MatchupID: 1, Starters: []string{"q2", "r2"}},
+		},
+		"/projections/nfl/regular/2026/2": map[string]map[string]float64{"q1": {"pts_ppr": 20}, "r1": {"pts_ppr": 10}, "q2": {"pts_ppr": 18}, "r2": {"pts_ppr": 6}},
 		"/players/nfl": map[string]sleeper.Player{
 			"q1": {PlayerID: "q1", FullName: "My Qb", Position: "QB", Team: "KC"},
 			"r1": {PlayerID: "r1", FullName: "My Rb", Position: "RB", Team: "KC"},
@@ -293,5 +298,8 @@ func TestMatchupsNoteIdleOpponentStarters(t *testing.T) {
 	}
 	if !strings.Contains(w.Note, "H2H: rival starts 1 who won't play (Their Rb RB IR); projected without them: 18.0 (raw 24.0)") {
 		t.Errorf("note = %q", w.Note)
+	}
+	if w, err = svc.Matchups(context.Background(), 2); err != nil || strings.Contains(w.Note, "won't play") {
+		t.Errorf("past week: note %q, err %v; today's injuries don't apply", w.Note, err)
 	}
 }
