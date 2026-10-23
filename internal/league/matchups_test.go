@@ -243,3 +243,63 @@ func TestMatchupsWithoutProjections(t *testing.T) {
 		t.Errorf("got %+v, err %v; want live points and a note", w, err)
 	}
 }
+
+func TestIdleNote(t *testing.T) {
+	opp := &Side{Team: "rival", Projected: 50, Starters: []Starter{
+		{Slot: "QB", Name: "Plays", NFLTeam: "KC", Projected: 20},
+		{Slot: "RB", Name: "Hurt", Position: "RB", NFLTeam: "SF", Injury: "Out", Projected: 8},
+		{Slot: "WR", Name: "Off", Position: "WR", NFLTeam: "CIN"},
+		{Slot: "TE", Name: "Maybe", NFLTeam: "KC", Injury: "Doubtful", Projected: 4},
+		{Slot: "FLEX", Name: "(empty)"},
+	}}
+	playing := map[string]bool{"KC": true, "SF": true}
+	want := "TGIT: rival starts 3 who won't play (Hurt RB Out, Off WR bye, empty FLEX); projected without them: 42.0 (raw 50.0)"
+	if got := idleNote("TGIT", opp, playing); got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+	if got := idleNote("TGIT", &Side{Starters: []Starter{{Slot: "QB", Name: "Plays", NFLTeam: "KC"}}}, playing); got != "" {
+		t.Errorf("everyone plays: got %q", got)
+	}
+	// Without projections there's no way to tell a bye: only injuries count.
+	if got := idleNote("TGIT", opp, nil); !strings.Contains(got, "starts 2") {
+		t.Errorf("no projections: got %q", got)
+	}
+}
+
+func TestMatchupsNoteIdleOpponentStarters(t *testing.T) {
+	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
+		"/state/nfl":                 sleeper.State{Season: "2026", Week: 3, SeasonType: "regular"},
+		"/user/me":                   sleeper.User{UserID: "100"},
+		"/user/100/leagues/nfl/2026": []sleeper.League{{LeagueID: "H", Name: "H2H", RosterPositions: []string{"QB", "RB"}, Scoring: sleeper.Scoring{Rec: 1}}},
+		"/league/H/rosters":          []sleeper.Roster{{RosterID: 1, OwnerID: "100"}, {RosterID: 2, OwnerID: "200"}},
+		"/league/H/users":            []sleeper.LeagueUser{{UserID: "100", DisplayName: "me"}, {UserID: "200", DisplayName: "rival"}},
+		"/league/H/matchups/3": []sleeper.Matchup{
+			{RosterID: 1, MatchupID: 1, Starters: []string{"q1", "r1"}},
+			{RosterID: 2, MatchupID: 1, Starters: []string{"q2", "r2"}},
+		},
+		"/league/H/matchups/2": []sleeper.Matchup{
+			{RosterID: 1, MatchupID: 1, Starters: []string{"q1", "r1"}},
+			{RosterID: 2, MatchupID: 1, Starters: []string{"q2", "r2"}},
+		},
+		"/projections/nfl/regular/2026/2": map[string]map[string]float64{"q1": {"pts_ppr": 20}, "r1": {"pts_ppr": 10}, "q2": {"pts_ppr": 18}, "r2": {"pts_ppr": 6}},
+		"/players/nfl": map[string]sleeper.Player{
+			"q1": {PlayerID: "q1", FullName: "My Qb", Position: "QB", Team: "KC"},
+			"r1": {PlayerID: "r1", FullName: "My Rb", Position: "RB", Team: "KC"},
+			"q2": {PlayerID: "q2", FullName: "Their Qb", Position: "QB", Team: "KC"},
+			"r2": {PlayerID: "r2", FullName: "Their Rb", Position: "RB", Team: "SF", InjuryStatus: "IR"},
+		},
+		"/projections/nfl/regular/2026/3": map[string]map[string]float64{"q1": {"pts_ppr": 20}, "r1": {"pts_ppr": 10}, "q2": {"pts_ppr": 18}, "r2": {"pts_ppr": 6}},
+	}))
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
+	svc.projections.min = 1
+	w, err := svc.Matchups(context.Background(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(w.Note, "H2H: rival starts 1 who won't play (Their Rb RB IR); projected without them: 18.0 (raw 24.0)") {
+		t.Errorf("note = %q", w.Note)
+	}
+	if w, err = svc.Matchups(context.Background(), 2); err != nil || strings.Contains(w.Note, "won't play") {
+		t.Errorf("past week: note %q, err %v; today's injuries don't apply", w.Note, err)
+	}
+}
