@@ -62,7 +62,7 @@ size, PPR.
 | Tool | Returns |
 |---|---|
 | `list_leagues` | every league this season: type, size, your team, record, points, standing |
-| `get_matchups` | this week (or any week) in every league: live and projected score, your and your opponent's starters with injuries and projections; guillotine rank and margin over last place, and the projected cut line |
+| `get_matchups` | this week (or any week) in every league: live and projected score, your and your opponent's starters with injuries and projections, and which of theirs won't play this week (with their projection without them); guillotine rank and margin over last place, and the projected cut line |
 | `lineup_check` | per league this week: empty slots, starters out or on bye, questionable starters, players on IR who are no longer IR-eligible, and the best lineup by projections (flex-aware) as start/bench changes |
 | `get_roster` | a team's starters (by slot), bench, IR and taxi with injuries: yours, or any owner by name |
 | `compare_rosters` | your roster next to this week's opponent (or any owner), position by position, with records and trade values (totals, starters, per position) |

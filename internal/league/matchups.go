@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -29,7 +31,7 @@ type Game struct {
 	Survival *Survival `json:"survival,omitempty" jsonschema:"guillotine leagues only: the lowest score among surviving teams is eliminated"`
 	Error    string    `json:"error,omitempty" jsonschema:"set when this league could not be loaded; the others are still valid"`
 
-	cutNote string // guillotine projection, reported in Week.Note: new output fields break cached connectors (#139)
+	note string // guillotine cut line or idle opponent starters, reported in Week.Note: new output fields break cached connectors (#139)
 }
 
 // Side is one team's lineup and live score.
@@ -98,20 +100,21 @@ func (s *Service) Matchups(ctx context.Context, week int) (Week, error) {
 		addNote(&out.Note, note)
 	}
 
+	playing := playingTeams(proj, players)
 	eachLeague(leagues, func(i int, l sleeper.League) {
-		m, err := s.matchup(ctx, l, user.UserID, week, players, proj)
+		m, err := s.matchup(ctx, l, user.UserID, week, players, proj, playing)
 		if err != nil {
 			m.Error = err.Error()
 		}
 		out.Leagues[i] = m
 	})
 	for _, g := range out.Leagues {
-		addNote(&out.Note, g.cutNote)
+		addNote(&out.Note, g.note)
 	}
 	return out, nil
 }
 
-func (s *Service) matchup(ctx context.Context, l sleeper.League, userID string, week int, players map[string]sleeper.Player, proj map[string]map[string]float64) (Game, error) {
+func (s *Service) matchup(ctx context.Context, l sleeper.League, userID string, week int, players map[string]sleeper.Player, proj map[string]map[string]float64, playing map[string]bool) (Game, error) {
 	out := Game{LeagueID: l.LeagueID, Name: l.Name, Kind: l.Kind()}
 
 	var (
@@ -140,7 +143,7 @@ func (s *Service) matchup(ctx context.Context, l sleeper.League, userID string, 
 
 	if l.Kind() == "guillotine" {
 		out.Survival = survival(matchups, rosters, mine)
-		out.cutNote = cutLine(l.Name, matchups, rosters, mine, proj, key)
+		out.note = cutLine(l.Name, matchups, rosters, mine, proj, key)
 		return out, nil
 	}
 	if opp, ok := Opponent(matchups, me); ok {
@@ -151,6 +154,7 @@ func (s *Service) matchup(ctx context.Context, l sleeper.League, userID string, 
 			}
 		}
 		out.Opponent = side(opp, TeamName(users, owner), l.RosterPositions, players, proj, key)
+		out.note = idleNote(l.Name, out.Opponent, playing)
 	}
 	return out, nil
 }
@@ -305,4 +309,28 @@ func alive(rosters []sleeper.Roster) int {
 		}
 	}
 	return n
+}
+
+// idleNote names the opponent's starters who won't play (injured, on bye, empty) and their projection without them.
+func idleNote(league string, opp *Side, playing map[string]bool) string {
+	var idle []string
+	lost := 0.0
+	for _, st := range opp.Starters {
+		switch {
+		case st.Name == "(empty)":
+			idle = append(idle, "empty "+st.Slot)
+		case st.Injury != "Doubtful" && slices.Contains(unavailable, st.Injury):
+			idle = append(idle, fmt.Sprintf("%s %s %s", st.Name, st.Position, st.Injury))
+		case len(playing) > 0 && st.NFLTeam != "" && !playing[st.NFLTeam]:
+			idle = append(idle, fmt.Sprintf("%s %s bye", st.Name, st.Position))
+		default:
+			continue
+		}
+		lost += st.Projected
+	}
+	if len(idle) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s: %s starts %d who won't play (%s); projected without them: %.1f (raw %.1f)",
+		league, opp.Team, len(idle), strings.Join(idle, ", "), opp.Projected-lost, opp.Projected)
 }
