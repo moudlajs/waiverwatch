@@ -10,7 +10,14 @@
       "num_teams": 12,
       "playoff_week_start": 15,
       "waiver_type": 0,
-      "trade_deadline": 13
+      "trade_deadline": 13,
+      "reserve_slots": 3,
+      "reserve_allow_out": 1,
+      "reserve_allow_doubtful": 1,
+      "reserve_allow_sus": 0,
+      "reserve_allow_na": 0,
+      "reserve_allow_cov": 0,
+      "reserve_allow_dnr": 0
     },
     "season_type": "regular",
     "loser_bracket_id": null,

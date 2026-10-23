@@ -130,6 +130,33 @@ func TestLineupCheck(t *testing.T) {
 	}
 }
 
+func TestLineupCheckFlagsIllegalIR(t *testing.T) {
+	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
+		"/state/nfl": sleeper.State{Season: "2026", Week: 5, SeasonType: "regular"},
+		"/user/me":   sleeper.User{UserID: "100"},
+		"/user/100/leagues/nfl/2026": []sleeper.League{
+			{LeagueID: "T", Name: "TGIT", RosterPositions: []string{"QB", "BN", "IR"}, Settings: sleeper.LeagueSettings{ReserveAllowOut: 1}},
+		},
+		"/league/T/rosters": []sleeper.Roster{{RosterID: 1, OwnerID: "100", Players: []string{"q1", "r1", "r2"}, Starters: []string{"q1"}, Reserve: []string{"r1", "r2"}}},
+		"/players/nfl": map[string]sleeper.Player{
+			"q1": {PlayerID: "q1", FullName: "Starter", Position: "QB", Team: "KC"},
+			"r1": {PlayerID: "r1", FullName: "Back Soon", Position: "RB", Team: "CHI", InjuryStatus: "Questionable"},
+			"r2": {PlayerID: "r2", FullName: "Still Out", Position: "RB", Team: "CHI", InjuryStatus: "Out"},
+		},
+		"/projections/nfl/regular/2026/5": map[string]map[string]float64{"q1": {"pts_std": 18}},
+	}))
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), nil, "me")
+	svc.projections.min = 1
+	r, err := svc.LineupCheck(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := r.Leagues[0]
+	if c.Status != "fix" || len(c.Problems) != 1 || !strings.HasPrefix(c.Problems[0], "Back Soon (RB, Questionable) is on IR but not IR-eligible") {
+		t.Errorf("got %+v", c)
+	}
+}
+
 func TestLineupCheckNoGames(t *testing.T) {
 	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
 		"/state/nfl":                  sleeper.State{Season: "2026", Week: 0, SeasonType: "pre"},

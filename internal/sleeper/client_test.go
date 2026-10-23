@@ -105,6 +105,9 @@ func TestClientDecodes(t *testing.T) {
 		if len(l.RosterPositions) != 22 || l.RosterPositions[0] != "QB" {
 			t.Errorf("roster positions = %v", l.RosterPositions)
 		}
+		if st := l.Settings; st.ReserveAllowOut != 1 || st.ReserveAllowDoubtful != 1 || st.ReserveAllowSus != 0 {
+			t.Errorf("IR settings = %+v", st)
+		}
 	})
 
 	t.Run("rosters", func(t *testing.T) {

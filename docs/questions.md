@@ -63,12 +63,12 @@ size, PPR.
 |---|---|
 | `list_leagues` | every league this season: type, size, your team, record, points, standing |
 | `get_matchups` | this week (or any week) in every league: live and projected score, your and your opponent's starters with injuries and projections; guillotine rank and margin over last place, and the projected cut line |
-| `lineup_check` | per league this week: empty slots, starters out or on bye, questionable starters, and the best lineup by projections (flex-aware) as start/bench changes |
+| `lineup_check` | per league this week: empty slots, starters out or on bye, questionable starters, players on IR who are no longer IR-eligible, and the best lineup by projections (flex-aware) as start/bench changes |
 | `get_roster` | a team's starters (by slot), bench, IR and taxi with injuries: yours, or any owner by name |
 | `compare_rosters` | your roster next to this week's opponent (or any owner), position by position, with records and trade values (totals, starters, per position) |
 | `draft_results` | your picks in every league (dynasty: startup and rookie drafts too); "where did I draft X?" |
 | `position_depth` | per league: starting slots (flex-aware) vs healthy players and backups; every thin spot across leagues |
-| `injury_report` | your injured players across all leagues, where they start for you, and a free replacement in each of those leagues |
+| `injury_report` | your injured players across all leagues, where they start for you, and a free replacement in each of those leagues; players illegally on IR come first |
 | `player_values` | trade values (FantasyCalc, from real trades) fitted to each league's format: named players and who has them, or a whole roster with its total and the league's team value ranking |
 | `evaluate_trade` | "is this trade fair?": both sides valued for that league (players, and dynasty picks checked against who holds them), 2-for-1 adjusted, who it leans to and by how much, your depth before and after |
 | `trade_targets` | per league: your thin positions, the spare players you can afford to trade, and players on other teams they can buy, each with the cheapest offer |

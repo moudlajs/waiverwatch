@@ -36,6 +36,13 @@ type LeagueSettings struct {
 	WaiverType       int `json:"waiver_type"`          // 0 rolling priority, 1 reverse standings, 2 FAAB
 	WaiverBudget     int `json:"waiver_budget"`
 	DraftRounds      int `json:"draft_rounds"`
+	// IR eligibility beyond the IR status itself; 1 allows it.
+	ReserveAllowOut      int `json:"reserve_allow_out"`
+	ReserveAllowDoubtful int `json:"reserve_allow_doubtful"`
+	ReserveAllowSus      int `json:"reserve_allow_sus"`
+	ReserveAllowNA       int `json:"reserve_allow_na"`
+	ReserveAllowCOV      int `json:"reserve_allow_cov"`
+	ReserveAllowDNR      int `json:"reserve_allow_dnr"`
 }
 
 // Kind names the league format from settings.type.

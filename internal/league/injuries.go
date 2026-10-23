@@ -3,7 +3,11 @@ package league
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
+	"strings"
+
+	"github.com/moudlajs/waiverwatch/internal/sleeper"
 )
 
 // severity orders injury statuses, most serious first; unlisted ones sort last.
@@ -56,6 +60,7 @@ func (s *Service) Injuries(ctx context.Context) (InjuryReport, error) {
 
 	out := InjuryReport{Players: []InjuredPlayer{}}
 	byID := make(map[string]*InjuredPlayer)
+	illegal := make(map[string][]string) // player ID -> leagues where he's illegally on IR
 	for _, p := range s.pools(ctx, leagues, user.UserID) {
 		if p.err != nil {
 			out.FailedLeagues = append(out.FailedLeagues, Failure{League: p.league.Name, Error: p.err.Error()})
@@ -63,8 +68,12 @@ func (s *Service) Injuries(ctx context.Context) (InjuryReport, error) {
 		}
 		for id := range p.mine {
 			pl := Lookup(players, id)
-			if pl.InjuryStatus == "" {
+			bad := illegalIR(p.league, p.me, players, id)
+			if pl.InjuryStatus == "" && !bad {
 				continue
+			}
+			if bad {
+				illegal[id] = append(illegal[id], p.league.Name)
 			}
 			ip, ok := byID[id]
 			if !ok {
@@ -93,13 +102,21 @@ func (s *Service) Injuries(ctx context.Context) (InjuryReport, error) {
 		slices.SortFunc(ip.Leagues, func(a, b InjuryLeague) int { return cmp.Compare(a.League, b.League) })
 		out.Players = append(out.Players, *ip)
 	}
+	// Illegal IR blocks roster moves, so it sorts first; the warning goes in status (output schemas are frozen, #139).
 	slices.SortFunc(out.Players, func(a, b InjuredPlayer) int {
 		return cmp.Or(
+			cmp.Compare(boolRank(len(illegal[a.PlayerID]) > 0), boolRank(len(illegal[b.PlayerID]) > 0)),
 			cmp.Compare(severityRank(a.Status), severityRank(b.Status)),
 			cmp.Compare(b.StartingIn, a.StartingIn),
 			cmp.Compare(a.Name, b.Name),
 		)
 	})
+	for i, p := range out.Players {
+		if leagues := illegal[p.PlayerID]; len(leagues) > 0 {
+			out.Players[i].Status = fmt.Sprintf("%s; illegal IR in %s: not IR-eligible there, so Sleeper blocks adds, drops and trades until he's moved off IR",
+				cmp.Or(p.Status, "healthy"), strings.Join(leagues, ", "))
+		}
+	}
 	return out, nil
 }
 
@@ -108,4 +125,30 @@ func severityRank(status string) int {
 		return i
 	}
 	return len(severity)
+}
+
+// irEligible says whether a player with status may stay on IR in a league with these settings.
+func irEligible(s sleeper.LeagueSettings, status string) bool {
+	switch status {
+	case "IR", "PUP": // no setting: always allowed
+		return true
+	case "Out":
+		return s.ReserveAllowOut == 1
+	case "Doubtful":
+		return s.ReserveAllowDoubtful == 1
+	case "Sus":
+		return s.ReserveAllowSus == 1
+	case "NA":
+		return s.ReserveAllowNA == 1
+	case "COV":
+		return s.ReserveAllowCOV == 1
+	case "DNR":
+		return s.ReserveAllowDNR == 1
+	}
+	return false
+}
+
+func illegalIR(l sleeper.League, r sleeper.Roster, players map[string]sleeper.Player, id string) bool {
+	p, known := players[id]
+	return known && slices.Contains(r.Reserve, id) && !irEligible(l.Settings, p.InjuryStatus)
 }
