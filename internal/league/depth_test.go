@@ -98,6 +98,37 @@ func TestDepthChart(t *testing.T) {
 		}
 	})
 
+	t.Run("superflex starts the lone QB", func(t *testing.T) {
+		// NFL.cz TGIT! liga: no QB slot, so a TE used to take SUPER_FLEX and the only QB showed as a backup (#154).
+		me := sleeper.Roster{Players: []string{"qb1", "rb1", "rb2", "wr1", "wr2", "te1"}}
+		pos, flex, _ := depthChart([]string{"RB", "WR", "FLEX", "FLEX", "SUPER_FLEX", "BN"}, me, players)
+		if qb, _ := at(pos, "QB"); qb.Healthy != 1 || qb.Starting != 1 || qb.Backups != 0 || qb.Status != "thin" {
+			t.Errorf("QB = %+v, want the lone QB starting in SUPER_FLEX and thin", qb)
+		}
+		if sf := flex[1]; sf.Slot != "SUPER_FLEX" || sf.Filled != 1 {
+			t.Errorf("flex = %+v", flex)
+		}
+	})
+
+	t.Run("superflex with a QB slot takes the second QB", func(t *testing.T) {
+		me := sleeper.Roster{Players: []string{"qb1", "qb2", "rb1", "rb2", "wr1", "wr2", "te1"}}
+		pos, _, _ := depthChart([]string{"QB", "RB", "WR", "TE", "SUPER_FLEX", "BN"}, me, players)
+		if qb, _ := at(pos, "QB"); qb.Starting != 2 || qb.Backups != 0 || qb.Status != "thin" {
+			t.Errorf("QB = %+v, want both QBs starting and no backup", qb)
+		}
+		if rb, _ := at(pos, "RB"); rb.Backups != 1 {
+			t.Errorf("RB = %+v, want the second RB left as a backup", rb)
+		}
+	})
+
+	t.Run("superflex with no QB", func(t *testing.T) {
+		me := sleeper.Roster{Players: []string{"rb1", "rb2", "wr1", "te1"}}
+		pos, _, _ := depthChart([]string{"RB", "WR", "SUPER_FLEX", "BN"}, me, players)
+		if qb, ok := at(pos, "QB"); !ok || qb.Status != "thin" {
+			t.Errorf("QB = %+v, want thin: no QB for SUPER_FLEX", qb)
+		}
+	})
+
 	t.Run("most restrictive flex fills first", func(t *testing.T) {
 		// One spare WR and one spare RB: REC_FLEX can only take the WR, so it must get it.
 		me := sleeper.Roster{Players: []string{"rb1", "rb2", "wr1", "wr2"}}

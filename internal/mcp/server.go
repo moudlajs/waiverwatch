@@ -181,7 +181,11 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 		if limit <= 0 {
 			limit = 5
 		}
-		return svc.TradeTargets(ctx, in.League, normalisePosition(in.Position), min(limit, 20))
+		exclude := make([]string, len(in.ExcludePositions))
+		for i, p := range in.ExcludePositions {
+			exclude[i] = normalisePosition(p)
+		}
+		return svc.TradeTargets(ctx, in.League, normalisePosition(in.Position), exclude, min(limit, 20))
 	}))
 
 	sdk.AddTool(s, &sdk.Tool{
@@ -233,9 +237,10 @@ func newServer(svc *league.Service, version string, g *gate) *sdk.Server {
 
 // TargetsInput is trade_targets' arguments.
 type TargetsInput struct {
-	League   string `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
-	Position string `json:"position,omitempty" jsonschema:"look for this position (QB, RB, WR, TE) even if it isn't thin; omit for my thin positions"`
-	Limit    int    `json:"limit,omitempty" jsonschema:"targets per league, 1-20; default 5"`
+	League           string   `json:"league,omitempty" jsonschema:"league name fragment (case-insensitive) or ID; omit for all leagues"`
+	Position         string   `json:"position,omitempty" jsonschema:"look for this position (QB, RB, WR, TE) even if it isn't thin; omit for my thin positions"`
+	Limit            int      `json:"limit,omitempty" jsonschema:"targets per league, 1-20; default 5"`
+	ExcludePositions []string `json:"exclude_positions,omitempty" jsonschema:"positions to leave out of both my spares and the targets, e.g. [\"QB\"] to keep every QB"`
 }
 
 // toolNames are every tool NewServer registers; a test keeps it in step.

@@ -50,7 +50,7 @@ func TestTradeTargets(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("thin positions", func(t *testing.T) {
-		r, err := svc.TradeTargets(ctx, "", "", 5)
+		r, err := svc.TradeTargets(ctx, "", "", nil, 5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -94,7 +94,7 @@ func TestTradeTargets(t *testing.T) {
 	})
 
 	t.Run("a named position", func(t *testing.T) {
-		r, err := svc.TradeTargets(ctx, "dynasty", "WR", 5)
+		r, err := svc.TradeTargets(ctx, "dynasty", "WR", nil, 5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,13 +103,32 @@ func TestTradeTargets(t *testing.T) {
 		if len(d.Spares) != 1 || d.Spares[0].Name != "Q Two" || len(d.Targets) != 0 || !strings.Contains(d.Note, "within reach") {
 			t.Errorf("got %+v", d)
 		}
-		if r, err = svc.TradeTargets(ctx, "dynasty", "K", 5); err != nil || !strings.Contains(r.Leagues[0].Note, "doesn't start a K") || r.Leagues[0].Error != "" {
+		if r, err = svc.TradeTargets(ctx, "dynasty", "K", nil, 5); err != nil || !strings.Contains(r.Leagues[0].Note, "doesn't start a K") || r.Leagues[0].Error != "" {
 			t.Errorf("K: %+v, err %v", r.Leagues[0], err)
 		}
 	})
 
+	t.Run("excluded positions", func(t *testing.T) {
+		r, err := svc.TradeTargets(ctx, "dynasty", "", []string{"QB"}, 5)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, pv := range r.Leagues[0].Spares {
+			if pv.Position == "QB" {
+				t.Errorf("QB spare %s with QB excluded", pv.Name)
+			}
+		}
+		r, err = svc.TradeTargets(ctx, "dynasty", "", []string{"RB"}, 5)
+		if d := r.Leagues[0]; err != nil || len(d.Needs) != 0 || len(d.Targets) != 0 || !strings.Contains(d.Note, "outside the excluded") {
+			t.Errorf("RB excluded: needs %v, targets %+v, err %v", d.Needs, d.Targets, err)
+		}
+		if _, err := svc.TradeTargets(ctx, "dynasty", "RB", []string{"RB"}, 5); err == nil {
+			t.Error("want an error for a position both asked for and excluded")
+		}
+	})
+
 	t.Run("limit", func(t *testing.T) {
-		r, err := svc.TradeTargets(ctx, "dynasty", "", 1)
+		r, err := svc.TradeTargets(ctx, "dynasty", "", nil, 1)
 		if err != nil || len(r.Leagues[0].Targets) != 1 || r.Leagues[0].Targets[0].PlayerID != "rbA" {
 			t.Errorf("got %+v, err %v", r.Leagues[0].Targets, err)
 		}
@@ -180,5 +199,47 @@ func TestOfferFor(t *testing.T) {
 				t.Errorf("offer %v mutual %v, want %s %v", names, mutual, tt.offer, tt.mutual)
 			}
 		})
+	}
+}
+
+func TestTradeTargetsKeepsTheLoneSuperflexQB(t *testing.T) {
+	p := func(id, pos string) sleeper.Player {
+		return sleeper.Player{PlayerID: id, FullName: id, Position: pos, Active: true}
+	}
+	api := sleeper.New(sleepertest.NewServer(t, sleepertest.Routes{
+		"/state/nfl": sleeper.State{Season: "2026", Week: 5},
+		"/user/me":   sleeper.User{UserID: "100"},
+		"/user/100/leagues/nfl/2026": []sleeper.League{
+			{LeagueID: "T", Name: "TGIT", TotalRosters: 32, RosterPositions: []string{"RB", "WR", "FLEX", "FLEX", "SUPER_FLEX", "BN"}},
+		},
+		"/league/T/rosters": []sleeper.Roster{
+			{RosterID: 1, OwnerID: "100", Players: []string{"qb1", "rb1", "rb2", "wr1", "wr2", "te1", "te2"}},
+			{RosterID: 2, OwnerID: "200", Players: []string{"qbA", "qbB", "rbA"}},
+		},
+		"/league/T/users": []sleeper.LeagueUser{user("100", "me", "Mine"), user("200", "rival", "Rival FC")},
+		"/players/nfl": map[string]sleeper.Player{
+			"qb1": p("qb1", "QB"), "rb1": p("rb1", "RB"), "rb2": p("rb2", "RB"), "wr1": p("wr1", "WR"), "wr2": p("wr2", "WR"),
+			"te1": p("te1", "TE"), "te2": p("te2", "TE"), "qbA": p("qbA", "QB"), "qbB": p("qbB", "QB"), "rbA": p("rbA", "RB"),
+		},
+	}))
+	market := map[string]fantasycalc.Value{
+		"qb1": {Value: 1800}, "rb1": {Value: 3000}, "rb2": {Value: 900}, "wr1": {Value: 2400}, "wr2": {Value: 1200},
+		"te1": {Value: 800}, "te2": {Value: 600}, "qbA": {Value: 1500}, "qbB": {Value: 700}, "rbA": {Value: 1000},
+	}
+	svc := NewService(api, NewDirectory(store.NewMemory(), api.Players), func(context.Context, fantasycalc.Settings) (map[string]fantasycalc.Value, error) {
+		return market, nil
+	}, "me")
+	r, err := svc.TradeTargets(context.Background(), "", "", nil, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := r.Leagues[0]
+	for _, pv := range b.Spares {
+		if pv.Name == "qb1" {
+			t.Errorf("spares %+v include my only QB", b.Spares)
+		}
+	}
+	if !slices.ContainsFunc(b.Needs, func(n string) bool { return strings.HasPrefix(n, "QB thin") }) {
+		t.Errorf("needs = %v, want QB thin", b.Needs)
 	}
 }
