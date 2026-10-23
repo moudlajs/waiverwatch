@@ -183,7 +183,7 @@ func (s *Service) evaluate(ctx context.Context, l sleeper.League, userID string,
 	if err := g.Wait(); err != nil {
 		return out, err
 	}
-	out.Market, t.source = marketLabel(settings, source), source
+	out.Market, t.source = marketLabel(l, settings, source), source
 	var ok bool
 	if t.mine, ok = MyRoster(t.rosters, userID); !ok {
 		return out, fmt.Errorf("no roster owned by user %s in league %s", userID, l.LeagueID)
